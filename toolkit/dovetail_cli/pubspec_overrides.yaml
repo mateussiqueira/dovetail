@@ -1,0 +1,12 @@
+# Gerado para desenvolvimento no monorepo: o pubspec publica versao
+# hospedada, e aqui o caminho local sombreia. O pub.dev nunca ve este
+# arquivo — ele esta no .pubignore.
+dependency_overrides:
+  dovetail_bundler:
+    path: ../dovetail_bundler
+  dovetail_process_runner:
+    path: ../dovetail_process_runner
+  dovetail_signer:
+    path: ../dovetail_signer
+  dovetail_updater:
+    path: ../dovetail_updater

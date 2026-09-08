@@ -1,0 +1,29 @@
+name: dovetail
+description: >-
+  One dependency for everything a desktop app runs at runtime: the window, the
+  tray, the panel, global shortcuts, the single-instance guard, the updater and
+  form validation.
+version: 0.1.0
+repository: https://github.com/mateussiqueira/dovetail
+issue_tracker: https://github.com/mateussiqueira/dovetail/issues
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.35.0"
+
+dependencies:
+  dovetail_platform_channel: ^0.1.0
+  dovetail_shortcut_channel: ^0.1.0
+  dovetail_updater: ^0.1.0
+  flutter:
+    sdk: flutter
+  dovetail_form_validation: ^0.1.0
+  dovetail_process_runner: ^0.1.0
+  dovetail_rust_core: ^0.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  lints: ^6.0.0
+  # barrel_test reads this pubspec to check what the barrel re-exports.
+  path: ^1.9.0

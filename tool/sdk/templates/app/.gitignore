@@ -1,0 +1,24 @@
+.dart_tool/
+.packages
+build/
+dist/
+coverage/
+.flutter-plugins
+.flutter-plugins-dependencies
+*.iml
+.idea/
+.DS_Store
+
+# Escrito pelo `dovetail new --sdk` / `dovetail init --sdk`, e ele aponta para
+# o SDK instalado em caminho ABSOLUTO — `~/.dovetail/sdk/<versão>/packages/...`
+# desta máquina. Versionado, ele quebra o `flutter pub get` de todo mundo que
+# clonar o projeto, com um caminho que não existe no disco deles. Cada um
+# regenera o seu com `dovetail upgrade`.
+pubspec_overrides.yaml
+
+# Ponte: o codegen escreve estes — gerados, não versionados. Regenerar com
+# `make codegen` quando o núcleo crescer um método.
+core_bridge/lib/src/rust/
+core_bridge/rust/src/frb_generated.rs
+core_bridge/rust/target/
+core/target/

@@ -1,0 +1,29 @@
+name: dovetail_cli
+description: >-
+  One entry point for the dovetail toolkit: report which platform tools are
+  usable, bundle an installer, sign what was bundled, and write an update
+  manifest.
+version: 0.1.0
+repository: https://github.com/mateussiqueira/dovetail
+issue_tracker: https://github.com/mateussiqueira/dovetail/issues
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  args: ^2.6.0
+  crypto: ^3.0.6
+  dovetail_bundler: ^0.1.0
+  dovetail_signer: ^0.1.0
+  dovetail_updater: ^0.1.0
+  path: ^1.9.0
+  dovetail_process_runner: ^0.1.0
+  # probe reads the version out of a manifest and runs it past UpdatePolicy,
+  # which is the app's own comparison rather than a second one written here.
+  pub_semver: ^2.1.4
+  yaml: ^3.1.2
+
+dev_dependencies:
+  image: ^4.9.2
+  lints: ^6.0.0
+  test: ^1.25.0

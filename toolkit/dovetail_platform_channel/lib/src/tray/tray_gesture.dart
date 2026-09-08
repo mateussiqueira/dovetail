@@ -1,0 +1,1 @@
+enum TrayGesture { leftClick, rightClick }

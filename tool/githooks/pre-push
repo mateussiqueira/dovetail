@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+# Verifies the COMMIT, not the working tree.
+#
+# The tree is not what gets pushed, and on this machine it is routinely not
+# even close: two agent sessions edit it at the same time, so a hook that ran
+# there would prove something nobody will ever receive. A worktree of the ref
+# being pushed is the only thing that answers "does what I am sending work",
+# and it is immune to the other session saving a file mid-run.
+#
+# The worktree is REUSED rather than created per push. Measured: throwaway
+# costs 234s, because nine `pub get` and a whole checkout happen from cold
+# every time. Reused it is about a hundred, since .dart_tool and the cargo
+# target survive between pushes. Four minutes per push is a hook somebody
+# deletes, and then the machine checks nothing at all.
+set -euo pipefail
+
+root="$(git rev-parse --path-format=absolute --show-toplevel)"
+# Outside the repository, where the path deps resolve. The product packages
+# reach the sibling clones through ../../../example-rust and
+# ../../../example-design-system; a worktree under the repo (dist/ was the old spot)
+# cannot see them, and a cold run there fails pub get before a single test.
+# Measured: "could not find package example_design_system" from dist/.
+scratch="$root/../dovetail.verify-worktree"
+
+if [ -n "${DOVETAIL_VERIFY_SKIP:-}" ]; then
+  echo "pre-push skipped: ${DOVETAIL_VERIFY_SKIP}" >&2
+  exit 0
+fi
+
+while read -r _local_ref local_sha _remote_ref _remote_sha; do
+  [ "$local_sha" = "0000000000000000000000000000000000000000" ] && continue
+
+  if [ -d "$scratch/.git" ] || [ -f "$scratch/.git" ]; then
+    git -C "$scratch" checkout --detach --quiet "$local_sha"
+    # Untracked leftovers go; ignored build state stays, which is the point.
+    git -C "$scratch" clean -dfq
+  else
+    rm -rf "$scratch"
+    git -C "$root" worktree add --detach --quiet "$scratch" "$local_sha"
+  fi
+
+  echo "pre-push: verifying ${local_sha:0:8}"
+  if ! ( cd "$scratch" && dart tool/verify.dart ); then
+    echo "" >&2
+    echo "pre-push: ${local_sha:0:8} does not pass. Nothing was pushed." >&2
+    echo "  Re-run one package while you fix it:" >&2
+    echo "    cd $scratch && dart tool/verify.dart test --only <package>" >&2
+    echo "  To send it anyway, say why:" >&2
+    echo "    DOVETAIL_VERIFY_SKIP='<reason>' git push" >&2
+    exit 1
+  fi
+done

@@ -1,0 +1,4 @@
+# O lock fica no git — o portao frio copia o indice e resolve identico — mas
+# nao vai no tarball: biblioteca publicada nao trava as versoes de quem a usa.
+pubspec.lock
+pubspec_overrides.yaml

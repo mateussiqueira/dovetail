@@ -1,0 +1,14 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  errors:
+    # Regras de arquitetura do projeto: erro, não sugestão.
+    always_use_package_imports: error
+  exclude:
+    - build/**
+    - core_bridge/**
+    - "**/*.g.dart"

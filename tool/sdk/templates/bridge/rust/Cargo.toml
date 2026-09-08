@@ -1,0 +1,24 @@
+[package]
+name = "{{name}}"
+version = "0.1.0"
+edition = "2021"
+license = "proprietary"
+rust-version = "1.80"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "staticlib", "lib"]
+
+# Dependencias locais por caminho: o crate do produto ({{core_crate_name}}, o
+# --core do `bridge init`) e o dovetail_rust_core do SDK, que o comando tambem apontou.
+[dependencies]
+{{core_crate_name}} = { path = "{{core_path}}" }
+dovetail_rust_core = { path = "{{rust_core_rust_path}}" }
+
+flutter_rust_bridge = "=2.13.0"
+
+[lints.rust]
+# O flutter_rust_bridge expande macro com `#[cfg(frb_expand)]`, e o rustc
+# avisa sobre condicao que ninguem declarou. Declarar aqui cala o aviso sem
+# calar a categoria: um `cfg` escrito errado a mao continua sendo reportado.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(frb_expand)'] }

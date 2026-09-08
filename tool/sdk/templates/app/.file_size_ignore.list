@@ -1,0 +1,2 @@
+# Arquivos ignorados na verificação de tamanho do check_file_size.sh.
+# Formato: substring match (qualquer parte do caminho). # é comentário.

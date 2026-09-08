@@ -1,0 +1,5 @@
+# Arquivos GERADOS fora da medição de tamanho do PR.
+# Formato: substring match. # é comentário.
+pubspec.lock
+.g.dart
+coverage_barrel_test.dart

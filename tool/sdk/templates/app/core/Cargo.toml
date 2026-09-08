@@ -1,0 +1,12 @@
+[package]
+name = "{{name}}_core"
+version = "0.1.0"
+edition = "2021"
+license = "proprietary"
+rust-version = "1.80"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "staticlib", "lib"]
+
+[dependencies]

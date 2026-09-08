@@ -1,0 +1,19 @@
+name: dovetail_signer
+description: >-
+  Signs and notarises what a build already produced, on Windows, macOS and
+  Linux. Runs after the build, never inside it, and never packages anything.
+version: 0.1.0
+repository: https://github.com/mateussiqueira/dovetail
+issue_tracker: https://github.com/mateussiqueira/dovetail/issues
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  dovetail_process_runner: ^0.1.0
+  args: ^2.6.0
+  path: ^1.9.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

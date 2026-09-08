@@ -1,0 +1,119 @@
+name: ci
+
+# A dívida deste projeto é que quase tudo foi verificado num só macOS. Esta
+# matriz existe para pagar isso: os mesmos testes, nos três sistemas, em
+# repositório público — onde o Actions não cobra.
+#
+# Nenhum job aqui depende de repositório privado, credencial ou host: o que
+# precisa de Developer ID, chave de produção ou servidor de release fica de
+# fora de propósito, porque um job que não pode passar não é sinal, é ruído.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pacotes:
+    name: ${{ matrix.pacote }} · ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, ubuntu-24.04, windows-2022]
+        pacote:
+          - dovetail
+          - dovetail_bundler
+          - dovetail_cli
+          - dovetail_form_validation
+          - dovetail_platform_channel
+          - dovetail_process_runner
+          - dovetail_rust_core
+          - dovetail_shortcut_channel
+          - dovetail_signer
+          - dovetail_updater
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # O SDK do Flutter carrega o do Dart, então um só passo serve para os
+      # pacotes puros e para os que dependem de Flutter.
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      # `flutter test` num pacote Dart puro fica pendurado: medido aqui, o
+      # dovetail_cli parou em 441 de 480 e não saiu mais, enquanto `dart test`
+      # fecha o mesmo pacote em trinta segundos. A ferramenta certa vem do
+      # pubspec, não de um palpite.
+      - name: qual ferramenta este pacote usa
+        id: ferramenta
+        shell: bash
+        working-directory: toolkit/${{ matrix.pacote }}
+        run: |
+          if grep -qE '^\s+flutter:\s*$' pubspec.yaml; then
+            echo "cmd=flutter" >> "$GITHUB_OUTPUT"
+          else
+            echo "cmd=dart" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: dependências
+        working-directory: toolkit/${{ matrix.pacote }}
+        run: ${{ steps.ferramenta.outputs.cmd }} pub get
+
+      # Alguns testes leem a raiz do repositório para achar um artefato. Sem
+      # isto eles procuram a partir do cwd e o motivo do pulo fica errado.
+      - name: testes
+        working-directory: toolkit/${{ matrix.pacote }}
+        env:
+          DOVETAIL_REPO_ROOT: ${{ github.workspace }}
+        run: ${{ steps.ferramenta.outputs.cmd }} test
+
+  formato:
+    name: formato e análise · ubuntu
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      - name: formato
+        run: dart format --output=none --set-exit-if-changed toolkit
+      - name: análise
+        run: |
+          falhou=0
+          for pacote in toolkit/*/; do
+            cmd=dart
+            grep -qE '^\s+flutter:\s*$' "$pacote/pubspec.yaml" && cmd=flutter
+            (cd "$pacote" && $cmd pub get >/dev/null && $cmd analyze) || falhou=1
+          done
+          exit $falhou
+
+  publicavel:
+    name: dry-run de publicação · ubuntu
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+      # `--dry-run` não precisa de credencial e responde a única pergunta que
+      # importa antes de um `pub publish`: o pub.dev aceitaria este pacote?
+      - name: cada pacote sobreviveria a um publish
+        run: |
+          falhou=0
+          for pacote in toolkit/*/; do
+            echo "── $pacote"
+            cmd=dart
+            grep -qE '^\s+flutter:\s*$' "$pacote/pubspec.yaml" && cmd=flutter
+            (cd "$pacote" && $cmd pub get >/dev/null && dart pub publish --dry-run) || falhou=1
+          done
+          exit $falhou

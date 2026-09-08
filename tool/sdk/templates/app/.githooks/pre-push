@@ -1,0 +1,74 @@
+#!/bin/bash
+# ─────────────────────────────────────────────────────────────────────────────
+# pre-push — gate completo antes de publicar a branch.
+# Enquanto não há CI ativo, este hook é o único enforcement automático.
+# Instalar: make hooks
+# Bypass emergencial: git push --no-verify
+# ─────────────────────────────────────────────────────────────────────────────
+
+set -uo pipefail
+
+FAILED=0
+
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║  🚧 pre-push — gate de qualidade (CI local)                     ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"
+
+step() {
+  local name="$1"
+  shift
+  echo ""
+  echo "── $name ──"
+  if "$@"; then
+    echo "✅ $name"
+  else
+    echo "❌ $name"
+    FAILED=1
+  fi
+}
+
+# So o que e do consumidor: lib/, test/ e os testes do bridge. Com `.`, os 17
+# arquivos vendorizados de core_bridge/cargokit — copia de um projeto ARQUIVADO
+# que o dovetail compara byte a byte com o upstream — saiam como `Changed`, e o
+# primeiro `git push` de TODO projeto gerado falhava por codigo que nao e dele.
+# Pior: o remedio que o hook imprime (`dart format .`) forkaria os 17 do
+# upstream que nunca mais vai responder. `core_bridge/lib` fica de fora porque
+# `src/rust/` ali e saida do codegen, nao mao humana.
+step "Formatação" bash -c "dart format --output=none --set-exit-if-changed lib test core_bridge/test"
+step "Análise estática" bash -c "flutter analyze --no-pub"
+# O bridge tambem — o analysis_options do app exclui core_bridge/** de
+# proposito (e outro pacote, com opcoes proprias), entao a analise da raiz e
+# estruturalmente cega ao pacote que o framework existe para gerar. Medido no
+# mesmo instante: raiz "No issues found!", `cd core_bridge && flutter analyze`
+# com 1 lint no barril do proprio template.
+#
+# Condicionado ao codegen: antes do primeiro `make codegen` o bridge tem 2
+# ERROS (frb_generated.dart nao existe ainda), e um passo que falha no dia
+# zero por um arquivo que so o codegen cria ensinaria a ignorar o hook.
+if [ -f core_bridge/lib/src/rust/frb_generated.dart ]; then
+  step "Análise estática (bridge)" bash -c "cd core_bridge && flutter analyze --no-pub"
+else
+  echo ""
+  echo "── Análise estática (bridge) ──"
+  echo "ℹ️  pulada: sem codegen ainda — rode 'make codegen' e o bridge entra no gate"
+fi
+step "Gate Flutter" bash -c "bash scripts/checks/flutter/run_all.sh"
+step "Gate Rust" bash -c "bash scripts/checks/rust/run_all.sh"
+# Um `flutter test`, e nao dois. O check de cobertura ja roda a suite inteira
+# por dentro (`flutter test --coverage`), entao um passo `flutter test` antes
+# dele executava os MESMOS arquivos duas vezes — medido: 1,95s de 11,0s num
+# scaffold de seis testes, e cresce linear com a suite do consumidor, que e a
+# parte que cresce. Um teste que falha, falha aqui igual, com o log.
+step "Testes + cobertura" bash scripts/checks/flutter/check_coverage.sh
+
+echo ""
+if [ "$FAILED" -ne 0 ]; then
+  echo "╔══════════════════════════════════════════════════════════════════╗"
+  echo "║  🚫 PUSH BLOQUEADO — corrija os erros acima.                     ║"
+  echo "╚══════════════════════════════════════════════════════════════════╝"
+  exit 1
+fi
+
+echo "╔══════════════════════════════════════════════════════════════════╗"
+echo "║  ✅ Tudo conforme — publicando a branch.                         ║"
+echo "╚══════════════════════════════════════════════════════════════════╝"

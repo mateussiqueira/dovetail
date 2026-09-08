@@ -1,0 +1,18 @@
+[package]
+name = "dovetail_shortcut_channel"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.80"
+publish = false
+
+[lib]
+crate-type = ["cdylib", "staticlib", "lib"]
+path = "src/lib.rs"
+
+[features]
+default = []
+test-probe = []
+
+[dependencies]
+global-hotkey = "0.8"

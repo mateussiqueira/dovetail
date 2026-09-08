@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# The lane a commit can afford: static only, no external tool, no build.
+set -euo pipefail
+exec dart "$(git rev-parse --path-format=absolute --show-toplevel)/tool/verify.dart" fast

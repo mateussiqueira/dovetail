@@ -1,0 +1,15 @@
+name: dovetail_process_runner
+description: >-
+  The seam every build and signing tool needs: run a process, get its exit
+  code and its output, and substitute it in a test without touching the
+  filesystem.
+version: 0.1.0
+repository: https://github.com/mateussiqueira/dovetail
+issue_tracker: https://github.com/mateussiqueira/dovetail/issues
+
+environment:
+  sdk: ^3.12.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.0

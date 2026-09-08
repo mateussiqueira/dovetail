@@ -1,0 +1,14 @@
+[package]
+name = "dovetail_rust_core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.80"
+publish = false
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
+tracing = "0.1"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }

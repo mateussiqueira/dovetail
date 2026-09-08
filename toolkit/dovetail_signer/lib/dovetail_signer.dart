@@ -1,0 +1,16 @@
+export 'package:dovetail_signer/src/linux/checksum_writer.dart';
+export 'package:dovetail_signer/src/macos/macos_signer.dart';
+export 'package:dovetail_signer/src/macos/notarization.dart';
+export 'package:dovetail_signer/src/macos/notarization_step.dart';
+export 'package:dovetail_signer/src/macos/notarizer.dart';
+export 'package:dovetail_signer/src/macos/sign_target.dart';
+export 'package:dovetail_signer/src/policy/credential.dart';
+export 'package:dovetail_signer/src/policy/signing_policy.dart';
+export 'package:dovetail_signer/src/signing_failure.dart';
+export 'package:dovetail_signer/src/update/update_signature.dart';
+export 'package:dovetail_signer/src/update/update_signer.dart';
+export 'package:dovetail_signer/src/windows/authenticode.dart';
+export 'package:dovetail_signer/src/windows/osslsigncode.dart';
+export 'package:dovetail_signer/src/windows/osslsigncode_credentials.dart';
+export 'package:dovetail_signer/src/windows/osslsigncode_request.dart';
+export 'package:dovetail_process_runner/dovetail_process_runner.dart';

@@ -1,0 +1,18 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  language:
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+  exclude:
+    - build/**
+    - cargokit/**
+    - rust/target/**
+
+linter:
+  rules:
+    - always_declare_return_types
+    - always_specify_types
+    - prefer_final_locals
+    - unawaited_futures

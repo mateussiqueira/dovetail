@@ -1,0 +1,17 @@
+irondash/cargokit — https://github.com/irondash/cargokit
+
+ARCHIVED upstream. Nobody is going to fix this for us, so the copy in this
+repository is the only one there is, and the first thing anybody needs to know
+about it is whether it still says what it said.
+
+The two copies in this repository had drifted: seventeen files differed,
+because one of them had been through `dart format` and the other had not. The
+difference was cosmetic — proved by formatting both and diffing again, which
+came back empty — but nobody could have known that without doing it, and the
+next drift might not be. They are byte-identical now.
+
+  tree sha256  36422224496b68d72654ade188465e85bf6925f97d806c1fef8f97b889f0d05d
+  unified      2026-09-02
+
+`dart tool/verify.dart cross` compares the two copies and fails when they
+differ. Recompute the hash above when a change to cargokit is deliberate.

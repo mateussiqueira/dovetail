@@ -1,0 +1,23 @@
+# Dart e Flutter
+.dart_tool/
+.packages
+*.iml
+
+# Saida de build de cada pacote. NAO pode ser `build/` solto:
+# `toolkit/dovetail_cli/lib/src/build/` e codigo-fonte, e um padrao sem
+# prefixo o engoliria — foi exatamente o que aconteceu uma vez.
+/build/
+toolkit/*/build/
+toolkit/*/example/build/
+
+# Rust
+target/
+
+# Chave privada NUNCA entra, em nenhum nivel.
+**/keys/
+*.key
+*.pem
+*.p12
+
+# Sistema
+.DS_Store

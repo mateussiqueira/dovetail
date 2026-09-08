@@ -1,0 +1,61 @@
+#!/bin/bash
+# ─────────────────────────────────────────────────────────────────────────────
+# pre-commit — checks rápidos sobre os arquivos staged.
+# Instalar: make hooks   (git config core.hooksPath .githooks)
+# Bypass emergencial: git commit --no-verify
+# ─────────────────────────────────────────────────────────────────────────────
+
+set -uo pipefail
+
+FAILED=0
+
+echo "🔍 pre-commit — validando arquivos staged..."
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+
+if [ -z "$STAGED" ]; then
+  echo "   Nada staged. Ok."
+  exit 0
+fi
+
+# ── 1. Arquivos sensíveis ───────────────────────────────────────────────────
+# Templates versionados de propósito — só nomes, nunca valores. Mesma isenção
+# que o check_pr_rules.sh já aplica; sem ela os dois se contradizem, e o
+# .gitignore, que traz "!.env.example", fica do lado do check.
+TEMPLATES='\.(example|sample|template|dist)$'
+SENSITIVE=$(echo "$STAGED" | grep -ivE "$TEMPLATES" | grep -iE '(^|/)\.env($|\.)|secret|credential|\.pem$|\.p12$|\.jks$|\.keystore$|key\.properties$' || true)
+if [ -n "$SENSITIVE" ]; then
+  echo "❌ Arquivos potencialmente sensíveis no commit:"
+  echo "$SENSITIVE" | sed 's/^/     - /'
+  FAILED=1
+fi
+
+# ── 2. Formatação dos .dart staged ──────────────────────────────────────────
+STAGED_DART=$(echo "$STAGED" | grep -E '\.dart$' || true)
+if [ -n "$STAGED_DART" ]; then
+  UNFORMATTED=$(echo "$STAGED_DART" | xargs dart format --output=none --set-exit-if-changed 2>&1) || {
+    echo "❌ Arquivos fora do padrão de formatação:"
+    echo "$UNFORMATTED" | sed 's/^/     /'
+    echo "   Corrija com: dart format ."
+    FAILED=1
+  }
+fi
+
+# ── 3. Tamanho dos arquivos staged (regra do projeto: 200 linhas) ───────────
+if [ -n "$STAGED_DART" ]; then
+  while IFS= read -r file; do
+    [ -f "$file" ] || continue
+    lines=$(wc -l < "$file" | tr -d ' ')
+    if [ "$lines" -gt 200 ] && ! grep -qF "$(basename "$file")" ".file_size_ignore.list" 2>/dev/null; then
+      echo "⚠️  $file tem $lines linhas (limite 200)"
+    fi
+  done <<< "$STAGED_DART"
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+  echo ""
+  echo "🚫 Commit bloqueado. Corrija os erros acima."
+  exit 1
+fi
+
+echo "✅ pre-commit ok"
