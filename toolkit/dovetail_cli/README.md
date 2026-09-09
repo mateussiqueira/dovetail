@@ -1,11 +1,13 @@
+**English** · [Português](README.pt-BR.md)
+
 # dovetail_cli
 
-Um ponto de entrada para o toolkit. O que existia lá fora eram peças soltas —
+One entry point for the toolkit. What existed out there were loose pieces —
 `window_manager`, `tray_manager`, `hotkey_manager`, `auto_updater`, Fastforge —
-cada uma de um autor, cada uma com a sua configuração. O que o Tauri tem e o
-Flutter não tinha é o **arquivo único** e o CLI que lê ele.
+each from a different author, each with its own configuration. What Tauri has
+and Flutter did not is the **single file** and the CLI that reads it.
 
-## `ship`: a esteira inteira, a partir da config
+## `ship`: the whole pipeline, from the config
 
 ```bash
 dovetail ship --dry-run
@@ -20,143 +22,154 @@ dovetail ship --dry-run
 → release 4.2.0
 ```
 
-O plano é **dado**, não execução — é por isso que o `--dry-run` sai de graça e
-o comando é testável sem tocar em toolchain nenhuma. Os testes do plano não
-chamam o Flutter, o `wixl` nem o `codesign`. E o que o plano já sabe que o
-último passo vai recusar — `update.public-key` ausente, `notarize: true` sem
-identidade ou credenciais exportadas — ele recusa antes do build, no `--dry-run`
-inclusive.
+The plan is **data**, not execution — which is why `--dry-run` comes for free
+and the command is testable without touching any toolchain. The plan's tests
+call neither Flutter, nor `wixl`, nor `codesign`. And whatever the plan already
+knows the last step will refuse — a missing `update.public-key`,
+`notarize: true` with no identity or credentials exported — it refuses before
+the build, in `--dry-run` included.
 
-Três decisões que ele toma e vale conhecer. No macOS as arquiteturas declaradas
-viram **um** bundle universal, publicado sob `darwin-universal` — a chave que o
-`releaseFor` resolve quando um cliente pede `darwin-aarch64`. No Linux e no
-Windows é um pacote por arquitetura, porque um `.deb` carrega uma só.
+Three decisions it makes that are worth knowing. On macOS the declared
+architectures become **one** universal bundle, published under
+`darwin-universal` — the key `releaseFor` resolves when a client asks for
+`darwin-aarch64`. On Linux and Windows it is one package per architecture,
+because a `.deb` carries only one.
 
-E no macOS são **duas assinaturas**: o `.app` antes de empacotar, porque um dmg
-que embrulha um `.app` não assinado não fica assinado por assinar o dmg
-depois; e o `.dmg` depois de montado, porque é ele que o usuário baixa e o
-Gatekeeper avalia — e é ele que se notariza. No Windows e no Linux o que se
-assina é o instalador, então o bundle vem primeiro.
+And on macOS there are **two signatures**: the `.app` before packaging,
+because a dmg wrapping an unsigned `.app` does not become signed by signing
+the dmg afterwards; and the `.dmg` after it is built, because that is what the
+user downloads and what Gatekeeper evaluates — and it is the one you notarise.
+On Windows and Linux what gets signed is the installer, so the bundle comes
+first.
 
-O nome de cada artefato não é adivinhado: o plano pergunta ao bundler que vai
-escrevê-lo. Enquanto ele adivinhava, o dmg saía
-`app_1.0.0_universal.dmg` e o manifesto apontava para `app_1.0.0.dmg` — um
-arquivo que não existia.
+Each artefact's name is not guessed: the plan asks the bundler that will write
+it. While it was guessing, the dmg came out as `app_1.0.0_universal.dmg` and
+the manifest pointed at `app_1.0.0.dmg` — a file that did not exist.
 
-Alvos de outro sistema são deixados de lado. Um host cuja parte da matriz mora
-em outro lugar sai 0 sem fazer nada, porque é um runner sem trabalho nesta
-rodada e não um erro.
+Targets belonging to another system are set aside. A host whose share of the
+matrix lives elsewhere exits 0 doing nothing, because it is a runner with no
+work this round, not an error.
 
-Escrever isso pegou cinco defeitos meus, e vale dizer como cada um apareceu.
-Dois pelo `--dry-run`, antes de qualquer coisa rodar: o macOS empacotava duas
-vezes para o mesmo arquivo de saída, e a arquitetura ia na grafia do fio
-(`aarch64`) onde o `bundle` só aceita a da Apple (`arm64`). Três só rodando de
-verdade no app deste repositório: o `app-dir` apontava para o diretório acima
-do `.app`, a assinatura vinha depois do dmg, e o nome previsto não era o nome
-que o bundler escrevia.
+Writing this caught five of my own defects, and how each showed up is worth
+saying. Two through `--dry-run`, before anything ran: macOS packaged twice into
+the same output file, and the architecture went in the wire spelling
+(`aarch64`) where `bundle` only accepts Apple's (`arm64`). Three only by
+actually running against a real app: `app-dir` pointed at the directory above
+the `.app`, the signature came after the dmg, and the predicted name was not
+the name the bundler wrote.
 
-## Instalar nesta máquina
+## Installing
 
 ```bash
-tool/build_release.sh --install
+dart pub global activate dovetail_cli
 ```
-
-Compila e deixa o binário em `~/.local/bin`, avisando se o diretório não
-estiver no `PATH`. Um caminho diferente vai como segundo argumento.
 
 ```bash
 $ dovetail --version
 dovetail 0.1.0 (macos-arm64, dart 3.12.2)
 ```
 
-Nada disso pede notarização nem passa pelo Gatekeeper: um binário compilado
-localmente não chega em quarentena. Isso só volta a importar quando o arquivo
-vier pela rede.
+To build the self-contained binary from source instead:
 
-## Distribuição: um binário, sem fonte
+```bash
+tool/build_release.sh --install
+```
 
-O CLI compila para um executável nativo autocontido. `tool/build_release.sh`
-produz o binário, o tarball e o SHA256, e recusa publicar se o binário não
-reportar a versão que o `pubspec.yaml` declara.
+That compiles and leaves the binary in `~/.local/bin`, warning if the
+directory is not on the `PATH`. A different path goes as the second argument.
+
+Neither route asks for notarisation or goes through Gatekeeper: a locally
+compiled binary does not arrive quarantined. That only matters again when the
+file comes over the network.
+
+## Distribution: one binary, no source
+
+The CLI compiles to a self-contained native executable.
+`tool/build_release.sh` produces the binary, the tarball and the SHA256, and
+refuses to publish if the binary does not report the version `pubspec.yaml`
+declares.
 
 ```bash
 tool/build_release.sh dist
 ```
 
-O que o binário carrega compilado: `dovetail_bundler`, `dovetail_signer`,
-`dovetail_updater`, `dovetail_process_runner` e o próprio CLI — como código de máquina.
-Não há fonte Dart recuperável dele. Literais de string ficam, como em qualquer
-compilação AOT: nomes de ferramenta, mensagens de erro e os fragmentos de
-template `.wxs` e `.nsi`. Esses fragmentos são a saída do comando de qualquer
-jeito, então não são segredo que o binário guarde.
+What the binary carries compiled in: `dovetail_bundler`, `dovetail_signer`,
+`dovetail_updater`, `dovetail_process_runner` and the CLI itself — as machine
+code. There is no recoverable Dart source in it. String literals remain, as in
+any AOT build: tool names, error messages and the `.wxs` and `.nsi` template
+fragments. Those fragments are the command's output anyway, so they are not a
+secret the binary keeps.
 
-`tool/dovetail.rb` é a fórmula Homebrew. Ela existe porque metade do problema
-de instalar não é o binário: é o `minisign`, o `msitools`, o `osslsigncode` e o
-`rpm` que o CLI invoca. A fórmula os declara como dependência e o `caveats`
-nomeia os dois que ela deliberadamente não instala — o `flutter`, que você já
-tem, e o `makensis`, que só faz falta se você quiser o instalador NSIS além do
-MSI.
+`tool/dovetail.rb` is the Homebrew formula. It exists because half the problem
+of installing is not the binary: it is the `minisign`, the `msitools`, the
+`osslsigncode` and the `rpm` the CLI invokes. The formula declares them as
+dependencies, and the `caveats` names the two it deliberately does not install
+— `flutter`, which you already have, and `makensis`, which you only miss if
+you want the NSIS installer alongside the MSI.
 
-**O que o binário não cobre.** Os pacotes de runtime —
-`dovetail_platform_channel`, `dovetail_shortcut_channel`, `dovetail_updater` e o
-guarda-chuva `dovetail` — são compilados *dentro* do app de quem consome. O
-Dart não tem formato binário para dependência de pub: um pacote sem
-`lib/*.dart` não pode ser importado. Quem usar a janela, a bandeja, o painel ou
-o atalho precisa da fonte desses pacotes; quem usar só a esteira de build,
-empacotamento, assinatura e publicação não precisa de nenhuma.
+**What the binary does not cover.** The runtime packages —
+`dovetail_platform_channel`, `dovetail_shortcut_channel`, `dovetail_updater`
+and the `dovetail` umbrella — are compiled *inside* the consumer's app. Dart
+has no binary format for a pub dependency: a package with no `lib/*.dart`
+cannot be imported. Whoever uses the window, the tray, the panel or the
+shortcut needs those packages' source; whoever uses only the build, packaging,
+signing and publishing pipeline needs none of them.
 
-## O canal de release e o instalador
+## The release channel and the installer
 
-O runtime viaja num SDK versionado, servido por um canal:
+The runtime travels in a versioned SDK, served by a channel:
 
 ```
-<base>/latest                                           → a versão mais nova
-<base>/<versão>/dovetail-sdk-<versão>-<os>-<arch>.tar.gz
-<base>/<versão>/dovetail-sdk-<versão>-<os>-<arch>.tar.gz.sha256
+<base>/latest                                           → the newest version
+<base>/<version>/dovetail-sdk-<version>-<os>-<arch>.tar.gz
+<base>/<version>/dovetail-sdk-<version>-<os>-<arch>.tar.gz.sha256
 ```
 
-O caminho curl|sh é o `tool/sdk/install.sh`:
+The curl|sh path is `tool/sdk/install.sh`:
 
 ```bash
 curl -fsSL https://<host>/install.sh | sh
 ```
 
-E o mesmo trabalho existe de dentro do binário, para quem já o tem:
+And the same work exists from inside the binary, for whoever already has it:
 
 ```bash
-dovetail self-install --base-url https://<host>   # instala o SDK da versão do binário
-dovetail self-update  --base-url https://<host>   # troca para o latest do canal
+dovetail self-install --base-url https://<host>   # installs the SDK for the binary's version
+dovetail self-update  --base-url https://<host>   # switches to the channel's latest
 ```
 
-A base vem de `--base-url` ou de `DOVETAIL_INSTALL_URL`; sem os dois o comando
-recusa nomeando os dois — um instalador que adivinha o host instala o que o
-host decidir. O download passa por TLS (o fetcher do updater recusa http) e o
-tarball é conferido contra o `.sha256` publicado **antes** de um byte tocar o
-disco. O `self-update` instala a versão nova **ao lado** da antiga e troca o
-binário: `sdk/<antiga>` fica no lugar, e um app cujo `pubspec_overrides.yaml`
-aponta para ela continua resolvendo — é por isso que o SDK é versionado por
-diretório e não sobrescrito. Um `latest` igual ou mais velho é saída 0 sem
-tocar nada, nunca um downgrade. O `doctor` reporta o que vê: versão instalada,
-e quando ela discorda da do binário, qual comando fecha a distância.
+The base comes from `--base-url` or from `DOVETAIL_INSTALL_URL`; without
+either, the command refuses naming both — an installer that guesses the host
+installs whatever the host decides. The download goes over TLS (the updater's
+fetcher refuses http) and the tarball is checked against the published
+`.sha256` **before** a byte touches disk. `self-update` installs the new
+version **beside** the old one and swaps the binary: `sdk/<old>` stays in
+place, and an app whose `pubspec_overrides.yaml` points at it keeps resolving —
+which is why the SDK is versioned by directory rather than overwritten. A
+`latest` that is equal or older exits 0 without touching anything, never a
+downgrade. `doctor` reports what it sees: the installed version, and when it
+disagrees with the binary's, which command closes the gap.
 
 ## dovetail.yaml
 
-`dovetail init` lê o projeto e escreve o arquivo; ele não pergunta nada que
-consiga descobrir sozinho.
+`dovetail init` reads the project and writes the file; it does not ask anything
+it can find out on its own.
 
 ```bash
 dovetail init
 ```
 
-Ele deduz os alvos dos diretórios `macos/`, `windows/` e `linux/` que existem,
-o identificador do `AppInfo.xcconfig` (nunca do `RunnerTests`, que é o único
-`PRODUCT_BUNDLE_IDENTIFIER` de um `project.pbxproj` recém-criado), e o nome do
-`pubspec.yaml`. Quando as plataformas declaram identificadores diferentes ele
-delata os dois em vez de escolher em silêncio — a instância única e o deep link
-se ancoram nesse nome, então divergir ali é um defeito.
+It deduces the targets from the `macos/`, `windows/` and `linux/` directories
+that exist, the identifier from `AppInfo.xcconfig` (never from `RunnerTests`,
+which is the only `PRODUCT_BUNDLE_IDENTIFIER` in a freshly created
+`project.pbxproj`), and the name from `pubspec.yaml`. When the platforms
+declare different identifiers it reports both instead of choosing silently —
+single instance and deep links anchor on that name, so diverging there is a
+defect.
 
-Se o `dovetail.yaml` já existe, o comando recusa; `--force` sobrescreve,
-descartando o que foi configurado à mão — por isso não é o padrão.
+If `dovetail.yaml` already exists the command refuses; `--force` overwrites,
+discarding whatever was configured by hand — which is why it is not the
+default.
 
 ```yaml
 identifier: com.example.demo
@@ -171,8 +184,8 @@ update:
   password-env: DOVETAIL_UPDATE_KEY_PASSWORD
   base-url: https://cdn.example.com/releases
   public-key: |
-    untrusted comment: minisign public key D18395BE8A6B994E
-    RWROmWuKvpWD0RErEh4kcn0sjuu4dQYX5MERE9dNGuImxQXHzNuRYLVP
+    untrusted comment: minisign public key 1234567890ABCDEF
+    RWQhww+7hfwEkazwMrOqcOeYRd+myNTpeJJP4bRWbnbMXV3T8ZSFPajp
   manifest: dist/latest.json
 
 sign:
@@ -184,76 +197,79 @@ sign:
     timestamp-url: http://timestamp.digicert.com
 ```
 
-**Não há campo de versão.** Ela mora no `pubspec.yaml` e é lida de lá, sem o
-`+build`. Duplicá-la só criaria dois lugares para discordar.
+**There is no version field.** It lives in `pubspec.yaml` and is read from
+there, without the `+build`. Duplicating it would only create two places to
+disagree.
 
-**Nenhuma identidade é escrita aqui**, só o nome da variável que a carrega —
-por isso o arquivo pode ser commitado.
+**No identity is written here**, only the name of the variable that carries it
+— which is why the file can be committed.
 
-Um `targets` é validado contra o mesmo vocabulário do manifesto de update. Uma
-chave que o cliente nunca pede é um release que ninguém enxerga, e `darwin-arm64`
-é exatamente esse erro: `arm64` é como Apple e WiX escrevem, `aarch64` é como o
-protocolo escreve.
+`targets` is validated against the update manifest's own vocabulary. A key the
+client never asks for is a release nobody can see, and `darwin-arm64` is
+exactly that mistake: `arm64` is how Apple and WiX spell it, `aarch64` is how
+the protocol spells it.
 
-### O runtime pelo SDK instalado
+### The runtime through the installed SDK
 
-Fora do monorepo o runtime não tem `path: ../` para onde apontar: ele vem de um
-SDK instalado em `~/.dovetail/sdk/<versão>/packages` (ou `$DOVETAIL_HOME`,
-quando definido).
+Outside the monorepo the runtime has no `path: ../` to point at: it comes from
+an SDK installed at `~/.dovetail/sdk/<version>/packages` (or `$DOVETAIL_HOME`,
+when set).
 
 ```bash
 dovetail init --sdk
 ```
 
-A flag escreve um `pubspec_overrides.yaml` no app, cada pacote do runtime
-apontado para a cópia do SDK — o mecanismo nativo do Dart para resolver fora
-do pubspec, o mesmo que o Flutter SDK usa para entregar os pacotes dele. A
-versão preferida é a do próprio binário; quando ela não está instalada, a mais
-recente serve. Sem SDK instalado o comando recusa **antes de escrever nada**, e
-a mensagem nomeia o instalador. Os caminhos são locais, então o arquivo de
-overrides não é para versionar. O modelo completo — instalação, ciclo de
-versão e o `bridge` — está em [docs/instalador.md](../../docs/instalador.md).
+The flag writes a `pubspec_overrides.yaml` in the app, each runtime package
+pointed at the SDK's copy — Dart's native mechanism for resolving outside the
+pubspec, the same one the Flutter SDK uses to deliver its own packages. The
+preferred version is the binary's own; when that one is not installed, the most
+recent serves. With no SDK installed the command refuses **before writing
+anything**, and the message names the installer. The paths are local, so the
+overrides file is not meant to be committed. The complete model — installation,
+the version cycle and `bridge` — is in
+[docs/instalador.md](../../docs/instalador.md).
 
-## `upgrade`: o ciclo de versão do consumidor
+## `upgrade`: the consumer's version cycle
 
-O `self-update` troca o SDK instalado sem mover os apps: cada app carrega um
-`pubspec_overrides.yaml` cujos `path` apontam para `sdk/<versão>/packages`, e a
-versão antiga fica no disco para quem ainda a usa. O `upgrade` é o comando que
-re-aponta esse arquivo para o SDK preferido:
+`self-update` swaps the installed SDK without moving the apps: each app carries
+a `pubspec_overrides.yaml` whose `path`s point at `sdk/<version>/packages`, and
+the old version stays on disk for whoever still uses it. `upgrade` is the
+command that re-points that file at the preferred SDK:
 
 ```bash
 dovetail upgrade
 ```
 
-Sem um `pubspec.yaml` no diretório ele recusa, porque o override pertence a um
-projeto. O `doctor` reporta a discordância quando vê um app cujo override
-aponta para uma versão mais velha que a instalada — e o `upgrade` é quem fecha
-a distância.
+With no `pubspec.yaml` in the directory it refuses, because the override
+belongs to a project. `doctor` reports the disagreement when it sees an app
+whose override points at a version older than the installed one — and `upgrade`
+is what closes the gap.
 
-## `update`: o ciclo de versão num comando só
+## `update`: the version cycle in one command
 
-O `self-update` troca o SDK e o `upgrade` re-aponta o app — dois comandos que
-andam juntos em todo ciclo de versão. O `update` colapsa os dois: troca o SDK
-para o latest do canal e, quando o app é dado, re-aponta o
-`pubspec_overrides.yaml` dele:
+`self-update` swaps the SDK and `upgrade` re-points the app — two commands that
+travel together in every version cycle. `update` collapses them: it switches
+the SDK to the channel's latest and, when the app is given, re-points its
+`pubspec_overrides.yaml`:
 
 ```bash
-dovetail update --base-url https://<host>                # só o SDK
+dovetail update --base-url https://<host>                # the SDK only
 dovetail update --base-url https://<host> --root app     # SDK + app
 ```
 
-Sem `--root` só o SDK muda, e re-apontar o app fica para um `upgrade`
-posterior. Com `--root` apontando para um diretório sem `pubspec.yaml` ele pula
-o re-apontar com um aviso, em vez de quebrar — o override pertence a um
-projeto. Já estar no latest é saída 0 sem tocar nada, nunca um downgrade, e sem
-SDK nenhum no disco para onde o app possa apontar, ele recusa nomeando o
-`self-install`.
+Without `--root` only the SDK changes, and re-pointing the app is left to a
+later `upgrade`. With `--root` pointing at a directory with no `pubspec.yaml`
+it skips the re-pointing with a warning rather than breaking — the override
+belongs to a project. Already being on the latest exits 0 without touching
+anything, never a downgrade, and with no SDK on disk for the app to point at,
+it refuses naming `self-install`.
 
-## O serviço privilegiado
+## The privileged service
 
-Um VPN não conecta sem o helper privilegiado, e nenhum pacote o instalava: a
-unit systemd, a política polkit e os scripts de manutenção existiam e o comando
-que empacota não os alcançava. Agora eles vêm da config.
+A VPN does not connect without its privileged helper, and no package used to
+install one: the systemd unit, the polkit policy and the maintenance scripts
+existed and the packaging command could not reach them. Now they come from the
+config.
 
 ```yaml
 service:
@@ -265,83 +281,72 @@ service:
   purge-paths: [/var/lib/demo]
   polkit:
     action: com.example.demo.manage
-    vendor: Example Ltda
+    vendor: Example Ltd
     description: Manage the connection
     message: Authentication is required to change the connection
 ```
 
-As capacidades entram no `CapabilityBoundingSet` **e** no
-`AmbientCapabilities` — uma ambiente fora do bounding set é descartada em
-silêncio, e o helper sobe sem o privilégio de que precisa. A ação polkit tem
-que estar dentro do namespace do `identifier`, porque o polkit nomeia o arquivo
-pelo namespace e ignora ação declarada fora dele.
+The capabilities go into `CapabilityBoundingSet` **and**
+`AmbientCapabilities` — an ambient capability outside the bounding set is
+discarded silently, and the helper comes up without the privilege it needs. The
+polkit action has to be inside the `identifier`'s namespace, because polkit
+names the file after the namespace and ignores an action declared outside it.
 
-## Com a config no lugar
+## With the config in place
 
 ```bash
 dovetail doctor
 dovetail release --artifact "darwin-aarch64=dist/Demo.dmg"
 ```
 
-O `doctor` sem `--target` percorre **todos** os alvos declarados, um relatório
-por alvo, e sai 1 se alguma ferramenta está presente mas quebrada — pior que
-ausente, porque um build reporta sucesso que não ganhou.
+`doctor` without `--target` walks **every** declared target, one report per
+target, and exits 1 if any tool is present but broken — worse than absent,
+because a build then reports a success it did not earn.
 
-O `release` tira do arquivo a versão, a chave, a variável de senha, o destino do
-manifesto e a URL de cada artefato (`<base-url>/<versão>/<arquivo>`), e recusa
-uma chave de plataforma que não esteja em `targets`. A forma longa
-`platformKey=url=path` continua valendo para quando a URL não segue o padrão —
-inclusive com query string, que a forma antiga truncava no primeiro `=`.
+`release` takes the version, the key, the password variable, the manifest's
+destination and each artefact's URL (`<base-url>/<version>/<file>`) from the
+file, and refuses a platform key that is not in `targets`. The long form
+`platformKey=url=path` still applies for when the URL does not follow the
+pattern — query string included, which the old form truncated at the first
+`=`.
 
-## Instalação
-
-```yaml
-dependencies:
-  dovetail_cli:
-    path: ../dovetail_cli
-```
-
-```bash
-dart run bin/dovetail.dart --help
-```
-
-## A esteira, na ordem em que roda
+## The pipeline, in the order it runs
 
 ```
-init      lê o projeto e escreve o dovetail.yaml que os outros leem
-new       cria o projeto do zero, já ligado ao dovetail
-ship      a esteira inteira, a partir da config
-doctor    esta máquina consegue construir para esse par de SO e arquitetura?
-dev       a ponte nunca fica para trás — vigia e regenera
-bridge    gera o plugin ffiPlugin que fala com o núcleo Rust do produto
-build     compila o que este host pode compilar, e recusa alto o que não pode
-icon      de um PNG saem .ico, .icns e os PNGs do tema do Linux
-bundle    nsis | msi | dmg | deb | rpm — nunca assina nada
-sign      codesign e notarização, ou Authenticode — nunca empacota nada
-keygen    gera o par minisign e imprime a chave pública
-release   assina cada artefato e escreve o manifesto que aponta para eles
-inspect   o que o arquivo é, não o que o nome dele diz
-manifest  o manifesto sozinho, quando a assinatura já existe
-probe     pergunta ao endpoint se ele serve o que o cliente lê
-self-install  instala o runtime do SDK ao lado do binário, do canal de release
-self-update   troca o SDK para o latest do canal, mantendo a versão que os apps apontam
-update        troca o SDK para o latest e re-aponta o app, num comando só
-upgrade       re-aponta o pubspec_overrides.yaml do app para o SDK instalado
+init      reads the project and writes the dovetail.yaml the others read
+new       creates the project from scratch, already wired to dovetail
+ship      the whole pipeline, from the config
+doctor    can this machine build for that OS and architecture pair?
+dev       the bridge never falls behind — watches and regenerates
+bridge    generates the ffiPlugin that talks to the product's Rust core
+build     compiles what this host can compile, and refuses loudly what it cannot
+icon      one PNG becomes .ico, .icns and the Linux theme PNGs
+bundle    nsis | msi | dmg | deb | rpm — never signs anything
+sign      codesign and notarisation, or Authenticode — never packages anything
+keygen    generates the minisign pair and prints the public key
+release   signs each artefact and writes the manifest pointing at them
+inspect   what the file is, not what its name says
+manifest  the manifest alone, when the signature already exists
+probe     asks the endpoint whether it serves what the client reads
+self-install  installs the SDK's runtime beside the binary, from the release channel
+self-update   switches the SDK to the channel's latest, keeping the version apps point at
+update        switches the SDK to the latest and re-points the app, in one command
+upgrade       re-points the app's pubspec_overrides.yaml at the installed SDK
 ```
 
-A separação entre `bundle` e `sign` não é organizacional: assinatura acontece
-**depois** do build e nunca dentro dele. Um build que assina é um build que não
-se pode reproduzir sem a chave.
+The separation between `bundle` and `sign` is not organisational: signing
+happens **after** the build and never inside it. A build that signs is a build
+you cannot reproduce without the key.
 
-## `doctor` pergunta se a ferramenta funciona
+## `doctor` asks whether the tool works
 
-Não se ela está no `PATH`. Cada sonda entrega ao binário real uma entrada
-trivial real e confere a saída real: o `makensis` compila um script de quatro
-linhas e tem que produzir o `.exe`; o `ditto` copia um arquivo e tem que
-produzir a cópia; o `codesign` lê o `/bin/ls`.
+Not whether it is on the `PATH`. Each probe hands the real binary a real
+trivial input and checks the real output: `makensis` compiles a four-line
+script and has to produce the `.exe`; `ditto` copies a file and has to produce
+the copy; `codesign` reads `/bin/ls`.
 
-Sem `--target` ele percorre todos os alvos do `dovetail.yaml`. Com, ele
-pergunta por um só:
+Without `--target` it walks every target in `dovetail.yaml`. With one, it asks
+about a single one:
 
 ```bash
 dovetail doctor --target windows --arch arm64
@@ -355,20 +360,20 @@ missing  wix  compiles the MSI, when one is asked for
 broken   signtool  You must specify a key with which to sign.
 ```
 
-Uma ferramenta presente e quebrada sai como `broken`, com o texto de erro dela, e
-o comando termina em 1 — porque um build que reporta sucesso que não mereceu é
-pior do que um build que falha.
+A tool that is present and broken comes out as `broken`, with its own error
+text, and the command exits 1 — because a build that reports a success it did
+not earn is worse than a build that fails.
 
-Isso não é hipotético: nesta máquina o `makensis` do Homebrew aborta com
-`std::bad_alloc` num script de quatro linhas, e existe um `signtool` que não é o
-do Windows no `PATH`. Uma sonda de presença chama os dois de prontos.
+That is not hypothetical: on this machine Homebrew's `makensis` aborts with
+`std::bad_alloc` on a four-line script, and there is a `signtool` on the `PATH`
+that is not Windows's. A presence probe calls both of them ready.
 
-## `bundle` não precisa de Windows para empacotar Windows
+## `bundle` does not need Windows to package for Windows
 
-O WiX faz P/Invoke em `msi.dll`, que é a biblioteca do Windows Installer —
-por isso a documentação do Tauri diz que **um MSI só pode ser criado no
-Windows**. Isso vale para o WiX, não para o formato: o `wixl`, do `msitools`,
-escreve o banco MSI diretamente.
+WiX P/Invokes into `msi.dll`, which is the Windows Installer library — which is
+why Tauri's documentation says an **MSI can only be created on Windows**. That
+holds for WiX, not for the format: `wixl`, from `msitools`, writes the MSI
+database directly.
 
 ```bash
 brew install msitools
@@ -376,21 +381,21 @@ dovetail bundle --target windows --arch x86_64 --windows-format msi \
   --upgrade-code 3F2504E0-4F89-11D3-9A0C-0305E82C3301 ...
 ```
 
-`MsiBackend.forHost` escolhe: `wix` no Windows, `wixl` em qualquer outro lugar.
-O dialeto muda junto — o `wixl` lê o esquema v3 (`<Product>`), e o WiX v4 lê o
-seu próprio. Provado aqui: o MSI sai com o cabeçalho OLE2, o `msiinfo` lê nome,
-fabricante e versão, e o `msiextract` tira do CAB embutido cada arquivo que foi
-preparado.
+`MsiBackend.forHost` chooses: `wix` on Windows, `wixl` anywhere else. The
+dialect changes with it — `wixl` reads the v3 schema (`<Product>`), and WiX v4
+reads its own. Proven here: the MSI comes out with the OLE2 header, `msiinfo`
+reads the name, manufacturer and version, and `msiextract` pulls every staged
+file out of the embedded CAB.
 
-## `doctor` relata o projeto antes das ferramentas
+## `doctor` reports the project before the tools
 
-Sem `--target`, ele responde primeiro se o projeto está pronto — e distingue o
-que **falta** do que só **não foi configurado**:
+Without `--target`, it answers first whether the project is ready — and it
+distinguishes what is **missing** from what simply was **not configured**:
 
 ```
 project
   ok       identifier  com.acme.client
-  ok       name  Acme Client by Acme Ltda
+  ok       name  Acme Client by Acme Ltd
   ok       version  1.2.0  (from pubspec)
   ok       targets  darwin-x86_64, darwin-aarch64 on this host of 4
   off      update  keys/update.key — no base-url, so every artefact needs its url spelled out
@@ -398,17 +403,18 @@ project
   off      service  no privileged helper is installed by the linux packages
 ```
 
-A distinção é o ponto. Um host que não constrói nenhum dos alvos declarados sai
-`off`, não `missing` — é um runner cuja parte da matriz mora em outro lugar, e
-chamar isso de erro derrubaria um job de CI que está correto. O que sai
-`missing` é o que impede publicar: config ausente, ou um `pubspec` sem versão.
+The distinction is the point. A host that builds none of the declared targets
+comes out `off`, not `missing` — it is a runner whose share of the matrix lives
+elsewhere, and calling that an error would fail a CI job that is correct. What
+comes out `missing` is what prevents publishing: absent config, or a `pubspec`
+with no version.
 
-## `sign` não precisa de Windows para assinar Windows
+## `sign` does not need Windows to sign for Windows
 
-O `signtool` vem com o SDK do Windows e não existe em outro lugar — o que
-responde por esse nome num Mac é o assinador de JAR do `nss`. O caminho
-multiplataforma é o `osslsigncode`, e é o que o comando usa em qualquer host
-que não seja Windows.
+`signtool` ships with the Windows SDK and exists nowhere else — what answers to
+that name on a Mac is `nss`'s JAR signer. The cross-platform path is
+`osslsigncode`, and it is what the command uses on any host that is not
+Windows.
 
 ```bash
 dovetail sign --target windows \
@@ -418,21 +424,22 @@ dovetail sign --target windows \
   --timestamp-url http://timestamp.digicert.com
 ```
 
-As flags sobrepõem o ambiente; sem elas ele lê `WINDOWS_CERTIFICATE_FILE`,
-`WINDOWS_PRIVATE_KEY_FILE` e `WINDOWS_TIMESTAMP_URL`. Um PKCS#12 entra pelo
-`--certificate` sem `--private-key`, e aí a senha vem de
-`WINDOWS_CERTIFICATE_PASSWORD` — vazia nunca é assumida, porque o
-`osslsigncode` pergunta no terminal e uma pergunta numa esteira é um build que
-trava em vez de falhar.
+The flags override the environment; without them it reads
+`WINDOWS_CERTIFICATE_FILE`, `WINDOWS_PRIVATE_KEY_FILE` and
+`WINDOWS_TIMESTAMP_URL`. A PKCS#12 comes in through `--certificate` with no
+`--private-key`, and then the password comes from
+`WINDOWS_CERTIFICATE_PASSWORD` — empty is never assumed, because
+`osslsigncode` asks on the terminal and a question in a pipeline is a build
+that hangs instead of failing.
 
-No Windows, com um `WINDOWS_CERTIFICATE_THUMBPRINT`, ele continua usando o
-`signtool` de verdade contra o certificado que está na loja.
+On Windows, with a `WINDOWS_CERTIFICATE_THUMBPRINT`, it still uses the real
+`signtool` against the certificate in the store.
 
-## `sign --entitlements-for` para o que está aninhado
+## `sign --entitlements-for` for what is nested
 
-Um helper privilegiado, uma Network Extension ou um login item dentro do bundle
-precisam das próprias entitlements. Dar a do app é como um daemon acaba com o
-sandbox do app.
+A privileged helper, a Network Extension or a login item inside the bundle
+needs its own entitlements. Giving it the app's is how a daemon ends up with
+the app's sandbox.
 
 ```bash
 dovetail sign --target macos --bundle build/Example.app \
@@ -440,68 +447,71 @@ dovetail sign --target macos --bundle build/Example.app \
   --entitlements-for "Contents/Helpers/daemon=macos/Daemon.entitlements"
 ```
 
-## `build` conhece o teto
+## `build` knows its ceiling
 
-Assinar e empacotar podem ser centralizados numa máquina; **compilar não**. O
-Flutter recusa na origem: `"build windows" only supported on Windows hosts`.
-Nenhuma ferramenta nossa contorna isso, e o `build` recusa antes de invocar o
-Flutter, dizendo qual passo precisa de outra máquina em vez de deixar o erro
-aparecer no meio do build.
+Signing and packaging can be centralised on one machine; **compiling cannot**.
+Flutter refuses at the source: `"build windows" only supported on Windows
+hosts`. No tool of ours works around that, and `build` refuses before invoking
+Flutter, saying which step needs another machine instead of letting the error
+surface mid-build.
 
 ```bash
 dovetail build
 ```
 
-Sem `--target`, ele olha os alvos do `dovetail.yaml` e constrói o que este host
-alcança. Um host cuja parte da matriz está em outro lugar sai 0 sem fazer nada
-— não é erro, é um runner sem trabalho nesta rodada.
+Without `--target`, it looks at `dovetail.yaml`'s targets and builds what this
+host can reach. A host whose share of the matrix is elsewhere exits 0 doing
+nothing — not an error, a runner with no work this round.
 
-## `icon` nunca aumenta
+## `icon` never scales up
 
-De um PNG quadrado de 512px ou mais saem sete tamanhos no `.ico`, nove entradas
-no `.icns` e oito PNGs no tema do Linux. Os dois contêineres são escritos em Dart
-puro, sem ferramenta externa.
+From one square PNG of 512px or more come seven sizes in the `.ico`, nine
+entries in the `.icns` and eight PNGs in the Linux theme. Both containers are
+written in pure Dart, with no external tool.
 
 ```bash
-dovetail icon --source brand/icon.png --out build/icons --app-id io.exemplo.cliente
+dovetail icon --source brand/icon.png --out build/icons --app-id io.example.client
 ```
 
-Quatro recusas, e cada uma existe porque a falha é silenciosa em vez de alta: um
-arquivo que não é PNG, uma fonte não quadrada (as duas plataformas esticam em vez
-de recusar), uma fonte abaixo de 512px (aumentar dá ícone borrado que nenhum
-revisor rejeita e todo usuário vê), e pedir os ícones do tema sem `--app-id` —
-sem ele os arquivos entram com um nome que o `.desktop` não aponta, e o launcher
-não mostra ícone nenhum.
+Four refusals, and each exists because the failure is silent rather than loud:
+a file that is not a PNG, a non-square source (both platforms stretch rather
+than refuse), a source below 512px (scaling up gives a blurry icon no reviewer
+rejects and every user sees), and asking for the theme icons without
+`--app-id` — without it the files land under a name the `.desktop` does not
+point at, and the launcher shows no icon at all.
 
-## `inspect` lê o arquivo, não o nome
+## `inspect` reads the file, not the name
 
 ```bash
 dovetail inspect dist/*.dmg dist/*.exe dist/*.deb
 ```
 
-Para um bundle macOS ou um Mach-O reporta as arquiteturas presentes, o estado da
-assinatura e — o motivo do comando — se a arquitetura no **nome** concorda com o
-**conteúdo**. Discordância sai com 1: um artefato cujo nome mente é pior do que
-um que falha ao construir, porque ele sobe.
+For a macOS bundle or a Mach-O it reports the architectures present, the
+signature's state and — the reason the command exists — whether the
+architecture in the **name** agrees with the **contents**. Disagreement exits
+1: an artefact whose name lies is worse than one that fails to build, because
+it gets uploaded.
 
-Um bundle onde parte dos binários é gorda e parte é magra sai como universal
-**só em parte**, com o aviso de que não vai abrir em todo Mac onde instalar.
-Para `.deb`, `.rpm`, `.msi` e `.exe` ele diz que **só leu o nome**, para que uma
-linha que passou nunca seja confundida com uma linha verificada.
+A bundle where some binaries are fat and some are thin comes out as universal
+**only in part**, with the warning that it will not open on every Mac it is
+installed on. For `.deb`, `.rpm`, `.msi` and `.exe` it says it **only read the
+name**, so that a line that passed is never mistaken for a line that was
+verified.
 
-## `keygen` recusa sobrescrever
+## `keygen` refuses to overwrite
 
 ```bash
 dovetail keygen --out keys/update.key
 ```
 
-Gera o par minisign e imprime a chave pública **na forma que o manifesto
-carrega**, para colar direto na config. Recusa quando já existe um par no
-destino: perder a privada de update não é perder um arquivo, é perder o caminho
-de atualização de toda instalação no campo, e a recuperação é reinstalar em cada
-máquina. Avisa também quando o destino não está no `.gitignore`.
+It generates the minisign pair and prints the public key **in the form the
+manifest carries**, to paste straight into the config. It refuses when a pair
+already exists at the destination: losing the update private key is not losing
+a file, it is losing the update path for every installation in the field, and
+the recovery is reinstalling on each machine. It also warns when the
+destination is not in `.gitignore`.
 
-## `manifest` para quando a assinatura já existe
+## `manifest` for when the signature already exists
 
 ```bash
 dovetail manifest --version 2.1.0 \
@@ -509,119 +519,118 @@ dovetail manifest --version 2.1.0 \
   --out dist/latest.json
 ```
 
-O `release` assina e escreve o manifesto num passo só; o `manifest` é o passo de
-escrever sozinho, para quando as assinaturas vieram de outro lugar — de um HSM,
-ou de uma máquina que guarda a chave e não roda a esteira.
+`release` signs and writes the manifest in one step; `manifest` is the writing
+step alone, for when the signatures came from somewhere else — an HSM, or a
+machine that holds the key and does not run the pipeline.
 
-Ele embute o **conteúdo** do `.minisig`, nunca o caminho: um caminho ali seria
-silenciosamente inverificável na máquina de quem baixa.
+It embeds the **contents** of the `.minisig`, never the path: a path there
+would be silently unverifiable on the downloader's machine.
 
-## `probe` pergunta ao endpoint se ele serve
+## `probe` asks the endpoint whether it serves
 
 ```bash
-dovetail probe --url https://api.exemplo.com/manifest/darwin \
+dovetail probe --url https://api.example.com/manifest/darwin \
   --public-key keys/update.pub --installed 1.0.0 --download
 ```
 
-O formato do manifesto está em código, em teste e em prosa, e nada disso diz a
-quem escreve o servidor se o que subiu funciona. Este comando diz — de fora,
-pela rede, com o **mesmo** `ManifestParser`, a mesma `UpdatePolicy` e o mesmo
-verificador minisign que o app carrega.
+The manifest's format is in code, in tests and in prose, and none of that tells
+whoever writes the server whether what they uploaded works. This command does —
+from outside, over the network, with the **same** `ManifestParser`, the same
+`UpdatePolicy` and the same minisign verifier the app loads.
 
-Ele decodifica base64 **antes** de parsear, sem alternativa, porque é o que um
-cliente no campo faz: aceitar as duas formas é o que deixa uma release sair na
-forma que ninguém lê. Com `--public-key` confere o key id, e recusa `--download`
-sem chave, porque verificar um artefato contra a chave que o assinou só prova
-que os dois vieram do mesmo lugar.
+It decodes base64 **before** parsing, with no fallback, because that is what a
+client in the field does: accepting both forms is what lets a release go out in
+the form nobody reads. With `--public-key` it checks the key id, and it refuses
+`--download` without a key, because verifying an artefact against the key that
+signed it only proves the two came from the same place.
 
-Sai 0 só quando todos os alvos passam. Sem `--target` ele pergunta pelos três
-que o produto publica, então um endpoint que serve um e quinhentos os outros
-dois diz isso sem ninguém precisar pedir.
+It exits 0 only when every target passes. Without `--target` it asks about all
+three the product publishes, so an endpoint that serves one and five-hundreds
+the other two says so without anyone having to ask.
 
-## `new`: um projeto que já consome a biblioteca
+## `new`: a project that already consumes the library
 
 ```bash
 dovetail new demo
 cd demo && flutter pub get && flutter test && dovetail doctor
 ```
 
-O `init` lê um projeto que já existe e escreve o `dovetail.yaml`. O `new` faz
-o caminho inverso: cria o projeto do zero, já com a biblioteca dovetail
-ligada. Ele escreve um `pubspec.yaml` com a dependência de caminho, um
-`lib/main.dart`, um teste de widget e um `dovetail.yaml` com os padrões que o
-`doctor` aceita — o mesmo `ConfigTemplate` que o `init` usa.
+`init` reads a project that already exists and writes the `dovetail.yaml`.
+`new` goes the other way: it creates the project from scratch, with the
+library already wired in. It writes a `pubspec.yaml` with the
+dependency, a `lib/main.dart`, a widget test and a `dovetail.yaml` with the
+defaults `doctor` accepts — the same `ConfigTemplate` that `init` uses.
 
-O que o `new` gera é o projeto desktop completo, montado a partir do template
-do SDK (`tool/sdk/templates/app`), e não um `lib/main.dart` solto:
+What `new` generates is the complete desktop project, assembled from the SDK's
+template (`tool/sdk/templates/app`), not a loose `lib/main.dart`:
 
 ```
 demo/
-├── lib/               clean-arch (o refinamento do Manguinho que o time
-│   ├── data/            mobile usa): data → domain → infra → presentation
-│   ├── domain/          → main, com presenters em interface + impl
-│   ├── infra/           change_notifier_*, DI e rotas pelo weave_di
-│   ├── main/            (repo privado, pinado em v3.3.0)
+├── lib/               clean architecture (the Manguinho refinement the mobile
+│   ├── data/            team uses): data → domain → infra → presentation
+│   ├── domain/          → main, with presenters as interface + impl
+│   ├── infra/           change_notifier_*, DI and routes through weave_di
+│   ├── main/
 │   ├── presentation/
 │   └── shared/
-├── core/              o núcleo Rust (crate <nome>_core, fachada CoreHandle)
-├── core_bridge/       o plugin FFI que repassa o núcleo, do mesmo template
-│                       que o `bridge init` usa — com um repasse de exemplo e
-│                       o portão de cobertura que recusa núcleo crescido sem
-│                       repasse
-├── scripts/checks/    as duas suites de conformidade do time, adaptadas:
-│   ├── flutter/         a do mobile (camadas, nomenclatura, Weave, tamanho),
-│   └── rust/            a do desktop (comentários, inglês, tamanho, URLs)
-├── .githooks/         pre-commit e pre-push rodando o gate
-├── run_app.sh         gate das duas suites + flutter run -d macos
+├── core/              the Rust core (crate <name>_core, CoreHandle facade)
+├── core_bridge/       the FFI plugin that forwards the core, from the same
+│                       template `bridge init` uses — with one example
+│                       forwarder and the coverage gate that refuses a grown
+│                       core with no forwarder
+├── scripts/checks/    the team's two conformance suites, adapted:
+│   ├── flutter/         the mobile one (layers, naming, Weave, size),
+│   └── rust/            the desktop one (comments, English, size, URLs)
+├── .githooks/         pre-commit and pre-push running the gate
+├── run_app.sh         both suites' gate + flutter run -d macos
 └── Makefile           quality, codegen, tests, run, hooks, build
 ```
 
-O laço do dia a dia no projeto gerado: `make codegen` regenera a ponte quando
-o núcleo cresce (o Dart gerado não é versionado), `make quality` roda as duas
-suites, e `./run_app.sh` se recusa a subir o app se o gate reprovar.
+The day-to-day loop in the generated project: `make codegen` regenerates the
+bridge when the core grows (the generated Dart is not committed), `make
+quality` runs both suites, and `./run_app.sh` refuses to start the app if the
+gate fails.
 
-O caminho para a biblioteca é calculado sozinho, nesta ordem: dentro do
-repositório ele sobe até achar `toolkit/dovetail/lib/dovetail.dart` e grava o
-caminho relativo a partir do projeto novo; fora dele — o caso do binário
-compilado, que não tem repo — ele aponta para o SDK instalado, em caminho
-absoluto. `--dovetail-path` sobrescreve qualquer um dos dois, e sem nenhuma
-das três fontes o comando recusa nomeando-as, porque um scaffold cujo path
-aponta para lugar nenhum mente no primeiro `flutter pub get`. O teste de
-widget que o `new` escreve exercita de verdade o runtime do próprio dovetail —
-um smoke que só renderiza o app provaria o Flutter, não o SDK que o scaffold
-prometeu ligar.
+The path to the library is worked out on its own, in this order: inside the
+repository it walks up until it finds `toolkit/dovetail/lib/dovetail.dart` and
+records the path relative to the new project; outside it — the compiled
+binary's case, which has no repo — it points at the installed SDK, as an
+absolute path. `--dovetail-path` overrides either, and with none of the three
+sources the command refuses naming them, because a scaffold whose path points
+nowhere lies on the first `flutter pub get`. The widget test `new` writes
+genuinely exercises dovetail's own runtime — a smoke test that only renders the
+app would prove Flutter, not the SDK the scaffold promised to wire in.
 
-O `weave_di` — DI e rotas do template — resolve pela mesma regra, e por um
-motivo que vale escrever: ele era uma dependência `git` com a url
-`git@weave-di.github.com:`, um **alias de SSH** que existe no `~/.ssh/config`
-de uma máquina só. Todo projeto que este comando gerou herdava isso, então o
-primeiro `flutter pub get` de qualquer outra pessoa morria num host que o DNS
-não resolve. O repositório é privado, então a url https também não salvaria
-quem está de fora: o caminho certo é o mesmo dos outros pacotes do runtime —
-viajar dentro do SDK. A ordem é `--weave-path`, depois `$DOVETAIL_WEAVE_PATH`,
-depois o SDK instalado; sem nenhuma das três o comando recusa **antes de
-escrever qualquer byte**, porque scaffold pela metade é pior do que nenhum. Um
-caminho que existe mas não tem `pubspec.yaml` conta como ausente, e uma
-variável exportada vazia também — as duas produziriam um `path:` que só falha
-lá na frente.
+`weave_di` — the template's DI and routing — resolves by the same rule, and for
+a reason worth writing down: it used to be a `git` dependency with the url
+`git@weave-di.github.com:`, an **SSH alias** that exists in one machine's
+`~/.ssh/config`. Every project this command generated inherited that, so the
+first `flutter pub get` from anyone else died on a host DNS does not resolve.
+The package is now published on pub.dev under MIT, so the ordinary route is a
+hosted version; the SDK copy remains for an offline install. The order is
+`--weave-path`, then `$DOVETAIL_WEAVE_PATH`, then the installed SDK; with none
+of the three the command refuses **before writing a single byte**, because half
+a scaffold is worse than none. A path that exists but has no `pubspec.yaml`
+counts as absent, and so does an exported but empty variable — both would
+produce a `path:` that only fails later.
 
-Nenhum `pubspec.yaml` que este comando escreve carrega `git:` — há teste
-prendendo isso.
+No `pubspec.yaml` this command writes carries `git:` — there is a test pinning
+that.
 
-O template do app resolve como o do bridge: `--template` explícito, depois o
-SDK instalado (`sdk/<versão>/templates/app`), depois o repo. Sem nenhum, o
-comando recusa nomeando as fontes — e o bridge vem do mesmo lugar, porque
-template e `dovetail_rust_core` têm que casar.
+The app template resolves like the bridge's: explicit `--template`, then the
+installed SDK (`sdk/<version>/templates/app`), then the repo. With none, the
+command refuses naming the sources — and the bridge comes from the same place,
+because the template and `dovetail_rust_core` have to match.
 
-O nome vem do diretório, ou de `--name`, e precisa começar com letra e conter
-só letras, dígitos e sublinhados. O identificador padrão é
-`com.example.<nome>`, trocável com `--identifier`. Um diretório que já existe
-faz o comando recusar em vez de sobrescrever.
+The name comes from the directory, or from `--name`, and has to start with a
+letter and contain only letters, digits and underscores. The default identifier
+is `com.example.<name>`, changeable with `--identifier`. A directory that
+already exists makes the command refuse rather than overwrite.
 
-O `dovetail new --sdk` resolve o runtime do SDK instalado via
-`pubspec_overrides.yaml`, em vez de um `path` no pubspec.
+`dovetail new --sdk` resolves the runtime from the installed SDK through
+`pubspec_overrides.yaml`, instead of a `path` in the pubspec.
 
-## Desenvolvimento
+## Development
 
 ```bash
 dart test
@@ -631,23 +640,24 @@ dart test
 dart analyze
 ```
 
-## `bridge`: o plugin que fala com o núcleo
+## `bridge`: the plugin that talks to the core
 
 ```bash
-dovetail bridge init --core <crate> --name <nome> [--out dir] [--template dir]
+dovetail bridge init --core <crate> --name <name> [--out dir] [--template dir]
 ```
 
-Gera o plugin `ffiPlugin` (Windows/macOS/Linux) que repassa o núcleo Rust de
-um produto para o Flutter — o mecanismo do qual o `product/desktop_core_bridge`
-é o fixture, reproduzido pelo template do SDK. O `--core` é o diretório do
-crate (o que segura o `Cargo.toml` dele), e o comando lê o nome real do crate
-do manifesto em vez de adivinhar. O `dovetail_rust_core` entra do SDK instalado — o
-template e o runtime vêm do mesmo lugar, senão o gerado aponta para um e
-resolve outro.
+It generates the `ffiPlugin` (Windows/macOS/Linux) that forwards a product's
+Rust core to Flutter — the mechanism whose fixture is a real bridge package,
+reproduced by the SDK's template. `--core` is the crate's directory (the one
+holding its `Cargo.toml`), and the command reads the crate's real name from the
+manifest instead of guessing. `dovetail_rust_core` comes from the installed SDK
+— the template and the runtime come from the same place, otherwise the
+generated project points at one and resolves the other.
 
-O template entrega a mecânica, não o conteúdo: `rust/src/api/` sai vazio (os
-repasses são do produto), `lib/src/rust/` é gerado pelo codegen, e o
-`example/` não existe. O laço do gerado é o mesmo do fixture:
+The template delivers the mechanics, not the content: `rust/src/api/` comes out
+empty (the forwarders belong to the product), `lib/src/rust/` is generated by
+the codegen, and there is no `example/`. The generated project's loop is the
+fixture's:
 
 ```bash
 flutter_rust_bridge_codegen generate
@@ -655,36 +665,36 @@ cd rust && cargo check
 flutter test test/core_coverage_test.dart
 ```
 
-O último é o portão de forma que o template carrega: lê o `handle.rs` do crate
-e as chamadas em `rust/src/api/`, e recusa quando o núcleo cresceu um método
-que nenhum repasse expõe. Sem template nenhum — nem `--template`, nem SDK
-instalado — o comando recusa nomeando o instalador.
+The last one is the shape gate the template carries: it reads the crate's
+`handle.rs` and the calls under `rust/src/api/`, and refuses when the core has
+grown a method that no forwarder exposes. With no template at all — neither
+`--template` nor an installed SDK — the command refuses naming the installer.
 
-## `dev`: a ponte nunca fica para trás
+## `dev`: the bridge never falls behind
 
-A armadilha está em dois documentos deste repo: você escreve um método em
-Rust, tudo compila, e ele **não existe do lado Dart** — sem erro em lugar
-nenhum, até o `verify frb` gritar. O `dev` faz a ponte falar antes:
+The trap is in two documents in this repo: you write a method in Rust,
+everything compiles, and it **does not exist on the Dart side** — with no error
+anywhere, until `verify frb` shouts. `dev` makes the bridge speak first:
 
 ```bash
-dovetail dev            # recusa se o Dart está atrás (nomeando o método); senão vigia e regenera
-dovetail dev --check    # só o veredito, sem vigiar
-dovetail dev --once     # regenera agora e diz o que entrou
+dovetail dev            # refuses if the Dart is behind (naming the method); otherwise watches and regenerates
+dovetail dev --check    # the verdict only, without watching
+dovetail dev --once     # regenerate now and say what came in
 ```
 
-Ele roda dentro de um package que tem `flutter_rust_bridge.yaml` (ou com
-`--root` apontando para ele). O check gera num diretório temporário com o
-codegen real e compara os `debugName` — nunca parseia Rust na mão — então a
-recusa nomeia exatamente o método que o Dart não tem, e a árvore fica
-intocada.
+It runs inside a package that has a `flutter_rust_bridge.yaml` (or with
+`--root` pointing at one). The check generates into a temporary directory with
+the real codegen and compares the `debugName`s — it never parses Rust by hand —
+so the refusal names exactly the method the Dart does not have, and the tree is
+left untouched.
 
-## O que não dá para provar nesta máquina
+## What cannot be proven on this machine
 
-O `bundle --target windows` e o `--windows-format msi` nunca rodaram: o
-`makensis` local está quebrado e o `wix` não está instalado. O `sign --target
-windows` nunca assinou nada, porque não há certificado nem `signtool` de
-verdade aqui.
+`bundle --target windows` and `--windows-format msi` have never run: the local
+`makensis` is broken and `wix` is not installed. `sign --target windows` has
+never signed anything, because there is neither a certificate nor a real
+`signtool` here.
 
-O que está provado é a composição: o manifesto que o `release` escreve é lido de
-volta e verificado pelo `dovetail_updater`, e o `doctor` reporta os seis alvos
-desta máquina com o resultado real de cada sonda.
+What is proven is the composition: the manifest `release` writes is read back
+and verified by `dovetail_updater`, and `doctor` reports this machine's six
+targets with each probe's real result.

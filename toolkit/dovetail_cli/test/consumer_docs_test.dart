@@ -14,18 +14,33 @@ import 'support/repo_root.dart';
 /// monorepo, como os três que já existem.
 const List<String> _repoOnly = <String>['tool/verify.dart', 'product/'];
 
+/// A marca vale nos dois idiomas: o documento existe em ingles no caminho
+/// canonico e em portugues ao lado, e a regra e sobre o que o leitor de um
+/// projeto gerado encontra — nao sobre em que lingua ele le.
 bool _isMonorepoNote(String paragraph) =>
     paragraph.trimLeft().startsWith('*(') &&
-    RegExp('[Mm]onorepo do dovetail').hasMatch(paragraph);
+    RegExp(
+      'monorepo do dovetail|dovetail monorepo',
+      caseSensitive: false,
+    ).hasMatch(paragraph);
+
+/// Os dois lados do par bilingue, porque a regra vale para quem le qualquer
+/// um deles.
+const List<List<String>> _bothLanguages = <List<String>>[
+  <String>['docs', 'problemas.md'],
+  <String>['docs', 'pt-BR', 'problemas.md'],
+];
 
 void main() {
   late List<String> paragraphs;
 
   setUpAll(() {
-    final String text = File(
-      p.join(repoRoot(), 'docs', 'problemas.md'),
-    ).readAsStringSync();
-    paragraphs = text.split(RegExp(r'\n\s*\n'));
+    paragraphs = <String>[
+      for (final List<String> each in _bothLanguages)
+        ...File(
+          p.joinAll(<String>[repoRoot(), ...each]),
+        ).readAsStringSync().split(RegExp(r'\n\s*\n')),
+    ];
   });
 
   test(
@@ -51,8 +66,8 @@ void main() {
   test('the marked notes should exist, or the rule is guarding nothing', () {
     expect(
       paragraphs.where(_isMonorepoNote),
-      hasLength(greaterThanOrEqualTo(3)),
-      reason: 'eram três em 2026-09-06',
+      hasLength(greaterThanOrEqualTo(6)),
+      reason: 'eram três em 2026-09-06, e agora somam os dois idiomas',
     );
   });
 }

@@ -105,7 +105,7 @@ The whole pipeline is one binary. Nothing it does needs its own source.
 | `dovetail probe` | verifies a published manifest the way the app would |
 | `dovetail update` | applies an update, the way the app would |
 | `dovetail dev` | runs the app with the Rust core in development mode |
-| `dovetail upgrade` | updates the dovetail packages a project uses |
+| `dovetail upgrade` | updates the toolkit packages a project uses |
 | `dovetail self-install` | installs this binary on the `PATH` |
 | `dovetail self-update` | updates this binary through the signed channel |
 
@@ -114,7 +114,7 @@ The whole pipeline is one binary. Nothing it does needs its own source.
 The deep documentation lives in [`docs/`](docs/README.md), in English, with the
 Portuguese originals under [`docs/pt-BR/`](docs/pt-BR/README.md).
 
-- [Quickstart](docs/quickstart.md) — from an installed dovetail to the first ship
+- [Quickstart](docs/quickstart.md) — from an installed CLI to the first ship
 - [Configuration](docs/configuracao.md) — every key of `dovetail.yaml`
 - [Troubleshooting](docs/problemas.md) — what breaks, and what the message means
 - [Migrating from Tauri](docs/migrar-do-tauri.md) — what carries over and what does not
