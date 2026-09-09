@@ -81,7 +81,7 @@ final class ReleaseCommand extends Command<int> {
     // Esta guarda existia e nunca disparou, porque saia aqui quando o yaml
     // omitia `public-key` — e o yaml do produto omitia. O resultado foi um
     // release assinado com a chave de dev (D18395BE8A6B994E) que o app,
-    // compilado para confiar noutra (A77782E0673FA036), recusa. A checagem
+    // compilado para confiar noutra, recusa. A checagem
     // mais importante do comando era a mais facil de desligar: bastava nao
     // escrever a linha.
     //

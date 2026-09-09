@@ -4,10 +4,15 @@ import 'dart:typed_data';
 import 'package:dovetail_updater/dovetail_updater.dart';
 import 'package:test/test.dart';
 
-const String _productPublicKey =
-    'dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE3Nzc4MkUwNjcz'
-    'RkEwMzYKUldRMm9EOW40SUozcDRqeFhocFJ3U1VMZHZXdUVFWUU0anErVkxGK2pYZTNj'
-    'QjNOU29wWjhQQmoK';
+// Uma chave publica de exemplo, gerada pelo `minisign -G`, embrulhada em
+// base64 como o Tauri escreve no `tauri.conf.json`. Era a chave de producao de
+// um produto real, e uma publica nao e segredo — mas ela nomeava um projeto
+// privado dentro de um repositorio aberto, e o teste ensina igual com um par
+// de exemplo.
+const String _wrappedPublicKey =
+    'dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXkgOUUzQzJDMUI2QjQz'
+    'NzFBQgpSV1NyY1VOckd5dzhuZ2FLbGdlYlk1ZjgycStnaVBWNEtlcWNMeVpFUzFoWXE2'
+    'N0VvMmNlUkNmVAo=';
 
 const String _referencePublicKey = '''
 untrusted comment: minisign public key 9104FC85BB0FC321
@@ -29,18 +34,18 @@ String get _doubleEncodedSignature =>
     base64.encode(utf8.encode(_referenceSignature));
 
 void main() {
-  group('the public key already trusted in the field', () {
+  group('the wrapped public key form Tauri writes', () {
     test('should decode through the double base64 Tauri writes', () {
-      final MinisignPublicKey sut = MinisignPublicKey.parse(_productPublicKey);
+      final MinisignPublicKey sut = MinisignPublicKey.parse(_wrappedPublicKey);
 
       expect(sut.algorithm, 'Ed');
       expect(sut.key.length, 32);
     });
 
     test('should carry the key id its own comment declares', () {
-      final MinisignPublicKey sut = MinisignPublicKey.parse(_productPublicKey);
+      final MinisignPublicKey sut = MinisignPublicKey.parse(_wrappedPublicKey);
 
-      expect(sut.keyIdHex, 'A77782E0673FA036');
+      expect(sut.keyIdHex, '9E3C2C1B6B4371AB');
     });
 
     test(
@@ -139,13 +144,13 @@ void main() {
         () => MinisignVerifier.verify(
           payload: _payload,
           signature: MinisignSignature.parse(_referenceSignature),
-          publicKey: MinisignPublicKey.parse(_productPublicKey),
+          publicKey: MinisignPublicKey.parse(_wrappedPublicKey),
         ),
         throwsA(
           isA<UpdateFailure>().having(
             (UpdateFailure failure) => failure.message,
             'message',
-            allOf(contains('9104FC85BB0FC321'), contains('A77782E0673FA036')),
+            allOf(contains('9104FC85BB0FC321'), contains('9E3C2C1B6B4371AB')),
           ),
         ),
       );
