@@ -57,6 +57,11 @@ Pin it to a tag once you care about reproducibility:
 dovetail_rust_core = { git = "https://github.com/mateussiqueira/dovetail", tag = "v0.1.2" }
 ```
 
+What identifies a Rust version here is the **repository tag**, not the
+`version` in its `Cargo.toml` — that field stays where it is because the
+crate is never resolved by version, only by git ref. So `tag = "v0.1.2"`
+is the pin that means something.
+
 The Rust side is **not on crates.io**, and that is deliberate: it exists to be
 consumed by your FFI crate, from a public MIT repository, and a second registry
 to keep in sync buys nothing. Cargo resolves a git dependency without you

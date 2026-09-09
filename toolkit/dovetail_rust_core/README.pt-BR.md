@@ -40,6 +40,11 @@ Prenda numa tag quando reprodutibilidade importar:
 dovetail_rust_core = { git = "https://github.com/mateussiqueira/dovetail", tag = "v0.1.2" }
 ```
 
+O que identifica uma versão do Rust aqui é a **tag do repositório**, não o
+`version` do `Cargo.toml` dele — esse campo fica onde está porque o crate
+nunca é resolvido por versão, só por ref do git. Então `tag = "v0.1.2"` é
+o pin que significa algo.
+
 O lado Rust **não está no crates.io**, e isso é de propósito: ele existe para
 ser consumido pelo seu crate FFI, de um repositório MIT público, e um segundo
 registro para manter em sincronia não compra nada. O Cargo resolve dependência
