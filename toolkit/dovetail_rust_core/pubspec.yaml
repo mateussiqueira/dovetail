@@ -1,7 +1,7 @@
 name: dovetail_rust_core
 description: >-
   Compatibility layer between Dart and Rust: a shared tokio runtime, a lag-tolerant broadcast pump, platform probing and an idempotent bridge bootstrap. No application domain inside.
-version: 0.1.1
+version: 0.1.2
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 

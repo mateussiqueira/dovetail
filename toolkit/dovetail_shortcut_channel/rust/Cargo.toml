@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 license = "MIT"
 rust-version = "1.80"
+# Nao vai para o crates.io de proposito: o consumidor o alcanca por
+# dependencia git do repositorio publico (MIT), e um segundo registro
+# para manter em sincronia nao compra nada. Provado: um crate de fora
+# compila contra ele so com a linha `git = ...`.
 publish = false
 
 [lib]

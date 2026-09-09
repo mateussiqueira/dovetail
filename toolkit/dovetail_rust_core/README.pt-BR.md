@@ -28,11 +28,23 @@ dependencies:
   dovetail_rust_core: ^0.1.0
 ```
 
-E no `Cargo.toml` do crate FFI do seu projeto:
+E no `Cargo.toml` do crate FFI do seu projeto, direto do repositório:
 
 ```toml
-dovetail_rust_core = { path = "caminho/para/dovetail_rust_core/rust" }
+dovetail_rust_core = { git = "https://github.com/mateussiqueira/dovetail" }
 ```
+
+Prenda numa tag quando reprodutibilidade importar:
+
+```toml
+dovetail_rust_core = { git = "https://github.com/mateussiqueira/dovetail", tag = "v0.1.2" }
+```
+
+O lado Rust **não está no crates.io**, e isso é de propósito: ele existe para
+ser consumido pelo seu crate FFI, de um repositório MIT público, e um segundo
+registro para manter em sincronia não compra nada. O Cargo resolve dependência
+git sem você clonar nada — medido: um crate fora desta árvore compilou contra
+ele com nada além da linha acima.
 
 ## Uso
 

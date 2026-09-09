@@ -119,42 +119,42 @@ packages:
       path: "../dovetail_form_validation"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.1.1"
   dovetail_platform_channel:
     dependency: "direct main"
     description:
       path: "../dovetail_platform_channel"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.1.1"
   dovetail_process_runner:
     dependency: "direct main"
     description:
       path: "../dovetail_process_runner"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.1.1"
   dovetail_rust_core:
     dependency: "direct main"
     description:
       path: "../dovetail_rust_core"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.1.1"
   dovetail_shortcut_channel:
     dependency: "direct main"
     description:
       path: "../dovetail_shortcut_channel"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.1.1"
   dovetail_updater:
     dependency: "direct main"
     description:
       path: "../dovetail_updater"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.1.1"
   ed25519_edwards:
     dependency: transitive
     description:

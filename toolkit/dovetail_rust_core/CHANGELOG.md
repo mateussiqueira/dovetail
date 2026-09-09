@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.2 — 2026-09-09
+
+Nada no código mudou. O README instruía o consumidor a declarar o crate Rust
+por `path`, e um caminho só resolve para quem clonou o repositório — enquanto
+o pacote Dart, que exige esse crate, é instalado do pub.dev.
+
+Agora a instrução é a dependência git do repositório público, que o Cargo
+resolve sem clone nenhum. Medido: um crate fora desta árvore compilou contra
+ele com nada além da linha `git = "https://github.com/mateussiqueira/dovetail"`.
+
+O `publish = false` do `Cargo.toml` deixou de ser decisão herdada e passou a
+ter o motivo escrito ao lado: o lado Rust não vai para o crates.io de
+propósito, porque um segundo registro para manter em sincronia não compra nada
+quando o repositório é MIT e público.
+
+---
+
 ## 0.1.1 — 2026-09-09
 
 Nada no código mudou. A 0.1.0 foi publicada com o README em português e com
