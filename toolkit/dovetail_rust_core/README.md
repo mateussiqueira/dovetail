@@ -1,43 +1,60 @@
+**English** · [Português](README.pt-BR.md)
+
 # dovetail_rust_core
 
+> The compatibility layer between Dart and Rust. It does not know what a VPN
+> is, what a reseller is, or what your app is.
 
-> A camada de compatibilidade entre Dart e Rust. Não sabe o que é VPN, não sabe o que é revenda, não sabe o que é o seu app.
+Every project that puts Flutter in front of a Rust core rewrites the same three
+pieces, and gets the same three wrong. This package exists so they are written
+once and tested once.
 
-Todo projeto que põe Flutter na frente de um núcleo Rust reescreve as mesmas três peças, e erra as mesmas três. Este package existe para elas serem escritas uma vez e testadas uma vez.
+## What it solves
 
-## O que ele resolve
+**The tokio bridge.** `flutter_rust_bridge`'s executor is not a tokio reactor.
+A crate using `tokio::net` or `tokio::time` — a named pipe, a unix socket, a
+timer — breaks if it runs directly on it. `dovetail_rust_core::run_on_runtime`
+keeps a multi-thread runtime in a `OnceLock` and spawns on it, returning a
+`JoinHandle` any executor can await.
 
-**A ponte com o tokio.** O executor do `flutter_rust_bridge` não é um reator tokio. Um crate que usa `tokio::net` ou `tokio::time` — named pipe, unix socket, timer — quebra se rodar direto nele. `dovetail_rust_core::run_on_runtime` mantém um runtime multi-thread num `OnceLock` e faz `spawn` nele, devolvendo um `JoinHandle` que qualquer executor consegue aguardar.
+**The slow `broadcast` consumer.** `receiver.recv()` returns
+`Err(RecvError::Lagged)` when a subscriber falls behind, and the channel
+**stays alive**. Writing `while let Ok(event) = receiver.recv().await` treats
+that as end of stream and freezes the screen on the last state received.
+`dovetail_rust_core::pump` tolerates `Lagged` and stops only on `Closed`.
 
-**O consumidor lento de `broadcast`.** `receiver.recv()` devolve `Err(RecvError::Lagged)` quando o assinante fica atrás, e o canal **continua vivo**. Escrever `while let Ok(event) = receiver.recv().await` trata isso como fim de stream e congela a tela no último estado recebido. `dovetail_rust_core::pump` tolera `Lagged` e para só em `Closed`.
+**The platform with no binary.** Calling the bridge on Android, iOS or the web
+has to produce an error you can read, not a `MissingPluginException` from three
+layers down. `RustBridge.isSupported` answers before any native call, and
+`ensureInitialized` is idempotent — and allows a retry if the first attempt
+fails.
 
-**A plataforma sem binário.** Chamar a ponte em Android, iOS ou web tem de dar um erro que se lê, não um `MissingPluginException` vindo de três camadas abaixo. `RustBridge.isSupported` responde antes de qualquer chamada nativa, e `ensureInitialized` é idempotente — e permite nova tentativa se a primeira falhar.
+## What it does not do, as a rule
 
-## O que ele não faz, por regra
+No application business rule goes in here. No domain DTO, no endpoint, no
+validation, no dependency on a product crate. If a type in this package knows
+the name of an entity in your app, somebody got it wrong.
 
-Nenhuma regra de negócio de aplicação entra aqui. Nenhum DTO de domínio, nenhum endpoint, nenhuma validação, nenhuma dependência de crate de produto. Se um tipo deste package souber o nome de uma entidade do seu app, alguém errou.
+The typed facade over your Rust core lives in **your** bridge package, which
+depends on this one.
 
-A fachada tipada do seu núcleo Rust mora no **seu** package de ponte, que depende deste.
-
-## Instalação
-
-Dependência local, por caminho:
+## Installation
 
 ```yaml
 dependencies:
-  dovetail_rust_core:
-    path: ../dovetail_rust_core
+  dovetail_rust_core: ^0.1.0
 ```
 
-E no `Cargo.toml` do crate FFI do seu projeto:
+And in your project's FFI crate `Cargo.toml`:
 
 ```toml
-dovetail_rust_core = { path = "../../dovetail_rust_core/rust" }
+dovetail_rust_core = { path = "path/to/dovetail_rust_core/rust" }
 ```
 
-## Uso
+## Usage
 
-Do lado Dart, embrulhando o `init` que o gerador produziu para o **seu** crate:
+On the Dart side, wrapping the `init` the generator produced for **your**
+crate:
 
 ```dart
 import 'package:dovetail_rust_core/dovetail_rust_core.dart';
@@ -48,7 +65,7 @@ if (!bridge.isSupported) return;
 await bridge.ensureInitialized();
 ```
 
-Uma ponte que também vale em celular declara isso:
+A bridge that also holds on mobile declares that:
 
 ```dart
 final bridge = RustBridge(
@@ -57,7 +74,7 @@ final bridge = RustBridge(
 );
 ```
 
-Do lado Rust, na sua fachada:
+On the Rust side, in your facade:
 
 ```rust
 use dovetail_rust_core::{pump, run_on_runtime, runtime};
@@ -76,7 +93,7 @@ where
 }
 ```
 
-E para um stream de eventos:
+And for a stream of events:
 
 ```rust
 runtime()?.spawn(async move {
@@ -84,19 +101,19 @@ runtime()?.spawn(async move {
 });
 ```
 
-## Superfície
+## Surface
 
-| Lado | Item | O que é |
+| Side | Item | What it is |
 |---|---|---|
-| Dart | `RustBridge` | sonda de plataforma + init idempotente |
-| Dart | `UnsupportedPlatformException` | erro que diz a plataforma e o guarda a usar |
-| Dart | `desktopPlatforms` · `mobilePlatforms` | conjuntos prontos |
-| Rust | `runtime()` | o runtime tokio compartilhado |
-| Rust | `run_on_runtime` | roda um future nele e devolve o valor |
-| Rust | `pump` | loop de `broadcast` tolerante a atraso |
-| Rust | `BridgeError` | runtime indisponível ou tarefa que morreu |
+| Dart | `RustBridge` | platform probe + idempotent init |
+| Dart | `UnsupportedPlatformException` | an error that names the platform and the guard to use |
+| Dart | `desktopPlatforms` · `mobilePlatforms` | ready-made sets |
+| Rust | `runtime()` | the shared tokio runtime |
+| Rust | `run_on_runtime` | runs a future on it and returns the value |
+| Rust | `pump` | a `broadcast` loop that tolerates lag |
+| Rust | `BridgeError` | runtime unavailable, or a task that died |
 
-## Desenvolvimento
+## Development
 
 ```bash
 flutter test
@@ -106,4 +123,5 @@ flutter test
 cd rust && cargo test
 ```
 
-Nenhum código nativo é construído por este package: ele não é plugin, não tem `cargokit`, não tem pasta de plataforma. Quem constrói Rust é o package de ponte do seu projeto.
+This package builds no native code: it is not a plugin, it has no `cargokit`
+and no platform folder. What builds Rust is your project's bridge package.
