@@ -1,3 +1,5 @@
+**Português** · [English](../migrar-do-tauri.md)
+
 # Migrar do Tauri para o dovetail
 
 Escrito enquanto a migração do `example-rust` acontecia, então cada

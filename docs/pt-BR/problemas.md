@@ -1,3 +1,5 @@
+**Português** · [English](../problemas.md)
+
 # Quando algo dá errado
 
 Cada item aqui aconteceu de verdade neste projeto, e está escrito pela
@@ -294,8 +296,8 @@ imprime a linha pronta; se o par já existe, é o conteúdo do `.pub`, em bloco:
 ```yaml
 update:
   public-key: |
-    untrusted comment: minisign public key D18395BE8A6B994E
-    RWROmWuKvpWD0RErEh4kcn0sjuu4dQYX5MERE9dNGuImxQXHzNuRYLVP
+    untrusted comment: minisign public key 1234567890ABCDEF
+    RWQhww+7hfwEkazwMrOqcOeYRd+myNTpeJJP4bRWbnbMXV3T8ZSFPajp
 ```
 
 ---
