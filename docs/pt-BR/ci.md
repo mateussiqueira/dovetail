@@ -1,3 +1,5 @@
+**Português** · [English](../ci.md)
+
 # CI: o portão nos três SOs
 
 > **Contexto para quem chega pelo repositório público.** Este documento cita
@@ -112,8 +114,6 @@ um host Linux ou Windows. Prová-los é o item "o app compila em Windows e
 Linux", não o item "o portão roda nos três SOs" — e o conserto, se falhar,
 mora no repo irmão.
 
-## O que cada leg prova, e o que ainda não provou
-
 ## O que foi consertado antes da primeira corrida paga
 
 Quatro defeitos que só apareceriam num runner, e que teriam custado uma corrida
@@ -144,6 +144,8 @@ corrida — fica em cache com a chave carregando `FRB_PIN`, e a versão é
 conferida em cache hit e em cache miss: um binário restaurado que não seja o
 que o pin diz seria pior do que não ter cache, porque o alvo `frb` compara a
 saída do codegen com o versionado e culparia o código.
+
+## O que ainda não tem prova
 
 O workflow está escrito; **nenhuma corrida hospedada voltou verde ainda**.
 Até a primeira, o verde desta máquina continua o único verde — e este
@@ -178,8 +180,9 @@ causas, uma atrás da outra:
    faz hoje.
 2. **A conta do dono não executa Actions.** Mesmo um workflow mínimo de um
    `echo` continuou em `startup_failure` com `name` vazio e zero check-runs.
-   Repo privado, conta pessoal sem plano — o que desbloqueia é a decisão de
-   plano do dono, não o arquivo. O fix do `secrets` era necessário de
+   A anotação diz isso sem rodeios: *"The job was not started because your
+   account is locked due to a billing issue."* O que desbloqueia é uma
+   decisão de faturamento, não o arquivo. O fix do `secrets` era necessário de
    qualquer forma e fica.
 
 ## O mesmo portão, sem runner hospedado
