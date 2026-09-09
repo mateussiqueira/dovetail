@@ -1,3 +1,5 @@
+**Português** · [English](../roadmap-producao.md)
+
 # Roadmap final — dovetail para produção
 
 > **Contexto para quem chega pelo repositório público.** Este documento nasceu
@@ -399,7 +401,7 @@ m7-quickstart-ci (L)
 | **Binário `dovetail` para Windows e para macOS x64** | `build_release.sh:48-52`: `dart compile exe` só cross-compila para linux, e Rosetta traduz x86→ARM, não o contrário. O que fica é a recusa nomeada em `install.sh` e a doc parando de prometer seis tarballs. |
 | **Runners self-hosted como resposta principal** | Um runner macOS self-hosted é esta máquina — reinstala a premissa de máquina única. Só se justifica como alavanca de custo depois de Linux e Windows verdes em runners hospedados. |
 | **Prova de `makensis` como bloqueio de release** | `ship` já default para `msi` e o `ShipPlan` só emite `--windows-format msi`: o caminho NSIS não está na esteira. Sobra alinhar o default de `bundle_command.dart:81` (XS) e provar makensis quando a perna Windows existir. |
-| **Publicar os pacotes runtime no pub.dev** | `docs/instalador.md:148` põe registro público explicitamente fora de escopo e todo pacote declara `publish_to: none`. O tarball do SDK é o mecanismo por desenho. |
+| ~~**Publicar os pacotes runtime no pub.dev**~~ **feito em 09/09/2026** | `docs/instalador.md:148` põe registro público explicitamente fora de escopo e todo pacote declara `publish_to: none`. O tarball do SDK é o mecanismo por desenho. |
 | **`rpm -K` / `dpkg-sig`** | Cadeia GPG de gerenciador de pacotes que ninguém exercita num arquivo baixado direto, e uma segunda chave para guardar. `minisign -Vm SHA256SUMS` é o requisito; o resto é opcional e não bloqueia. |
 | **Teste de dominância de guarda por análise estática** | Responder "esta chamada é dominada por uma sonda de presença" sobre 101 call-sites é um passe de analyzer inteiro. `m1-guards-tabela` (gerar a tabela) resolve a metade que importa por 1/5 do custo; a estrutural fica para depois, ou vira um helper `requireTool()` obrigatório. |
 | **Cobertura nova para comportamento não testado** | Este roadmap torna o portão existente confiável e os números existentes verdadeiros. Escrever provas para o que ninguém testou é outro trabalho. |
