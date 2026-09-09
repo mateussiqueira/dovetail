@@ -1,32 +1,40 @@
+**English** · [Português](README.pt-BR.md)
+
 # dovetail_platform_channel
 
+> The channel between Flutter and the desktop operating system. Window, tray,
+> login item, deep link, notification and handing off to the default
+> application — on Windows, macOS and Linux.
 
-> O canal entre o Flutter e o sistema operacional no desktop. Janela, bandeja, item de login, deep link, notificação e entrega ao aplicativo padrão — em Windows, macOS e Linux.
+When Tauri leaves, the webview goes with it, and with the webview go things
+nobody had listed: the borderless window, the tray icon, opening a link in the
+system browser. This package is where those capabilities live.
 
-Quando o Tauri sai, o webview vai com ele, e com o webview vão coisas que ninguém tinha listado: a janela sem borda, o ícone de bandeja, abrir um link no navegador do sistema. Este package é o lugar dessas capacidades.
-
-## A fronteira
+## The boundary
 
 ```
-app Flutter desktop            <- a regra de negócio, e só aqui
-  ├── desktop_core_bridge      <- canal para o núcleo Rust
-  ├── dovetail_platform_channel <- este package: canal para o SO
-  └── dovetail_rust_core                <- mecânica Dart<->Rust
+Flutter desktop app             <- the business rules, and only here
+  ├── your bridge package       <- channel to the Rust core
+  ├── dovetail_platform_channel <- this package: channel to the OS
+  └── dovetail_rust_core        <- Dart<->Rust mechanics
 ```
 
-Este package **não decide nada**. Ele não esconde a janela em vez de fechar, não liga o autostart na primeira execução, não escolhe o texto do tooltip. Ele expõe a capacidade e devolve o evento; quem decide é o app.
+This package **decides nothing**. It does not hide the window instead of
+closing it, does not enable autostart on first run, does not choose the
+tooltip's text. It exposes the capability and returns the event; the app
+decides.
 
-O exemplo mais claro: `WindowSurface.closeRequests()` é um `Stream`. Fechar-para-bandeja é política, e política é do app.
+The clearest example: `WindowSurface.closeRequests()` is a `Stream`.
+Close-to-tray is policy, and policy belongs to the app.
 
-## Instalação
+## Installation
 
 ```yaml
 dependencies:
-  dovetail_platform_channel:
-    path: ../dovetail_platform_channel
+  dovetail_platform_channel: ^0.1.0
 ```
 
-## Uso
+## Usage
 
 ```dart
 import 'package:dovetail_platform_channel/dovetail_platform_channel.dart';
@@ -66,11 +74,13 @@ Future<void> main() async {
 }
 ```
 
-Nenhum número aqui é padrão do package: `1200x720` e o nome vêm do app, porque tamanho de janela e nome são decisão de produto — e no white-label, decisão de revenda.
+None of the numbers here are package defaults: `1200x720` and the name come
+from the app, because window size and name are a product decision — and under
+white-labelling, a reseller's.
 
-## A sonda de capacidade
+## The capability probe
 
-Em vez de `Platform.isLinux` espalhado pelo app:
+Instead of `Platform.isLinux` scattered through the app:
 
 ```dart
 if (platform.supports(PlatformCapability.trayTooltip)) {
@@ -78,74 +88,95 @@ if (platform.supports(PlatformCapability.trayTooltip)) {
 }
 ```
 
-A tabela hoje, medida:
+The table as measured today:
 
-| Capacidade | Windows | macOS | Linux |
+| Capability | Windows | macOS | Linux |
 |---|:-:|:-:|:-:|
-| janela sem borda, prevent close, skip taskbar | ✓ | ✓ | ✓ |
-| ícone e menu de bandeja | ✓ | ✓ | ✓ |
-| **tooltip de bandeja** | ✓ | ✓ | **✗** |
-| **painel ancorado na bandeja** | ✓ | ✓ | **✗** |
-| item de login | ✓ | ✓ | ✓ |
+| borderless window, prevent close, skip taskbar | ✓ | ✓ | ✓ |
+| tray icon and menu | ✓ | ✓ | ✓ |
+| **tray tooltip** | ✓ | ✓ | **✗** |
+| **panel anchored to the tray** | ✓ | ✓ | **✗** |
+| login item | ✓ | ✓ | ✓ |
 | deep link | ✓ | ✓ | ✓ |
-| notificação | ✓ | ✓ | ✓ |
-| abrir no aplicativo padrão | ✓ | ✓ | ✓ |
-| **instância única** | **✗** | ✓ | ✓ |
+| notification | ✓ | ✓ | ✓ |
+| open in the default application | ✓ | ✓ | ✓ |
+| **single instance** | **✗** | ✓ | ✓ |
 
-Um deep link que chega enquanto o app já roda vem por um segundo processo, e
-não pelo `app_links`. O `deepLinks` que o canal entrega junta as duas fontes:
-quem escuta `links()` vê tanto a URL do sistema quanto a que o guarda de
-instância única encaminhou. Sem essa junção o `ForwardedLaunch` chegava com a
-URL em `arguments` e nunca alcançava o inbox.
+A deep link that arrives while the app is already running comes through a
+second process, not through `app_links`. The `deepLinks` the channel delivers
+joins both sources: whoever listens to `links()` sees the system's URL as well
+as the one the single-instance guard forwarded. Without that join, a
+`ForwardedLaunch` arrived with the URL in `arguments` and never reached the
+inbox.
 
-No Windows `claimSingleInstance` responde `unavailable`, e não `primary`: o guarda
-nomeado existe em `windows/single_instance_guard.cpp` e ainda não está ligado ao
-Dart, então dois cliques abrem duas janelas e cada deep link abre uma terceira.
-`mayRun` é `true` nos dois estados que podem seguir — use-o para decidir se roda, e
-`isGuarded` para saber se a garantia de fato existe nesta plataforma.
+On Windows `claimSingleInstance` answers `unavailable`, not `primary`: the
+named guard exists in `windows/single_instance_guard.cpp` and is not yet wired
+to Dart, so two clicks open two windows and each deep link opens a third.
+`mayRun` is `true` in both states that may proceed — use it to decide whether
+to run, and `isGuarded` to know whether the guarantee actually exists on this
+platform.
 
-O tooltip não existe no Linux porque o `tray_manager` não o implementa lá. Como o tooltip é hoje o único canal de uma mensagem que importa, `setTooltip` **cai para uma entrada desabilitada no topo do menu** em vez de sumir em silêncio — e essa entrada nunca aparece em `commands()`.
+The tooltip does not exist on Linux because `tray_manager` does not implement
+it there. Since the tooltip is today the only channel for a message that
+matters, `setTooltip` **falls back to a disabled entry at the top of the menu**
+instead of vanishing silently — and that entry never appears in `commands()`.
 
-O painel ancorado não existe no Linux por dois motivos somados: o `StatusNotifierItem` publica menu e nada mais, e o Wayland não deixa um cliente posicionar o próprio toplevel. Lá `MenuOnlyPanelSurface` **reporta que não há painel** em vez de mostrar uma janela vazia.
+The anchored panel does not exist on Linux for two reasons combined:
+`StatusNotifierItem` publishes a menu and nothing else, and Wayland does not
+let a client position its own toplevel. There, `MenuOnlyPanelSurface`
+**reports that there is no panel** instead of showing an empty window.
 
-Instância única é ✓ no macOS e no Linux, onde um socket de domínio Unix resolve — o `dart:io` os suporta nessas duas. No Windows não: lá precisa de mutex nomeado mais janela oculta com `WM_COPYDATA`, e isso é C++ que **nunca foi compilado**, porque nenhuma máquina aqui é Windows. Está declarado como falso de propósito, com teste, para ninguém confundir "escrito" com "funciona".
+Single instance is ✓ on macOS and Linux, where a Unix domain socket solves it —
+`dart:io` supports them on those two. On Windows it does not: there it needs a
+named mutex plus a hidden window with `WM_COPYDATA`, and that is C++ that
+**has never been compiled**, because no machine here is Windows. It is declared
+false on purpose, with a test, so nobody confuses "written" with "works".
 
-## Superfícies
+## Surfaces
 
-| Superfície | Contrato |
+| Surface | Contract |
 |---|---|
-| `WindowSurface` | show/hide/focus/minimize/restore/maximize, arraste da barra própria, prevent close, skip taskbar, always-on-top, `setBounds`/`bounds`, `frameChanges()`, `closeRequests()` |
-| `TraySurface` | ícone, menu como dado selado, tooltip com queda no Linux, `commands()`, `gestures()` |
-| `PanelSurface` | abre a janela principal ancorada na bandeja, `dismissals()`; no Linux reporta ausência |
-| `DisplayProbe` | ponto do cursor, área útil do monitor sob um ponto, todas as áreas úteis |
-| `WindowPlacement` · `WindowStateStore` · `WindowStateKeeper` | lembra tamanho, posição e maximizado entre sessões, quando `DesktopAppSpec.stateDirectory` diz onde |
-| `SingleInstanceVerdict` · `ForwardedLaunch` | `primary`/`secondary`, e os argumentos que a segunda instância encaminhou |
+| `WindowSurface` | show/hide/focus/minimize/restore/maximize, dragging by a custom bar, prevent close, skip taskbar, always-on-top, `setBounds`/`bounds`, `frameChanges()`, `closeRequests()` |
+| `TraySurface` | icon, menu as sealed data, tooltip with the Linux fallback, `commands()`, `gestures()` |
+| `PanelSurface` | opens the main window anchored to the tray, `dismissals()`; on Linux it reports absence |
+| `DisplayProbe` | cursor point, work area of the display under a point, all work areas |
+| `WindowPlacement` · `WindowStateStore` · `WindowStateKeeper` | remembers size, position and maximised state between sessions, when `DesktopAppSpec.stateDirectory` says where |
+| `SingleInstanceVerdict` · `ForwardedLaunch` | `primary`/`secondary`, and the arguments the second instance forwarded |
 | `LaunchAtLogin` | `isEnabled` · `enable` · `disable` |
 | `DeepLinkInbox` | `initialLink()` · `links()` |
 | `SystemNotifier` | `show` · `cancel` · `cancelAll` |
 | `ExternalOpener` | `openUrl` · `canOpenUrl` |
-| `BundleInfo` | nome, versão, build, identificador |
+| `BundleInfo` | name, version, build, identifier |
 
-Isso é opt-in por um motivo: o pacote não escolhe onde escrever no disco do
-usuário. Passe `stateDirectory` no `DesktopAppSpec` — o diretório de suporte do
-app, tipicamente — e o canal carrega a posição salva, prende-a às telas que
-existem agora e passa a salvar de volta. Sem ele, nada é lido nem escrito.
+Window state is opt-in for one reason: the package does not choose where to
+write on the user's disk. Pass `stateDirectory` in the `DesktopAppSpec` — the
+app's support directory, typically — and the channel loads the saved position,
+clamps it to the displays that exist now, and starts saving it back. Without
+it, nothing is read or written.
 
-Uma posição salva num monitor que foi desconectado entre sessões não é
-aplicada: a janela abriria onde o usuário não a encontra. E o salvamento espera
-a janela assentar, porque arrastar emite um evento por pixel e gravar em cada
-um transforma um movimento de janela em centenas de escritas em disco.
+A position saved on a display that was disconnected between sessions is not
+applied: the window would open where the user cannot find it. And saving waits
+for the window to settle, because dragging emits one event per pixel and
+writing on each turns a window move into hundreds of disk writes.
 
-O menu é dado, não callback: `TrayCommand`, `TraySeparator` e `TraySubmenu` numa hierarquia selada. O id volta por `commands()` e o app decide o que fazer — igual ao que o Tauri fazia emitindo evento em vez de chamar função.
+The menu is data, not a callback: `TrayCommand`, `TraySeparator` and
+`TraySubmenu` in a sealed hierarchy. The id comes back through `commands()` and
+the app decides what to do — the same as what Tauri did by emitting an event
+instead of calling a function.
 
-## O que não entra aqui
+## What does not come in here
 
-- **Clipboard.** O Flutter já faz, com `Clipboard.setData`. Package para isso seria peso morto.
-- **Registrar o esquema de deep link.** No Windows é escrita em `HKLM` que só o instalador elevado faz; no Linux é um `.desktop` instalado pelo pacote. É do instalador, não do app em execução.
-- **Instalar o serviço privilegiado e o updater.** São do instalador e da esteira.
-- **Qualquer política.** Ver acima.
+- **Clipboard.** Flutter already does it, with `Clipboard.setData`. A package
+  for that would be dead weight.
+- **Registering the deep link scheme.** On Windows it is a write to `HKLM`
+  that only the elevated installer performs; on Linux it is a `.desktop` file
+  installed by the package. It belongs to the installer, not to the running
+  app.
+- **Installing the privileged service and the updater.** Those belong to the
+  installer and the pipeline.
+- **Any policy.** See above.
 
-## Desenvolvimento
+## Development
 
 ```bash
 flutter test
@@ -155,4 +186,4 @@ flutter test
 flutter analyze
 ```
 
-As decisões e o que ficou de fora estão em `ARCHITECTURE.md`.
+The decisions, and what was left out, are in `ARCHITECTURE.md`.

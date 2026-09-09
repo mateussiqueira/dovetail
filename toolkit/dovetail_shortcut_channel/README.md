@@ -1,3 +1,5 @@
+**English** · [Português](README.pt-BR.md)
+
 # dovetail_shortcut_channel
 
 Binds a keyboard chord the operating system delivers to the app **even when no
@@ -93,7 +95,7 @@ In an app build, cargokit drives cargo from `flutter build`, and the Rust
 library must stay named after the plugin: the loader searches by stem, so a
 rename produces a `dlopen` failure naming the two names it is built under on
 macOS — `dovetail_shortcut_channel.framework/dovetail_shortcut_channel` and
-`libdesktop_shortcut_channel.dylib` — and neither of them mentions the rename.
+`libdovetail_shortcut_channel.dylib` — and neither of them mentions the rename.
 
 ## What is not proven here
 
