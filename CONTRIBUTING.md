@@ -9,8 +9,11 @@ outro lugar. Então, em ordem de utilidade:
 1. **Rodar em outro sistema operacional e relatar.** Windows com MSVC e Linux
    são território não testado. Uma issue dizendo "no Windows 11, `dovetail
    doctor` falhou assim" é mais valiosa que uma feature.
-2. **Fechar uma perna do CI.** As três pernas existem no workflow e nunca
-   executaram.
+2. **Rodar a matriz num fork.** As três pernas existem no workflow e nunca
+   executaram, porque a conta que publica este repositório não tem Actions.
+   Em repositório público o Actions é gratuito: forkar e deixar a matriz
+   rodar já produz a informação que falta, mesmo que você não mude uma linha
+   de código.
 3. **Feature ou correção.** Bem-vindas, com teste.
 
 ## Como rodar

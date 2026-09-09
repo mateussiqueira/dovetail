@@ -17,8 +17,12 @@ host local com CA privada, e o updater recusa manifesto sem assinatura válida.
 
 O que **não** está provado:
 
-- **Nada rodou fora de um macOS arm64.** O CI existe, com pernas para
-  `macos-14`, `ubuntu-24.04` e `windows-2022`, e nenhuma delas jamais executou.
+- **Nada rodou fora de um macOS arm64.** O workflow existe, com pernas para
+  `macos-14`, `ubuntu-24.04` e `windows-2022`, e nenhuma delas jamais
+  executou: a conta que publica este repositório não tem GitHub Actions
+  disponível. **Num fork, ele roda** — o Actions é gratuito em repositório
+  público. Se você forkar e a matriz passar (ou falhar) em Windows ou Linux,
+  essa é a informação mais valiosa que este projeto pode receber hoje.
 - **Nada foi compilado com MSVC.** A perna Windows é código escrito às cegas.
 - **Nenhum pacote tinha sido publicado** até esta primeira leva.
 - A assinatura macOS foi exercitada com certificado autoassinado. Developer ID
