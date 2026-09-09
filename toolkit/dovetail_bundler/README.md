@@ -1,59 +1,85 @@
+**English** · [Português](README.pt-BR.md)
+
 # dovetail_bundler
 
-> Parte do `dovetail`. Versionado só localmente.
+> Packages a Flutter desktop app with a Rust core, calling each platform's own
+> tool. In place of Tauri's bundler.
 
-> Empacota um app Flutter desktop com núcleo Rust, chamando a ferramenta de cada plataforma. No lugar do bundler do Tauri.
+Tauri's bundler does not package: it **orchestrates other people's tools**. It
+calls `makensis` on Windows, WiX for MSI, `hdiutil` on macOS, `linuxdeploy` for
+AppImage — and for `.deb`/`.rpm` it calls nothing at all, having reimplemented
+them in Rust because they are `ar` + `tar` + `md5`. This package does the same,
+in Dart.
 
-O bundler do Tauri não empacota: ele **orquestra ferramenta alheia**. Chama `makensis` no Windows, WiX para MSI, `hdiutil` no macOS, `linuxdeploy` para AppImage — e `.deb`/`.rpm` ele nem chama nada, reimplementou em Rust porque é `ar` + `tar` + `md5`. Este package faz o mesmo, em Dart.
+Why Dart: it is the team's language from here on, the `cargokit` already used
+to compile the Rust is exactly this, and — the deciding reason — **Tauri's
+failure modes are logic failures, not tool failures**. Wrong order for
+`!addplugindir`, a warning where it should have been an error, a missing
+timestamp. That is what tests catch; three divergent shell scripts have no
+tests.
 
-Por que Dart: é a linguagem da equipe daqui para frente, o `cargokit` que já usamos para compilar o Rust é exatamente isso, e — o que decide — **os modos de falha do Tauri são de lógica, não de ferramenta**. Ordem errada de `!addplugindir`, aviso onde devia ser erro, timestamp ausente. Isso se pega com teste; três scripts de shell divergentes não têm teste.
+## State
 
-## Estado
-
-| Alvo | Situação | O que se prova aqui |
+| Target | Situation | What is proven here |
 |---|---|---|
-| Windows, NSIS | **construído aqui**, com ressalva | ordem do script, escape, staging, invocação. Compila no macOS com `unicode: false`; o stub Unicode estoura em `std::bad_alloc` no arm64 |
-| Windows, MSI | **construído aqui** | dois backends: `wix` no Windows, `wixl` em qualquer outro host. O `.wxs` gerado é validado por `xmllint`, o GUID tem golden test, e o MSI produzido é conferido com `msiinfo` e `msiextract` |
-| macOS, `.dmg` | escrito | recusa um `.app` que não carrega as arquiteturas prometidas, antes do `hdiutil` |
-| macOS, `.app.tar.gz` | escrito | o bundle assinado na raiz do tar, sem entradas `._*` (`COPYFILE_DISABLE`); é o que o updater extrai e o manifesto publica — `bundle --macos-format tar` |
-| macOS, `.app` universal | escrito | `UniversalBundle` funde dois builds de arquitetura única, provado com `rustc` e `lipo` de verdade |
-| Linux, `.deb` | escrito | lido pelo `ar` e `tar` do sistema, com modo de arquivo e scripts de manutenção |
-| Linux, `.rpm` | escrito | spec e scriptlets; `rpmbuild` local só conhece `aarch64` |
-| Ícones | escrito | o `.icns` desmontado pelo `iconutil` da Apple, o `.ico` lido pelo `file` |
+| Windows, NSIS | **built here**, with a caveat | script order, escaping, staging, invocation. Compiles on macOS with `unicode: false`; the Unicode stub blows up with `std::bad_alloc` on arm64 |
+| Windows, MSI | **built here** | two backends: `wix` on Windows, `wixl` on any other host. The generated `.wxs` is validated by `xmllint`, the GUID has a golden test, and the produced MSI is checked with `msiinfo` and `msiextract` |
+| macOS, `.dmg` | written | refuses a `.app` that does not carry the promised architectures, before `hdiutil` |
+| macOS, `.app.tar.gz` | written | the signed bundle at the root of the tar, with no `._*` entries (`COPYFILE_DISABLE`); it is what the updater extracts and the manifest publishes — `bundle --macos-format tar` |
+| macOS, universal `.app` | written | `UniversalBundle` merges two single-architecture builds, proven with real `rustc` and `lipo` |
+| Linux, `.deb` | written | read back by the system's `ar` and `tar`, with file modes and maintenance scripts |
+| Linux, `.rpm` | written | spec and scriptlets; the local `rpmbuild` only knows `aarch64` |
+| Icons | written | the `.icns` taken apart by Apple's `iconutil`, the `.ico` read by `file` |
 
-Contagem de teste não fica escrita aqui, porque envelhece. `dart test` diz.
+Test counts are not written here, because they age. `dart test` says.
 
-## As armadilhas do Tauri que aqui são erro fatal
+## Tauri's traps, which are a fatal error here
 
-O levantamento em `my-docs/TAURI-COMO-ARTE-ANTERIOR.md` achou ~30 avisos que eles pagaram. Três viraram teste:
+A survey of Tauri as prior art found around thirty warnings they had paid for.
+Three became tests:
 
-**`!addplugindir` antes de qualquer `!include`.** Fora do topo absoluto, o `makensis` cai em silêncio para as DLLs **não assinadas** do toolset, apesar de a etapa de assinatura ter passado. Foi bug em produção lá. Um teste compara a linha do `!addplugindir` com a do primeiro `!include`.
+**`!addplugindir` before any `!include`.** Anywhere but the absolute top,
+`makensis` silently falls back to the toolset's **unsigned** DLLs, even though
+the signing step passed. That was a production bug there. A test compares the
+`!addplugindir` line against the first `!include`.
 
-**Metadado de build não numérico é erro, não zero silencioso.** O Tauri troca `1.2.3+abc` por `0` no `VIProductVersion` com um aviso e segue. `AppVersion.parse` recusa, e a mensagem diz o que fazer.
+**Non-numeric build metadata is an error, not a silent zero.** Tauri replaces
+`1.2.3+abc` with `0` in `VIProductVersion` with a warning and carries on.
+`AppVersion.parse` refuses, and the message says what to do.
 
-**`DovetailStrContains` existe duas vezes, e tem que existir.** O NSIS recusa
-`Call` numa seção de desinstalação a menos que a função se chame
-`un.algo` — então o corpo é instanciado com e sem o prefixo, e
-`CheckIfAppIsRunning` recebe qual usar. Sem isso o script gerado **não
-compilava em host nenhum**, Windows incluído; o estouro do stub Unicode no
-arm64 escondia o erro real atrás de um crash mais cedo.
+**`DovetailStrContains` exists twice, and it has to.** NSIS refuses a `Call` in
+an uninstall section unless the function is named `un.something` — so the body
+is instantiated with and without the prefix, and `CheckIfAppIsRunning` is told
+which to use. Without that the generated script **did not compile on any
+host**, Windows included; the Unicode stub blowing up on arm64 hid the real
+error behind an earlier crash.
 
-**O stub Unicode não compila no Apple silicon.** O `makensis` 3.12 estoura em
-`std::bad_alloc` ao escrever a saída, num script de quatro linhas, e compilar da
-fonte não muda. Com `unicode: false` ele compila, ao custo real de um
-instalador ANSI: caminhos e strings são lidos na code page do sistema, e uma
-máquina cujo caminho de instalação está fora dela instala no lugar errado. A
-alternativa sem ressalva é o MSI, que o `wixl` constrói em qualquer host.
+**The Unicode stub does not compile on Apple silicon.** `makensis` 3.12 blows
+up with `std::bad_alloc` while writing its output, on a four-line script, and
+building from source does not change it. With `unicode: false` it compiles, at
+the real cost of an ANSI installer: paths and strings are read in the system's
+code page, and a machine whose install path falls outside it installs in the
+wrong place. The alternative with no caveat is the MSI, which `wixl` builds on
+any host.
 
-**`CheckIfAppIsRunning` imediatamente depois do `NSIS_HOOK_PREINSTALL`.** Essa ordem foi corrigida por bug reportado duas vezes no Tauri. Um teste exige que só o `!endif` fique entre as duas linhas.
+**`CheckIfAppIsRunning` immediately after `NSIS_HOOK_PREINSTALL`.** That order
+was fixed after a bug reported twice in Tauri. A test requires that only the
+`!endif` sits between the two lines.
 
-## O `hooks.nsh` atual passa intacto
+## An existing `hooks.nsh` passes through untouched
 
-Os quatro ganchos têm o mesmo nome e a mesma posição do template do Tauri — `NSIS_HOOK_PREINSTALL`, `POSTINSTALL`, `PREUNINSTALL`, `POSTUNINSTALL`, todos guardados por `!ifmacrodef`. As 280 linhas de `app-tauri/installer/hooks.nsh`, que instalam e registram o serviço privilegiado, entram sem alteração.
+The four hooks have the same names and positions as Tauri's template —
+`NSIS_HOOK_PREINSTALL`, `POSTINSTALL`, `PREUNINSTALL`, `POSTUNINSTALL`, all
+guarded by `!ifmacrodef`. In the migration measured here, 280 lines of an
+existing `installer/hooks.nsh`, which install and register a privileged
+service, went in unchanged.
 
-E não há dependência do plugin da Tauri: **medido que aquele hook usa só `nsExec` e `taskkill`**, ambos nativos. A macro `CheckIfAppIsRunning` daqui é implementada com `nsExec` + `tasklist`, sem `nsis_tauri_utils.dll`.
+And there is no dependency on Tauri's plugin: **it was measured that that hook
+uses only `nsExec` and `taskkill`**, both native. The `CheckIfAppIsRunning`
+macro here is implemented with `nsExec` + `tasklist`, without
+`nsis_tauri_utils.dll`.
 
-## Uso
+## Usage
 
 ```bash
 dart run dovetail_bundler \
@@ -67,31 +93,39 @@ dart run dovetail_bundler \
   --hooks installer/hooks.nsh
 ```
 
-Escreve o caminho do instalador na saída padrão. Falha com código 1 e uma mensagem que traz o remédio.
+It writes the installer's path to standard output. It fails with code 1 and a
+message that carries the remedy.
 
-## O dmg recusa um `.app` que não diz de qual macOS precisa
+## The dmg refuses a `.app` that does not say which macOS it needs
 
-`LSMinimumSystemVersion` é a única coisa que impede um Mac antigo de abrir um
-binário que ele não roda. Sem a chave o app abre e morre num símbolo ausente, o
-que chega até nós como *"ele só fecha"* e chega até quem usa como nada.
+`LSMinimumSystemVersion` is the only thing that stops an old Mac from opening a
+binary it cannot run. Without the key the app opens and dies on a missing
+symbol, which reaches us as *"it just closes"* and reaches the user as nothing.
 
-Antes do `hdiutil`, não depois — dmg que existe é dmg que alguém sobe. Três
-recusas: bundle sem a chave; bundle com a chave carregando
-`$(MACOSX_DEPLOYMENT_TARGET)` **por expandir**, que o macOS lê como versão
-nenhuma; e bundle que discorda do que a release declara, dizendo qual dos dois o
-sistema obedece.
+Before `hdiutil`, not after — a dmg that exists is a dmg somebody uploads.
+Three refusals: a bundle with no key; a bundle whose key carries
+`$(MACOSX_DEPLOYMENT_TARGET)` **unexpanded**, which macOS reads as no version
+at all; and a bundle that disagrees with what the release declares, saying
+which of the two the system obeys.
 
-O Xcode preenche a chave a partir de `MACOSX_DEPLOYMENT_TARGET`, então projeto
-correto já tem uma — isto existe para o dia em que alguém editar o template. O
-app que este repositório constrói carrega `10.15`, e um teste confere isso
-contra o bundle de verdade.
+Xcode fills the key in from `MACOSX_DEPLOYMENT_TARGET`, so a correct project
+already has one — this exists for the day someone edits the template.
 
-## O que não está provado aqui
+## What is not proven here
 
-**Que o `makensis` aceita o script gerado.** A estrutura é testada, mas validade de NSIS só se prova compilando — e o `makensis` 3.12 do Homebrew em arm64 macOS **aborta com `std::bad_alloc` até no script mínimo de quatro linhas**. O teste sonda usabilidade, não presença: se o `makensis` local não compila um script trivial, ele é marcado como pulado com esse motivo, em vez de dar um verde falso.
+**That `makensis` accepts the generated script.** The structure is tested, but
+NSIS validity is only proven by compiling — and Homebrew's `makensis` 3.12 on
+arm64 macOS **aborts with `std::bad_alloc` even on a minimal four-line
+script**. The test probes usability, not presence: if the local `makensis`
+cannot compile a trivial script, it is marked as skipped with that reason
+rather than giving a false green.
 
-Essa prova pertence a um runner Windows, que é onde o instalador importa.
+That proof belongs to a Windows runner, which is where the installer matters.
 
-## Assinatura
+## Signing
 
-Não está aqui, de propósito. Assinatura é passo **depois** do build, nunca dentro — o acoplamento inverso é o que hoje amarra o instalador ao `cargo tauri build`. Sem segredo, artefato não assinado e um aviso; com `--require-signature`, que só a esteira passa, o mesmo aviso vira erro.
+It is not here, on purpose. Signing is a step **after** the build, never inside
+it — the inverse coupling is what ties an installer to `cargo tauri build`
+today. With no secret, an unsigned artefact and a warning; with
+`--require-signature`, which only the pipeline passes, the same warning becomes
+an error.

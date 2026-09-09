@@ -1,59 +1,88 @@
+**English** · [Português](README.pt-BR.md)
+
 # dovetail_signer
 
-> Parte do `dovetail`. Versionado só localmente.
+> Signs and notarises what the build already produced. Runs **after** the
+> build, never inside it — and packages nothing.
 
-> Assina e notariza o que o build já produziu. Roda **depois** do build, nunca dentro — e não empacota nada.
+## Why this is a separate package from the bundler
 
-## Por que é um package separado do bundler
+The rule "signing runs after the build" is only real if the bundler **cannot**
+sign. In the same package, someone wires one into the other in six months and
+the coupling is back — which is exactly what ties an installer to
+`cargo tauri build` today.
 
-A regra "assinatura roda depois do build" só é de verdade se o bundler **não puder** assinar. No mesmo package, alguém liga um no outro em seis meses e o acoplamento volta — que é exatamente o que hoje amarra o instalador ao `cargo tauri build`.
+`dovetail_bundler` does not depend on this package. It has no way to sign.
 
-O `dovetail_bundler` não depende deste package. Ele não tem como assinar.
+## The policy is the product here
 
-## A política é o produto aqui
+The failures the Tauri survey found are not tool failures, they are **policy**
+failures: warning where it should have stopped. Each one became a test.
 
-As falhas que o levantamento do Tauri achou não são de ferramenta, são de **política**: avisar onde devia parar. Cada uma virou teste.
-
-| No Tauri | Aqui |
+| In Tauri | Here |
 |---|---|
-| chave que não corresponde à pública → aviso, build passa, release que ninguém aceita | conjunto de credencial **pela metade é erro fatal**, mesmo em build local |
-| `CI=true` sem senha → assume senha vazia em silêncio | senha não definida é **erro**; senha vazia só se definida explicitamente |
-| credencial de notarização incompleta → aviso, entrega app não notarizado | erro fatal, com o nome de cada variável que falta |
-| `codesign` sem `--timestamp` → "às vezes sim, às vezes não" | `--timestamp` em **toda** chamada |
-| sem `timestampUrl` → `signtool` roda sem timestamp | ausência é **erro**, e não há default |
-| um `entitlements.plist` para tudo, inclusive daemon | entitlements por caminho, e nunca em framework ou dylib |
-| `TAURI_SKIP_SIDECAR_SIGNATURE_CHECK` pula a assinatura inteira | lista vazia de arquivos é **erro**, não sucesso silencioso |
+| a key that does not match the public one → warning, the build passes, a release nobody accepts | a **half-complete credential set is a fatal error**, even in a local build |
+| `CI=true` with no password → silently assumes an empty password | an undefined password is an **error**; an empty password only if explicitly set |
+| incomplete notarisation credentials → warning, delivers an un-notarised app | a fatal error, naming every missing variable |
+| `codesign` without `--timestamp` → "sometimes yes, sometimes no" | `--timestamp` on **every** call |
+| no `timestampUrl` → `signtool` runs without a timestamp | absence is an **error**, and there is no default |
+| one `entitlements.plist` for everything, daemon included | entitlements per path, and never on a framework or a dylib |
+| `TAURI_SKIP_SIDECAR_SIGNATURE_CHECK` skips signing entirely | an empty file list is an **error**, not silent success |
 
-E o inverso também é política: **build local não pede certificado**. Sem segredo, o artefato fica não assinado e a saída diz isso. Com `--require-signature`, que só a esteira passa, o mesmo caso vira erro.
+And the inverse is policy too: **a local build does not ask for a
+certificate**. With no secret, the artefact is left unsigned and the output
+says so. With `--require-signature`, which only the pipeline passes, the same
+case becomes an error.
 
 ## macOS
 
-De dentro para fora, item por item, com `xattr -crs` antes — o Tauri cita o QA1940 da Apple para isso. Nunca `--deep`.
+Inside out, item by item, with `xattr -crs` first — Tauri cites Apple's QA1940
+for that. Never `--deep`.
 
-Ordena os alvos por profundidade, e assina o bundle **por último**. Só filhos diretos das pastas de código aninhado (`MacOS`, `Frameworks`, `PlugIns`, `Helpers`, `XPCServices`, `Libraries`), recursando em `.app` embutido.
+It orders the targets by depth and signs the bundle **last**. Only direct
+children of the nested-code folders (`MacOS`, `Frameworks`, `PlugIns`,
+`Helpers`, `XPCServices`, `Libraries`), recursing into an embedded `.app`.
 
-Notarização: `ditto -c -k --keepParent --sequesterRsrc` — não `zip`, porque o comentário do Tauri registra que isso remove quase todo falso alarme —, então `notarytool submit --wait`, e `stapler staple` só se o status for `Accepted`.
+Notarisation: `ditto -c -k --keepParent --sequesterRsrc` — not `zip`, because
+Tauri's own comment records that this removes almost every false alarm — then
+`notarytool submit --wait`, and `stapler staple` only if the status is
+`Accepted`.
 
-O `.dmg` é o segundo selo. `MacosSigner.signFile` assina a imagem como arquivo plano — identidade e carimbo, sem hardened runtime nem entitlements, que são do código lá dentro — e `Notarizer.notarizeFile` a submete direto, sem `ditto`, grampeando o ticket na própria imagem: é ela que o usuário baixa e o Gatekeeper avalia ao montar. Pelo CLI, `--target macos --file x.dmg [--notarize]`; o `.app` continua sendo `--bundle`, e os dois nunca na mesma chamada.
+The `.dmg` is the second seal. `MacosSigner.signFile` signs the image as a flat
+file — identity and timestamp, no hardened runtime and no entitlements, which
+belong to the code inside it — and `Notarizer.notarizeFile` submits it
+directly, without `ditto`, stapling the ticket to the image itself: that is
+what the user downloads and what Gatekeeper evaluates on mount. Through the
+CLI, `--target macos --file x.dmg [--notarize]`; the `.app` is still
+`--bundle`, and the two never in the same call.
 
 ## Windows
 
-`signtool sign /fd sha256 /sha1 <thumbprint> /tr <url> /td sha256 <arquivo>`. Certificado por thumbprint, nunca `.pfx` no comando: pressupõe o certificado já no store da máquina, que é o que a esteira faz importando antes.
+`signtool sign /fd sha256 /sha1 <thumbprint> /tr <url> /td sha256 <file>`. The
+certificate by thumbprint, never a `.pfx` on the command line: it assumes the
+certificate is already in the machine's store, which is what the pipeline does
+by importing it first.
 
 ## Linux
 
-Não há portão. `SHA256SUMS` publicado, e o teste verifica com o `shasum -c` do sistema — inclusive que um artefato adulterado **falha** a verificação.
+There is no gate. A published `SHA256SUMS`, and the test verifies it with the
+system's `shasum -c` — including that a tampered artefact **fails**
+verification.
 
-## A prova
+## The proof
 
-O que vale mais aqui não é a contagem: **este package assina o
-`vpn_desktop.app` que o repositório constrói de verdade**, de dentro para fora,
-com identidade ad-hoc, e exige que o `codesign --verify --deep --strict` do
-sistema aceite. Sem certificado nenhum.
+What is worth most here is not the count: **this package signs a real `.app`
+that the repository actually builds**, inside out, with an ad hoc identity, and
+requires the system's `codesign --verify --deep --strict` to accept it. With no
+certificate at all.
 
-Esse teste achou um bug real: a primeira versão tentava assinar **todo arquivo** dentro de `Frameworks/`, incluindo diretório de asset (`App.framework/.../example_design_system/assets/icons/nav`), e o `codesign` recusa com "bundle format unrecognized". Assina-se o bundle do framework, não o conteúdo dele.
+That test found a real bug: the first version tried to sign **every file**
+inside `Frameworks/`, asset directories included
+(`App.framework/.../a_design_system/assets/icons/nav`), and `codesign` refuses
+with "bundle format unrecognized". You sign the framework's bundle, not its
+contents.
 
-## Uso
+## Usage
 
 ```bash
 dart run dovetail_signer --target macos --bundle build/macos/.../App.app --notarize
@@ -67,20 +96,21 @@ dart run dovetail_signer --target windows --file dist/app.exe --file dist/helper
 dart run dovetail_signer --target linux --file dist/app.deb --out-dir dist
 ```
 
-## O que falta
+## What is missing
 
-- **Assinatura GPG destacada** do `SHA256SUMS` no Linux.
-- **Keychain temporário** no runner macOS, a partir de certificado em base64.
-- ~~**Ordem no Windows**~~ — resolvida na esteira, que é onde a ordem mora. O
-  `ship` no Windows emite **duas** assinaturas: `sign --directory` sobre o
-  payload antes do `bundle`, e `sign --file` sobre o instalador depois. Assinar
-  só o instalador produz um arquivo que passa pelo SmartScreen e então deposita
-  executáveis sem assinatura no disco de quem instalou — pior que não assinar,
-  porque parece certo. No macOS também são duas, por outro motivo: o `.app` de
-  dentro para fora (o selo cobre o conteúdo) e depois o `.dmg`, porque o
-  Gatekeeper avalia a imagem ao montar e a notarização é dela também. O Linux
-  não assina binário nenhum.
+- **A detached GPG signature** for `SHA256SUMS` on Linux.
+- **A temporary keychain** on a macOS runner, from a base64 certificate.
+- ~~**Ordering on Windows**~~ — solved in the pipeline, which is where
+  ordering lives. `ship` on Windows emits **two** signatures:
+  `sign --directory` over the payload before `bundle`, and `sign --file` over
+  the installer afterwards. Signing only the installer produces a file that
+  passes SmartScreen and then drops unsigned executables onto the disk of
+  whoever installed it — worse than not signing, because it looks right. On
+  macOS there are two as well, for a different reason: the `.app` inside out
+  (the seal covers the contents) and then the `.dmg`, because Gatekeeper
+  evaluates the image on mount and the notarisation is the image's too. Linux
+  signs no binary at all.
 
-  O que ainda não existe é o package **recusar** sozinho um instalador de
-  payload não assinado: verificar isso exige abrir o instalador, e nenhuma
-  máquina aqui roda Windows para provar que a leitura está certa.
+  What still does not exist is the package **refusing** an installer with an
+  unsigned payload on its own: checking that means opening the installer, and
+  no machine here runs Windows to prove the reading is right.
