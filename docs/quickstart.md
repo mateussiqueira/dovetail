@@ -1,51 +1,76 @@
-# Quickstart: do dovetail instalado ao primeiro ship
+**English** · [Português](pt-BR/quickstart.md)
 
-O caminho de cinco minutos para quem nunca tocou no monorepo. Tudo aqui sai do
-binário `dovetail` instalado, mais o SDK que ele baixa, sem clonar repositório
-nenhum. Pré-requisito: Flutter com o target desktop do seu sistema.
+# Quickstart: from an installed dovetail to the first ship
 
-> **Sobre o canal de instalação.** O dovetail é MIT e os pacotes estão no
-> pub.dev, então a rota normal é declarar a dependência e pronto. O que este
-> guia descreve — `install.sh` e `self-install` — é o canal de binário
-> assinado, e o `<host>` dele **ainda não existe**: o mecanismo é testado, o
-> servidor é que falta. Ver **Existe de onde baixar** em [roadmap.md](roadmap.md).
+The five-minute path for someone who has never touched the monorepo.
+Everything here comes from the installed `dovetail` binary, plus the SDK it
+downloads, without cloning any repository. Prerequisite: Flutter with your
+system's desktop target.
 
-## 1. Instalar
+> **About the install channel.** dovetail is MIT and the packages are on
+> pub.dev, so the normal route is to declare the dependency and be done. What
+> this guide describes — `install.sh` and `self-install` — is the signed
+> binary channel, and its `<host>` **does not exist yet**: the mechanism is
+> tested, the server is what is missing. See **Somewhere to download from** in
+> [roadmap.md](roadmap.md).
 
-O canal de release **ainda não está no ar**. Não há host, nenhum comando da
-esteira publica, e o `install.sh` recusa sem `--base-url`/`$DOVETAIL_INSTALL_URL`
-em vez de adivinhar. Até que exista, o caminho real é o monorepo; o que segue
-descreve o mecanismo, que é testado, contra um host que ainda falta.
+## 0. The normal route
+
+If all you want is the runtime in an app, this is the whole story:
+
+```yaml
+dependencies:
+  dovetail: ^0.1.0
+```
+
+And the pipeline as a command:
+
+```bash
+dart pub global activate dovetail_cli
+dovetail --help
+```
+
+The rest of this document is the signed-channel route, which gives you a
+self-contained AOT binary and a versioned SDK on disk.
+
+## 1. Install
+
+The release channel **is not up yet**. There is no host, no pipeline command
+publishes, and `install.sh` refuses without `--base-url`/`$DOVETAIL_INSTALL_URL`
+rather than guessing. Until it exists, the real path is pub.dev or the
+monorepo; what follows describes the mechanism, which is tested, against a
+host that is still missing.
 
 ```bash
 curl -fsSL https://<host>/install.sh | sh
 ```
 
-Ou, para quem já tem o binário:
+Or, if you already have the binary:
 
 ```bash
 dovetail self-install --base-url https://<host>
 ```
 
-Os dois fazem o mesmo trabalho e respeitam `DOVETAIL_HOME` quando definido. A
-base vem de `--base-url` ou de `DOVETAIL_INSTALL_URL`; sem os dois o comando
-recusa nomeando os dois, nunca adivinha o host. O que aterrissa no disco:
+Both do the same work and respect `DOVETAIL_HOME` when it is set. The base
+comes from `--base-url` or from `DOVETAIL_INSTALL_URL`; without either, the
+command refuses and names both — it never guesses the host. What lands on
+disk:
 
 ```
 ~/.dovetail/
-  bin/dovetail                     a esteira, AOT, autocontida
-  sdk/<versão>/packages            o runtime que o app importa, versionado por diretório
-  sdk/<versão>/templates/bridge    o template que gera o bridge do produto
-~/.local/bin/dovetail              symlink para o binário
+  bin/dovetail                     the pipeline, AOT, self-contained
+  sdk/<version>/packages           the runtime the app imports, versioned by directory
+  sdk/<version>/templates/bridge   the template that generates the product bridge
+~/.local/bin/dovetail              symlink to the binary
 ```
 
-Confira que a máquina está pronta:
+Check that the machine is ready:
 
 ```bash
 dovetail doctor
 ```
 
-## 2. App novo
+## 2. A new app
 
 ```bash
 dovetail new --sdk demo
@@ -53,38 +78,39 @@ cd demo
 flutter test
 ```
 
-O `new` cria o projeto do zero, já ligado ao dovetail: um `pubspec.yaml`, um
-`pubspec_overrides.yaml` apontando para o SDK instalado, um `dovetail.yaml` com
-os padrões que o `doctor` aceita, e os diretórios de plataforma (`macos/`,
-`windows/`, `linux/`) preenchidos pelo `flutter create` que ele mesmo roda. A
-flag `--sdk` resolve o runtime via `pubspec_overrides.yaml` em vez de um `path`
-no pubspec, então nada aponta para dentro do monorepo.
+`new` creates the project from scratch, already wired to dovetail: a
+`pubspec.yaml`, a `pubspec_overrides.yaml` pointing at the installed SDK, a
+`dovetail.yaml` with the defaults `doctor` accepts, and the platform
+directories (`macos/`, `windows/`, `linux/`) filled in by the `flutter create`
+it runs itself. The `--sdk` flag resolves the runtime through
+`pubspec_overrides.yaml` instead of a `path` in the pubspec, so nothing points
+inside the monorepo.
 
-## 3. A ponte
+## 3. The bridge
 
-Se o app fala com um núcleo Rust, gere o plugin FFI:
+If the app talks to a Rust core, generate the FFI plugin:
 
 ```bash
-dovetail bridge init --core <seu-crate> --name meu_bridge
+dovetail bridge init --core <your-crate> --name my_bridge
 ```
 
-`--core` é o diretório do crate (o que segura o `Cargo.toml` dele), e o nome
-real do crate é lido de lá, nunca adivinhado. O gerado é o `ffiPlugin` dos três
-sistemas. Daqui para frente o laço é:
+`--core` is the crate's directory (the one holding its `Cargo.toml`), and the
+crate's real name is read from there, never guessed. What comes out is the
+`ffiPlugin` for all three systems. From here on the loop is:
 
-1. escrever os repasses em `rust/src/api/`
+1. write the forwarders in `rust/src/api/`
 2. `flutter_rust_bridge_codegen generate`
 3. `tool/build_xcframework.sh`
 4. `cd rust && cargo check`
 5. `flutter test test/core_coverage_test.dart`
 
-O último passo é o portão de forma: lê o `handle.rs` do crate e as chamadas em
-`rust/src/api/`, e recusa quando o núcleo cresceu um método que nenhum repasse
-expõe.
+The last step is the shape gate: it reads the crate's `handle.rs` and the
+calls under `rust/src/api/`, and refuses when the core has grown a method
+that no forwarder exposes.
 
-## 4. A config
+## 4. The config
 
-O `dovetail.yaml` já vem com os padrões do `new`. O essencial:
+`dovetail.yaml` already comes with the defaults from `new`. The essentials:
 
 ```yaml
 identifier: com.example.demo
@@ -96,22 +122,22 @@ update:
   base-url: https://cdn.example.com/releases
   manifest: dist/latest.json
   public-key: |
-    untrusted comment: minisign public key D18395BE8A6B994E
-    RWROmWuKvpWD0RErEh4kcn0sjuu4dQYX5MERE9dNGuImxQXHzNuRYLVP
+    untrusted comment: minisign public key 1234567890ABCDEF
+    RWQhww+7hfwEkazwMrOqcOeYRd+myNTpeJJP4bRWbnbMXV3T8ZSFPajp
 sign:
   macos:
     identity-env: DOVETAIL_MACOS_IDENTITY
 ```
 
-O par de chaves sai de `dovetail keygen`, que imprime a linha `public-key`
-pronta para colar; sem ela o `doctor` diz `missing update` e o `ship` recusa
-antes do build, porque um release assinado por uma chave que o app não confia
-é um release que só quem reinstalar consegue usar. Não há campo de versão:
-ela mora no `pubspec.yaml`. Nenhuma identidade é escrita aqui, só o nome da
-variável que a carrega, então o arquivo pode ser commitado. O mapa completo
-de chaves está em [configuracao.md](configuracao.md).
+The key pair comes out of `dovetail keygen`, which prints the `public-key`
+line ready to paste; without it `doctor` says `missing update` and `ship`
+refuses before the build — because a release signed by a key the app does not
+trust is a release only someone who reinstalls can use. There is no version
+field: it lives in `pubspec.yaml`. No identity is written here, only the name
+of the variable that carries it, so the file can be committed. The complete
+key map is in [configuracao.md](configuracao.md).
 
-## 5. Publicar
+## 5. Publishing
 
 ```bash
 dovetail doctor
@@ -119,30 +145,31 @@ dovetail ship --dry-run
 dovetail ship
 ```
 
-O `doctor` confere o host, o projeto, o SDK e o `.xcframework`. O
-`ship --dry-run` imprime o plano sem rodar nada — no macOS, build, sign,
-bundle, sign dmg, archive e release; nos outros, build, bundle, sign e
-release — e recusa antes do build o que o último passo recusaria; sem a flag,
-ele percorre a esteira inteira e escreve o manifesto.
+`doctor` checks the host, the project, the SDK and the `.xcframework`.
+`ship --dry-run` prints the plan without running anything — on macOS: build,
+sign, bundle, sign dmg, archive and release; elsewhere: build, bundle, sign
+and release — and refuses before the build whatever the last step would
+refuse. Without the flag, it walks the whole pipeline and writes the manifest.
 
-## 6. Atualizar
+## 6. Updating
 
 ```bash
-dovetail self-update   # troca o SDK para o latest do canal
-dovetail upgrade       # re-aponta o pubspec_overrides.yaml do app para o SDK preferido
+dovetail self-update   # switches the SDK to the channel's latest
+dovetail upgrade       # re-points the app's pubspec_overrides.yaml at the preferred SDK
 ```
 
-O `self-update` instala a versão nova ao lado da antiga e troca o binário, então
-um app apontado para a anterior continua resolvendo. O `upgrade` fecha a
-distância que o `doctor` reporta quando vê um app atrás da versão instalada. As
-seções do `doctor` são `project`, `sdk`, `binary`, `app` e `spm`, cada uma com
-o seu veredito — `binary` compara o `dovetail` que responde no `PATH` com o que
-está rodando, por commit e por comandos, e nomeia os que o instalado não tem.
+`self-update` installs the new version beside the old one and swaps the
+binary, so an app pointed at the previous one keeps resolving. `upgrade`
+closes the gap `doctor` reports when it sees an app behind the installed
+version. `doctor`'s sections are `project`, `sdk`, `binary`, `app` and `spm`,
+each with its own verdict — `binary` compares the `dovetail` answering on the
+`PATH` against the one running, by commit and by command set, and names the
+ones the installed copy does not have.
 
-## 7. Depois dos cinco minutos
+## 7. After the five minutes
 
-- [ESCREVER_O_APP.md](../ESCREVER_O_APP.md): a fronteira entre o que o framework
-  decide e o que o app decide, a ordem do boot, texto, formulário, atalho,
-  atualização e publicação.
-- [migrar-do-tauri.md](migrar-do-tauri.md): o mapa do `tauri.conf.json` chave
-  por chave, para quem sai do Tauri.
+- [ESCREVER_O_APP.md](../ESCREVER_O_APP.md): the boundary between what the
+  framework decides and what the app decides, the boot order, text, forms,
+  shortcuts, updating and publishing.
+- [migrar-do-tauri.md](migrar-do-tauri.md): the `tauri.conf.json` map key by
+  key, for anyone leaving Tauri.

@@ -32,7 +32,7 @@ framework com uma linha e um comando, sem pub.dev.
 
 | entra | fica de fora |
 |---|---|
-| `dovetail_platform_channel`, `dovetail_shortcut_channel`, `dovetail_updater`, `dovetail_form_validation`, `dovetail_process_runner` — o runtime do barril | `dovetail_bundler`, `dovetail_signer`, `dovetail_cli` — vivem **só dentro do binário** (decisão do [barril](../toolkit/dovetail/README.md)) |
+| `dovetail_platform_channel`, `dovetail_shortcut_channel`, `dovetail_updater`, `dovetail_form_validation`, `dovetail_process_runner` — o runtime do barril | `dovetail_bundler`, `dovetail_signer`, `dovetail_cli` — vivem **só dentro do binário** (decisão do [barril](../../toolkit/dovetail/README.md)) |
 | `dovetail_rust_core` — a junta Dart↔Rust é do framework, não do monorepo | o `product/` — o SDK não conhece produto nenhum |
 
 O `product/desktop_core_bridge` é o **fixture** do mecanismo de bridge: o

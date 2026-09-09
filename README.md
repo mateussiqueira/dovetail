@@ -1,52 +1,75 @@
+<!-- English. Versão em português: [README.pt-BR.md](README.pt-BR.md) -->
+
+**English** · [Português](README.pt-BR.md)
+
 # dovetail
 
-> A junta entre Flutter e Rust no desktop. No lugar do Tauri.
+> The joint between Flutter and Rust on the desktop. In place of Tauri.
 
-Uma junta *dovetail* encaixa duas peças de material diferente e fica mais firme
-sob carga, sem cola nem parafuso. É o que este projeto é: a junta entre uma UI
-Flutter e um núcleo Rust, mais as ferramentas de construir, assinar e
-distribuir isso no Windows, no macOS e no Linux.
+A *dovetail* joint locks two pieces of different material together and gets
+firmer under load, without glue or screws. That is what this project is: the
+joint between a Flutter UI and a Rust core, plus the tooling to build, sign
+and ship it on Windows, macOS and Linux.
 
-## O estado, sem maquiagem
+## Where this actually stands
 
-Isto é aberto **porque ainda não está pronto**, e a lista abaixo é o convite.
+This is open **because it is not finished**, and the list below is the
+invitation.
 
-O que está provado nesta máquina: os dez pacotes passam nos próprios testes, o
-CLI constrói, empacota, assina e verifica um release de ponta a ponta contra um
-host local com CA privada, e o updater recusa manifesto sem assinatura válida.
+What is proven on one machine: the ten packages pass their own tests, the CLI
+builds, bundles, signs and verifies a release end to end against a local host
+with a private CA, and the updater refuses a manifest without a valid
+signature.
 
-O que **não** está provado:
+What is **not** proven:
 
-- **Nada rodou fora de um macOS arm64.** O workflow existe, com pernas para
-  `macos-14`, `ubuntu-24.04` e `windows-2022`, e nenhuma delas jamais
-  executou: a conta que publica este repositório não tem GitHub Actions
-  disponível. **Num fork, ele roda** — o Actions é gratuito em repositório
-  público. Se você forkar e a matriz passar (ou falhar) em Windows ou Linux,
-  essa é a informação mais valiosa que este projeto pode receber hoje.
-- **Nada foi compilado com MSVC.** A perna Windows é código escrito às cegas.
-- **Nenhum pacote tinha sido publicado** até esta primeira leva.
-- A assinatura macOS foi exercitada com certificado autoassinado. Developer ID
-  e notarização de verdade nunca passaram por aqui.
+- **Nothing has run outside one macOS arm64 machine.** The workflow exists,
+  with legs for `macos-14`, `ubuntu-24.04` and `windows-2022`, and not one of
+  them has ever executed: the account that publishes this repository has no
+  GitHub Actions available. **In a fork it runs** — Actions is free on public
+  repositories. If you fork this and the matrix passes (or fails) on Windows
+  or Linux, that is the single most valuable thing this project can receive
+  right now.
+- **Nothing has been compiled with MSVC.** The Windows leg is code written
+  blind.
+- macOS signing was exercised with a self-signed certificate. A real Developer
+  ID and notarisation have never been through here.
 
-Se algo aqui não funcionar na tua máquina, isso não é surpresa — é a
-informação que falta. Abre uma issue com o sistema operacional e a saída.
+If something does not work on your machine, that is not a surprise — it is the
+missing information. Open an issue with your operating system and the output.
 
-## Os pacotes
+## The packages
 
-| pacote | o que faz |
+| package | what it does |
 | --- | --- |
-| `dovetail` | o guarda-chuva: junta o runtime numa dependência só |
-| `dovetail_cli` | a esteira: `init`, `doctor`, `build`, `sign`, `ship`, `release` |
-| `dovetail_rust_core` | a ponte com o núcleo Rust, sobre flutter_rust_bridge |
-| `dovetail_bundler` | empacota: `.app`, `.dmg`, `.msi`, `.deb`, `.rpm`, AppImage |
-| `dovetail_signer` | assina e notariza, e recusa quando não pode provar |
-| `dovetail_updater` | verifica manifesto assinado com minisign e atualiza |
-| `dovetail_platform_channel` | instância única e integração de janela |
-| `dovetail_shortcut_channel` | atalho global, com ou sem foco de janela |
-| `dovetail_process_runner` | processo externo com timeout e desfecho tipado |
-| `dovetail_form_validation` | validação de formulário sem depender de widget |
+| [`dovetail`](https://pub.dev/packages/dovetail) | the umbrella: the whole runtime behind one dependency |
+| [`dovetail_cli`](https://pub.dev/packages/dovetail_cli) | the pipeline: `init`, `doctor`, `build`, `sign`, `ship`, `release` |
+| [`dovetail_rust_core`](https://pub.dev/packages/dovetail_rust_core) | the bridge to the Rust core, over flutter_rust_bridge |
+| [`dovetail_bundler`](https://pub.dev/packages/dovetail_bundler) | packages it: `.app`, `.dmg`, `.msi`, `.deb`, `.rpm`, AppImage |
+| [`dovetail_signer`](https://pub.dev/packages/dovetail_signer) | signs and notarises, and refuses when it cannot prove it |
+| [`dovetail_updater`](https://pub.dev/packages/dovetail_updater) | verifies a minisign-signed manifest and updates |
+| [`dovetail_platform_channel`](https://pub.dev/packages/dovetail_platform_channel) | single instance and window integration |
+| [`dovetail_shortcut_channel`](https://pub.dev/packages/dovetail_shortcut_channel) | global shortcut, with or without window focus |
+| [`dovetail_process_runner`](https://pub.dev/packages/dovetail_process_runner) | external process with a timeout and a typed outcome |
+| [`dovetail_form_validation`](https://pub.dev/packages/dovetail_form_validation) | form validation that does not depend on a widget |
 
-## Começar
+## Getting started
+
+Everything the runtime needs comes behind one dependency:
+
+```yaml
+dependencies:
+  dovetail: ^0.1.0
+```
+
+And the pipeline is a command:
+
+```bash
+dart pub global activate dovetail_cli
+dovetail --help
+```
+
+To work on the toolkit itself:
 
 ```bash
 git clone https://github.com/mateussiqueira/dovetail
@@ -55,50 +78,58 @@ dart pub get
 dart run bin/dovetail.dart --help
 ```
 
-O repositório é um monorepo de pacotes em `toolkit/`. Cada um publica sozinho e
-declara os outros por versão; o `pubspec_overrides.yaml` de cada pacote aponta
-para o vizinho local, então `dart pub get` resolve sem passar pelo pub.dev.
+The repository is a monorepo of packages under `toolkit/`. Each one publishes
+on its own and declares the others by version; every package's
+`pubspec_overrides.yaml` points at its local neighbour, so `dart pub get`
+resolves without going through pub.dev.
 
-Para instalar o binário e chamá-lo de qualquer diretório:
+## The commands
 
-```bash
-cd toolkit/dovetail_cli && tool/build_release.sh --install
-```
+The whole pipeline is one binary. Nothing it does needs its own source.
 
-## Os comandos
-
-A esteira inteira é um binário. Nada do que ela faz precisa da fonte dela.
-
-| comando | o que faz |
+| command | what it does |
 | --- | --- |
-| `dovetail init` | lê o projeto e escreve o `dovetail.yaml` |
-| `dovetail doctor` | este host consegue construir o que foi declarado? |
-| `dovetail new` | gera um projeto novo, já ligado ao runtime |
-| `dovetail bridge` | gera o plugin FFI que fala com o núcleo Rust |
-| `dovetail build` | compila o app Flutter com os defines da config |
-| `dovetail bundle` | empacota: `.app`, `.dmg`, `.msi`, `.deb`, `.rpm`, AppImage |
-| `dovetail sign` | assina e, no macOS, notariza |
-| `dovetail icon` | deriva os ícones de cada plataforma de uma imagem só |
-| `dovetail inspect` | diz o que um artefato é, lendo o cabeçalho dele |
-| `dovetail keygen` | cria o par de chaves minisign do canal de update |
-| `dovetail manifest` | escreve e assina o manifesto que o app vai ler |
-| `dovetail ship` | a esteira inteira, a partir da config |
-| `dovetail release` | publica a versão e move o canal |
-| `dovetail probe` | verifica um manifesto publicado como o app verificaria |
-| `dovetail update` | aplica uma atualização, como o app faria |
-| `dovetail dev` | roda o app com o núcleo Rust em modo de desenvolvimento |
-| `dovetail upgrade` | atualiza os pacotes que o projeto usa |
-| `dovetail self-install` | instala este binário no `PATH` |
-| `dovetail self-update` | atualiza este binário pelo canal assinado |
+| `dovetail init` | reads the project and writes `dovetail.yaml` |
+| `dovetail doctor` | can this host build what was declared? |
+| `dovetail new` | scaffolds a new project, already wired to the runtime |
+| `dovetail bridge` | generates the FFI plugin that talks to the Rust core |
+| `dovetail build` | compiles the Flutter app with the defines from the config |
+| `dovetail bundle` | packages it: `.app`, `.dmg`, `.msi`, `.deb`, `.rpm`, AppImage |
+| `dovetail sign` | signs and, on macOS, notarises |
+| `dovetail icon` | derives every platform's icons from a single image |
+| `dovetail inspect` | says what an artefact is, by reading its header |
+| `dovetail keygen` | creates the minisign key pair for the update channel |
+| `dovetail manifest` | writes and signs the manifest the app will read |
+| `dovetail ship` | the whole pipeline, from the config |
+| `dovetail release` | publishes the version and moves the channel |
+| `dovetail probe` | verifies a published manifest the way the app would |
+| `dovetail update` | applies an update, the way the app would |
+| `dovetail dev` | runs the app with the Rust core in development mode |
+| `dovetail upgrade` | updates the dovetail packages a project uses |
+| `dovetail self-install` | installs this binary on the `PATH` |
+| `dovetail self-update` | updates this binary through the signed channel |
 
-## Contribuir
+## Documentation
 
-Leia [CONTRIBUTING.md](CONTRIBUTING.md). O resumo: rode os testes do pacote que
-tocou, e diga na descrição do PR **em que sistema operacional** você mediu. Este
-projeto tem uma dívida específica — quase tudo foi verificado num só lugar — e
-um PR que diga "testei no Windows 11, isto falhou assim" vale mais aqui do que
-uma feature nova.
+The deep documentation lives in [`docs/`](docs/README.md), in English, with the
+Portuguese originals under [`docs/pt-BR/`](docs/pt-BR/README.md).
 
-## Licença
+- [Quickstart](docs/quickstart.md) — from an installed dovetail to the first ship
+- [Configuration](docs/configuracao.md) — every key of `dovetail.yaml`
+- [Troubleshooting](docs/problemas.md) — what breaks, and what the message means
+- [Migrating from Tauri](docs/migrar-do-tauri.md) — what carries over and what does not
+- [Writing the app](ESCREVER_O_APP.md) — the architecture on top of the toolkit
+- [Production roadmap](docs/roadmap-producao.md) — the honest inventory of what is missing
 
-MIT. Veja [LICENSE](LICENSE).
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md). The short version: run the tests of
+the package you touched, and say in the pull request description **which
+operating system** you measured on. This project has one specific debt —
+almost everything was verified in a single place — and a pull request saying
+"tested on Windows 11, this failed like so" is worth more here than a new
+feature.
+
+## Licence
+
+MIT. See [LICENSE](LICENSE).

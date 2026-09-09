@@ -1,83 +1,87 @@
-# Documentação do dovetail
+**English** · [Português](pt-BR/README.md)
 
-Este índice existe porque são vinte e cinco documentos, e um documento que você
-não encontra não está escrito. Cada linha diz **qual pergunta** o arquivo
-responde — e um teste recusa quando algum deles não é citado aqui.
+# dovetail documentation
 
-## Comece aqui
+This index exists because there are twenty-five documents, and a document you
+cannot find is not written. Every line says **which question** the file
+answers — and a test refuses when one of them is not listed here.
 
-| se você quer | leia |
+## Start here
+
+| if you want to | read |
 |---|---|
-| começar a usar em cinco minutos | [quickstart.md](quickstart.md) |
-| entender o que o projeto é, e o que já está provado | [`../README.md`](../README.md) |
-| **escrever telas** contra o framework | [`../ESCREVER_O_APP.md`](../ESCREVER_O_APP.md) |
-| **sair do Tauri** num produto que já existe | [migrar-do-tauri.md](migrar-do-tauri.md) |
-| saber o que cada chave do `dovetail.yaml` faz | [configuracao.md](configuracao.md) |
-| descobrir por que algo quebrou | [problemas.md](problemas.md) |
-| o que o CI roda em cada sistema, e o que ainda não provou | [ci.md](ci.md) |
-| instalar o dovetail fora do monorepo, e as fases até lá | [instalador.md](instalador.md) |
-| o que vem depois das 5 fases, por área (toolkit, CLI, DX) | [roadmap.md](roadmap.md) |
-| o caminho até **produção**: marcos, critérios de aceite e o que está bloqueado fora do código | [roadmap-producao.md](roadmap-producao.md) |
-| rodar a esteira **inteira** sem chave de produção, host nem Developer ID, com substitutos que seguem o mesmo contrato | [release-simulado.md](release-simulado.md) |
+| get going in five minutes | [quickstart.md](quickstart.md) |
+| understand what the project is, and what is already proven | [`../README.md`](../README.md) |
+| **write screens** against the framework | [`../ESCREVER_O_APP.md`](../ESCREVER_O_APP.md) |
+| **leave Tauri** in a product that already exists | [migrar-do-tauri.md](migrar-do-tauri.md) |
+| know what every key of `dovetail.yaml` does | [configuracao.md](configuracao.md) |
+| find out why something broke | [problemas.md](problemas.md) |
+| see what CI runs on each system, and what it has not proven yet | [ci.md](ci.md) |
+| install dovetail outside the monorepo, and the phases to get there | [instalador.md](instalador.md) |
+| what comes after the five phases, by area (toolkit, CLI, DX) | [roadmap.md](roadmap.md) |
+| the path to **production**: milestones, acceptance criteria, and what is blocked outside the code | [roadmap-producao.md](roadmap-producao.md) |
+| run the **whole** pipeline with no production key, host or Developer ID, using stand-ins that honour the same contract | [release-simulado.md](release-simulado.md) |
+| contribute, and what helps most at this point | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) |
 
-## A esteira
+## The pipeline
 
-Empacotar, assinar e publicar. Roda na máquina de release, nunca dentro do app.
+Package, sign and publish. Runs on the release machine, never inside the app.
 
-| pacote | o que responde |
+| package | what it answers |
 |---|---|
-| [`toolkit/dovetail_cli`](../toolkit/dovetail_cli/README.md) | os doze comandos, e o que cada um recusa |
-| [`toolkit/dovetail_bundler`](../toolkit/dovetail_bundler/README.md) | nsis, msi, dmg, deb, rpm — e as armadilhas do Tauri que aqui são erro fatal |
-| [`toolkit/dovetail_signer`](../toolkit/dovetail_signer/README.md) | codesign, notarização, Authenticode, SHA256SUMS |
+| [`dovetail_cli`](../toolkit/dovetail_cli/README.md) | the nineteen commands, and what each one refuses |
+| [`dovetail_bundler`](../toolkit/dovetail_bundler/README.md) | nsis, msi, dmg, deb, rpm — and the Tauri traps that are a fatal error here |
+| [`dovetail_signer`](../toolkit/dovetail_signer/README.md) | codesign, notarisation, Authenticode, SHA256SUMS |
 
-## O runtime
+## The runtime
 
-O que o app carrega. Entra tudo por um barril: `package:dovetail/dovetail.dart`.
+What the app loads. It all comes in through one barrel:
+`package:dovetail/dovetail.dart`.
 
-| pacote | o que responde |
+| package | what it answers |
 |---|---|
-| [`toolkit/dovetail`](../toolkit/dovetail/README.md) | o barril: o que entra, o que fica de fora e por quê |
-| [`toolkit/dovetail_platform_channel`](../toolkit/dovetail_platform_channel/README.md) | janela, bandeja, painel ancorado, instância única, deep link, notificação |
-| [`toolkit/dovetail_shortcut_channel`](../toolkit/dovetail_shortcut_channel/README.md) | atalho global, e por que Wayland é recusado em vez de fingido |
-| [`toolkit/dovetail_updater`](../toolkit/dovetail_updater/README.md) | manifesto, verificação minisign, instalação nos três sistemas |
-| [`toolkit/dovetail_form_validation`](../toolkit/dovetail_form_validation/README.md) | as sete regras de formulário, e por que a falha é tipo selado |
-| [`toolkit/dovetail_process_runner`](../toolkit/dovetail_process_runner/README.md) | rodar processo sem os três impasses que `Process.run` tem |
-| [`toolkit/dovetail_rust_core`](../toolkit/dovetail_rust_core/README.md) | a mecânica Dart↔Rust: runtime tokio, bomba de eventos, sonda |
+| [`dovetail`](../toolkit/dovetail/README.md) | the barrel: what goes in, what stays out, and why |
+| [`dovetail_platform_channel`](../toolkit/dovetail_platform_channel/README.md) | window, tray, anchored panel, single instance, deep link, notification |
+| [`dovetail_shortcut_channel`](../toolkit/dovetail_shortcut_channel/README.md) | global shortcut, and why Wayland is refused instead of faked |
+| [`dovetail_updater`](../toolkit/dovetail_updater/README.md) | manifest, minisign verification, installing on all three systems |
+| [`dovetail_form_validation`](../toolkit/dovetail_form_validation/README.md) | the seven form rules, and why the failure is a sealed type |
+| [`dovetail_process_runner`](../toolkit/dovetail_process_runner/README.md) | running a process without the three deadlocks `Process.run` has |
+| [`dovetail_rust_core`](../toolkit/dovetail_rust_core/README.md) | the Dart↔Rust mechanics: tokio runtime, event pump, probe |
 
-## O produto
+## What is not here
 
-Específico do `example-rust`. Nada aqui é reutilizável, e o caminho do
-arquivo é onde essa regra está escrita.
+The app that consumes the toolkit, and the bridge to its Rust core, live in
+another repository: they are product, not framework. What this repository
+carries is the entire toolkit — which is everything any app needs in order to
+be built, packaged, signed and updated.
 
-O app que consome o toolkit e a ponte com o núcleo Rust dele moram noutro
-repositório, porque são produto e não framework. O que este aqui carrega é o
-toolkit inteiro, e é o que qualquer app precisa para ser construído,
-empacotado, assinado e atualizado.
+Some documents still mention `product/` as the path of the example that
+exercises a mechanism. Those carry a note at the top saying so.
 
-## As decisões, com o porquê
+## The decisions, with the reasoning
 
-`ARCHITECTURE.md` é onde mora o raciocínio que não cabe num README:
+`ARCHITECTURE.md` is where the reasoning that does not fit in a README lives:
 
-- [`dovetail_rust_core`](../toolkit/dovetail_rust_core/ARCHITECTURE.md) — por que uma instância
-  em vez de estado global, e por que não existe `resetForTesting()`.
+- [`dovetail_rust_core`](../toolkit/dovetail_rust_core/ARCHITECTURE.md) — why
+  an instance instead of global state, and why there is no
+  `resetForTesting()`.
 - [`dovetail_platform_channel`](../toolkit/dovetail_platform_channel/ARCHITECTURE.md)
-  — por que o painel é calculado e não medido, e o formato de fio comparado
-  byte a byte.
+  — why the panel is computed rather than measured, and the wire format
+  compared byte for byte.
 
-## O que a documentação promete, e quem cobra
+## What the documentation promises, and who enforces it
 
-Seis coisas aqui são conferidas por teste, porque documento envelhece calado:
+Six things here are checked by a test, because a document ages quietly:
 
-| o que | quem cobra |
+| what | who enforces it |
 |---|---|
-| toda chave do `dovetail.yaml` está em `configuracao.md` | `config_documented_test.dart` |
-| todo comando do CLI está no README dele | `readme_covers_commands_test.dart` |
-| a tabela de testes do README bate com a corrida | `verify test` |
-| todo pacote tem README, CHANGELOG, LICENSE | `package_paperwork_test.dart` |
-| todo documento é citado neste índice, e todo link resolve | `docs_index_test.dart` |
-| uma chamada Dart chega ao Rust e volta | `verify ffi` |
+| every `dovetail.yaml` key is in `configuracao.md` | `config_documented_test.dart` |
+| every CLI command is in its README | `readme_covers_commands_test.dart` |
+| the README's test table matches the actual run | `verify test` |
+| every package has a README, CHANGELOG and LICENSE | `package_paperwork_test.dart` |
+| every document is listed in this index, and every link resolves | `docs_index_test.dart` |
+| a Dart call reaches Rust and comes back | `verify ffi` |
 
-E o resto é prosa, que ninguém consegue cobrar. Se algo aqui divergir do
-código, **o código está certo e o documento está velho** — e vale mais
-corrigir o documento do que contornar.
-- [CONTRIBUTING.md](../CONTRIBUTING.md) — como contribuir, e o que ajuda mais neste momento do projeto
+The rest is prose, which nobody can enforce. If something here diverges from
+the code, **the code is right and the document is old** — and fixing the
+document is worth more than working around it.
