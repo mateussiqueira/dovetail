@@ -118,7 +118,7 @@ Portuguese originals under [`docs/pt-BR/`](docs/pt-BR/README.md).
 - [Configuration](docs/configuracao.md) — every key of `dovetail.yaml`
 - [Troubleshooting](docs/problemas.md) — what breaks, and what the message means
 - [Migrating from Tauri](docs/migrar-do-tauri.md) — what carries over and what does not
-- [Writing the app](ESCREVER_O_APP.md) — the architecture on top of the toolkit
+- [Writing the app](WRITING_THE_APP.md) — the architecture on top of the toolkit
 - [Production roadmap](docs/roadmap-producao.md) — the honest inventory of what is missing
 
 ## Contributing

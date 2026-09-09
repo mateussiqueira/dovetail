@@ -12,7 +12,7 @@ answers — and a test refuses when one of them is not listed here.
 |---|---|
 | get going in five minutes | [quickstart.md](quickstart.md) |
 | understand what the project is, and what is already proven | [`../README.md`](../README.md) |
-| **write screens** against the framework | [`../ESCREVER_O_APP.md`](../ESCREVER_O_APP.md) |
+| **write screens** against the framework | [`../WRITING_THE_APP.md`](../WRITING_THE_APP.md) |
 | **leave Tauri** in a product that already exists | [migrar-do-tauri.md](migrar-do-tauri.md) |
 | know what every key of `dovetail.yaml` does | [configuracao.md](configuracao.md) |
 | find out why something broke | [problemas.md](problemas.md) |

@@ -1,3 +1,5 @@
+**Português** · [English](WRITING_THE_APP.md)
+
 # Escrever o app com o dovetail
 
 O `README.md` deste repositório descreve a **esteira**: como um projeto vira

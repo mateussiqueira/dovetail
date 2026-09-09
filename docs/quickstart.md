@@ -168,7 +168,7 @@ ones the installed copy does not have.
 
 ## 7. After the five minutes
 
-- [ESCREVER_O_APP.md](../ESCREVER_O_APP.md): the boundary between what the
+- [WRITING_THE_APP.md](../WRITING_THE_APP.md): the boundary between what the
   framework decides and what the app decides, the boot order, text, forms,
   shortcuts, updating and publishing.
 - [migrar-do-tauri.md](migrar-do-tauri.md): the `tauri.conf.json` map key by
