@@ -2,7 +2,7 @@ name: dovetail_signer
 description: >-
   Signs and notarises what a build already produced, on Windows, macOS and
   Linux. Runs after the build, never inside it, and never packages anything.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 

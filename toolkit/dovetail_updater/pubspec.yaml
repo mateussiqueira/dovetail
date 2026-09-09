@@ -3,7 +3,7 @@ description: >-
   Reads an update manifest and verifies a downloaded artefact against a
   minisign public key, byte compatible with what is already installed in the
   field.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 

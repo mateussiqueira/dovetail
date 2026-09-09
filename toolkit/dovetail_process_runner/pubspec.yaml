@@ -3,7 +3,7 @@ description: >-
   The seam every build and signing tool needs: run a process, get its exit
   code and its output, and substitute it in a test without touching the
   filesystem.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 

@@ -3,7 +3,7 @@ description: >-
   One dependency for everything a desktop app runs at runtime: the window, the
   tray, the panel, global shortcuts, the single-instance guard, the updater and
   form validation.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 

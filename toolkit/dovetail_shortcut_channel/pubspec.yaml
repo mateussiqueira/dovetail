@@ -1,7 +1,7 @@
 name: dovetail_shortcut_channel
 description: >-
   System-wide keyboard shortcuts for Flutter desktop apps: binds a chord the OS delivers with no window focused, on Windows, macOS and X11 Linux, and refuses out loud elsewhere.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 

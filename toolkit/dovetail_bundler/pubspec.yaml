@@ -1,7 +1,7 @@
 name: dovetail_bundler
 description: >-
   Build orchestrator for Flutter desktop apps with a Rust core: stages what a platform installer needs and drives the tool that produces it, on Windows, macOS and Linux.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 

@@ -3,7 +3,7 @@ description: >-
   One entry point for the dovetail toolkit: report which platform tools are
   usable, bundle an installer, sign what was bundled, and write an update
   manifest.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 

@@ -1,7 +1,7 @@
 name: dovetail_form_validation
 description: >-
   Field validation for forms: seven composable rules, a builder to combine them, and failures that say which rule broke instead of a message the caller has to trust.
-version: 0.1.0
+version: 0.1.1
 repository: https://github.com/mateussiqueira/dovetail
 issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 
