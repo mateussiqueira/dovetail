@@ -1,5 +1,10 @@
 # CI: o portão nos três SOs
 
+> **Contexto para quem chega pelo repositório público.** Este documento cita
+> `product/`, que é o app privado onde o toolkit é exercitado, e não existe
+> neste repositório. O mecanismo descrito é do toolkit e vale para qualquer
+> app; só o caminho do exemplo é de outra árvore.
+
 `.github/workflows/ci.yml` roda o portão fora desta máquina. Este documento
 diz o que cada leg executa e **por que** — e o que continua sem prova até uma
 corrida hospedada voltar verde.
@@ -22,7 +27,9 @@ workflow então:
 - lê os irmãos com um PAT privado, `secrets.SIBLINGS_TOKEN`.
 
 Sem o secret, **cada job recusa no primeiro passo**, nomeando o que falta:
-um PAT que leia `Example Org/example-rust` e `Example Org/example-design-system`.
+um PAT que leia os dois repositórios privados que o monorepo de origem
+consome por path. O repositório público não precisa de nenhum: os dez
+pacotes resolvem entre si por `pubspec_overrides.yaml`.
 Nada aqui assina nem publica — o workflow é um portão, não um `ship`.
 
 ## O que cada leg roda, e por que difere

@@ -4,11 +4,11 @@ O caminho de cinco minutos para quem nunca tocou no monorepo. Tudo aqui sai do
 binário `dovetail` instalado, mais o SDK que ele baixa, sem clonar repositório
 nenhum. Pré-requisito: Flutter com o target desktop do seu sistema.
 
-> **Para quem este documento é.** O dovetail é software proprietário da
-> Example Org — a licença está em cada pacote e não permite uso por terceiros.
-> Este guia é para quem já tem acesso: outra equipe interna, outra máquina sua.
-> Ele não é um convite para o público, e o `<host>` abaixo não existe ainda —
-> ver a seção **Existe de onde baixar** em [roadmap.md](roadmap.md).
+> **Sobre o canal de instalação.** O dovetail é MIT e os pacotes estão no
+> pub.dev, então a rota normal é declarar a dependência e pronto. O que este
+> guia descreve — `install.sh` e `self-install` — é o canal de binário
+> assinado, e o `<host>` dele **ainda não existe**: o mecanismo é testado, o
+> servidor é que falta. Ver **Existe de onde baixar** em [roadmap.md](roadmap.md).
 
 ## 1. Instalar
 

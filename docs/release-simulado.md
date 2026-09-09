@@ -1,5 +1,10 @@
 # Release simulado: a esteira inteira sem as três coisas que ainda não existem
 
+> **Contexto para quem chega pelo repositório público.** Este documento cita
+> `product/`, que é o app privado onde o toolkit é exercitado, e não existe
+> neste repositório. O mecanismo descrito é do toolkit e vale para qualquer
+> app; só o caminho do exemplo é de outra árvore.
+
 Uma release de produção precisa de três coisas que este repositório não tem: a
 chave minisign de produção, um host https e um Developer ID com credenciais de
 notarização. Nenhuma delas é código. O que este documento descreve é como rodar

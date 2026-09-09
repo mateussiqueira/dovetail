@@ -1,5 +1,13 @@
 # Roadmap final — dovetail para produção
 
+> **Contexto para quem chega pelo repositório público.** Este documento nasceu
+> no monorepo onde o toolkit é desenvolvido, e cita caminhos que **não existem
+> aqui** — `product/vpn_desktop` é o app privado que consome o toolkit, e
+> `example-rust` é o repositório de crates que ele usa por path. Nada disso é
+> necessário para usar ou contribuir com os dez pacotes: cada um roda e testa
+> sozinho. O documento fica porque é o inventário honesto do que falta, e é
+> por ele que dá para escolher no que ajudar.
+
 > **Levantado em 2026-09-05 contra `31f5a7d`.** Seis frentes varridas em paralelo,
 > cada uma revisada por um segundo passe adversarial que adicionou 48 tarefas,
 > corrigiu 68 estimativas/critérios e descartou 15 itens como não-bloqueantes.
@@ -106,7 +114,7 @@ Este marco existe porque **todo critério de aceite de todos os outros marcos é
 | `m0-app-clone` | `pubspec_overrides.yaml` entra no `.gitignore` do template (`tool/sdk/templates/app/.gitignore`, hoje 0 ocorrências) e o `pub get` de um clone erra citando `dovetail upgrade` | S | `m0-weave-di` | — |
 | `m0-scripts-portateis` | `grep -rn '/Volumes/BACKUP' tool/` = 0 (hoje 2: `prove_bridge.sh:15,35`); `sed -i ''` some; `tool/ci/build_gate_image.sh` constrói a imagem que hoje exige um `flutter_linux.tar.xz` baixado à mão | M | — | — |
 | `m0-release-portavel` | `tool/release.sh` roda de um clone limpo: `prove_bridge.sh` recebe `--core` e pula com motivo quando o sibling falta | S | `m0-scripts-portateis` | ✔ decidir se o canário da ponte continua sendo portão de release |
-| `m0-licenca` | `LICENSE` na raiz coerente com `README.md:27-34` e `docs/quickstart.md`; hoje `toolkit/dovetail/LICENSE:1-5` diz "proprietary and confidential" enquanto a doc convida a consumir | XS | — | ✔ escolher a licença |
+| ~~`m0-licenca`~~ **FEITO** | MIT na raiz, nos dez pacotes e nos dois `Cargo.toml`, com o copyright de Mateus Siqueira. Era o caso em que a doc convidava a consumir e a licença proibia | XS | — | — |
 | `m0-repo-state` | `git check-ignore -q toolkit/dovetail_form_validation/build` passa (hoje sai 1: `.gitignore:11` é `/build/`, ancorado na raiz — 8,1 MB prestes a entrar na história) | XS | — | — |
 
 ---

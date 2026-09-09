@@ -1,5 +1,10 @@
 # Instalar o dovetail: o SDK fora do monorepo
 
+> **Contexto para quem chega pelo repositório público.** Este documento cita
+> `product/`, que é o app privado onde o toolkit é exercitado, e não existe
+> neste repositório. O mecanismo descrito é do toolkit e vale para qualquer
+> app; só o caminho do exemplo é de outra árvore.
+
 O objetivo: um app desktop, em qualquer máquina, ganha a esteira, o runtime e
 o mecanismo de bridge com um `curl` e um comando — sem clonar o monorepo e sem
 `path: ../../`.
