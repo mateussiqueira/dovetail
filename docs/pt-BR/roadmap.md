@@ -1,3 +1,5 @@
+**Português** · [English](../roadmap.md)
+
 # Roadmap do dovetail
 
 O trabalho se organiza em três áreas: **toolkit/framework** (o runtime e a
@@ -21,15 +23,15 @@ e saem deste arquivo — o que fica aqui é o que veio depois delas.
 
 | task | status | nota |
 |---|---|---|
-| Seção `app` no `doctor` — os overrides do consumidor apontam para um SDK que existe? | ✅ feito | fecha o triângulo host-projeto-SDK | fecha o triângulo host-projeto-SDK |
+| Seção `app` no `doctor` — os overrides do consumidor apontam para um SDK que existe? | ✅ feito | fecha o triângulo host-projeto-SDK |
 | Seção `spm` no `doctor` — o `.xcframework` existe? | ✅ feito | hoje quem esqueceu o `build_xcframework.sh` só descobre no build |
-| Diagnóstico do binário — log estruturado com rotação no catch final | ✅ feito | o AOT hoje morre com stack sem canal de reporte | o AOT hoje morre com stack sem canal de reporte |
+| Diagnóstico do binário — log estruturado com rotação no catch final | ✅ feito | o AOT hoje morre com stack sem canal de reporte |
 | Testes dos wrappers `probe`/`inspect`/`ship` | ✅ feito | apontados pela auditoria de cobertura |
 | Orquestração de release — `tool/release.sh` rode os dois builds e os dois canários na ordem | ✅ feito | cada passo já provou verde individualmente; o script é a ordem certa |
 | Binário Windows | bloqueado | `dart compile exe` não cross-compila para Windows |
 | Binário macOS Intel | bloqueado | sem alvo `x86_64-apple-darwin` neste host |
 | Distribuição pública (notarização) | bloqueado | Developer ID + notarização não existem |
-| CI hospedado | bloqueado | conta não executa Actions + falta `SIBLINGS_TOKEN`; o workflow em si está válido (actionlint) |
+| CI hospedado | bloqueado | a conta não executa Actions. O workflow em si está válido (actionlint), e o repositório público não precisa de token: os dez pacotes resolvem entre si por `pubspec_overrides.yaml` |
 
 ## DX
 

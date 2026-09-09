@@ -1,3 +1,5 @@
+**Português** · [English](../release-simulado.md)
+
 # Release simulado: a esteira inteira sem as três coisas que ainda não existem
 
 > **Contexto para quem chega pelo repositório público.** Este documento cita

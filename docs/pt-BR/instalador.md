@@ -1,3 +1,5 @@
+**Português** · [English](../instalador.md)
+
 # Instalar o dovetail: o SDK fora do monorepo
 
 > **Contexto para quem chega pelo repositório público.** Este documento cita
@@ -23,10 +25,15 @@ curl -fsSL https://<host>/install.sh | sh
   → ln -s ~/.dovetail/bin/dovetail ~/.local/bin/dovetail
 ```
 
+Como os pacotes estão no pub.dev, existe agora uma segunda rota, mais simples
+para a maioria: declarar `dovetail: ^0.1.0` e ativar o `dovetail_cli`. O canal
+assinado descrito aqui é o que entrega um binário AOT autocontido e um SDK
+versionado no disco, que é o que uma máquina de release quer.
+
 O `dovetail init` escreve um `pubspec_overrides.yaml` no app apontando para o
 SDK instalado — o mecanismo nativo do Dart para resolver fora do pubspec, o
 mesmo que o Flutter SDK usa para entregar os packages dele. O app ganha o
-framework com uma linha e um comando, sem pub.dev.
+framework com uma linha e um comando.
 
 ## O que entra no SDK, e o que não
 
@@ -150,5 +157,9 @@ aberto e em ordem está no [roadmap](roadmap.md).
 
 ## Fora de escopo
 
-pub.dev/registry público, distribuir o `product/vpn_desktop`, mudar a divisão
-toolkit/product.
+Distribuir o app de produto, e mudar a divisão toolkit/product.
+
+Publicar no pub.dev **estava** fora de escopo e não está mais: os dez pacotes
+estão publicados, e essa passou a ser a rota comum de um consumidor. O canal
+assinado continua, para a máquina de release que quer binário AOT e SDK
+versionado.
