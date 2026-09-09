@@ -20,10 +20,10 @@ focus, and reports out loud the sessions where no such chord can be granted.
     :script => 'sh "$PODS_TARGET_SRCROOT/../cargokit/build_pod.sh" ../rust dovetail_shortcut_channel',
     :execution_position => :before_compile,
     :input_files => ['${BUILT_PRODUCTS_DIR}/cargokit_phony'],
-    :output_files => ['${BUILT_PRODUCTS_DIR}/libdesktop_shortcut_channel.a'],
+    :output_files => ['${BUILT_PRODUCTS_DIR}/libdovetail_shortcut_channel.a'],
   }
   s.pod_target_xcconfig = {
     'DEFINES_MODULE' => 'YES',
-    'OTHER_LDFLAGS' => '-force_load ${BUILT_PRODUCTS_DIR}/libdesktop_shortcut_channel.a',
+    'OTHER_LDFLAGS' => '-force_load ${BUILT_PRODUCTS_DIR}/libdovetail_shortcut_channel.a',
   }
 end
