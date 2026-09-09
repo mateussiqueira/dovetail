@@ -1,3 +1,5 @@
+**Português** · [English](../configuracao.md)
+
 # `dovetail.yaml`, chave por chave
 
 Um arquivo, na raiz do projeto. `dovetail init` o escreve deduzindo o que
@@ -86,8 +88,8 @@ update:
   manifest: dist/latest.json
   endpoint: https://api.example.com/desktop-version/check/{{target}}
   public-key: |
-    untrusted comment: minisign public key D18395BE8A6B994E
-    RWROmWuKvpWD0RErEh4kcn0sjuu4dQYX5MERE9dNGuImxQXHzNuRYLVP
+    untrusted comment: minisign public key 1234567890ABCDEF
+    RWQhww+7hfwEkazwMrOqcOeYRd+myNTpeJJP4bRWbnbMXV3T8ZSFPajp
   unencrypted: false
 ```
 
