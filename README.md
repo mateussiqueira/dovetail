@@ -16,7 +16,7 @@ and ship it on Windows, macOS and Linux.
 This is open **because it is not finished**, and the list below is the
 invitation.
 
-What is proven on one machine: **1398 testes Dart declarados, 45 pulados** —
+What is proven on one machine: **1402 testes Dart declarados, 45 pulados** —
 the ten packages pass their own tests, the CLI builds, bundles, signs and
 verifies a release end to end against a local host with a private CA, and the
 updater refuses a manifest without a valid signature.
@@ -72,7 +72,7 @@ check existed.
 | `toolkit/dovetail` | 7 Dart | the umbrella re-exports the runtime, and a test proves the surface does not drift |
 | `toolkit/dovetail_cli` | 498 Dart | the pipeline, end to end, against a local host with a private CA |
 | `toolkit/dovetail_bundler` | 292 Dart | every artefact format, read back by its own header |
-| `toolkit/dovetail_updater` | 163 Dart | a manifest without a valid signature is refused |
+| `toolkit/dovetail_updater` | 167 Dart | a manifest without a valid signature is refused |
 | `toolkit/dovetail_platform_channel` | 201 Dart | window, tray, single instance, deep links, appearance |
 | `toolkit/dovetail_signer` | 94 Dart | signing refuses what it cannot prove |
 | `toolkit/dovetail_privileged_helper` | 23 Dart | the state a bool collapses, and the refusal paths |

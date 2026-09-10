@@ -80,7 +80,17 @@ final class WindowsInstaller implements UpdateInstaller {
       return InstallOutcome.installerLaunchedAppMustExit;
     }
 
-    final ProcessOutcome finished = await runner.run(executable, arguments);
+    final ProcessOutcome finished;
+    try {
+      finished = await runner.run(executable, arguments);
+    } finally {
+      // msiexec was AWAITED, so the file has been read by the time we are
+      // here, whichever way it went. The detached branch above deliberately
+      // does not do this: an NSIS installer is still reading its own file
+      // after this process has returned, and deleting it would hand the user
+      // an installer that vanished under it.
+      scratch.deleteSync(recursive: true);
+    }
     if (!installed(finished.exitCode)) {
       throw UpdateFailure(
         'msiexec exited with ${finished.exitCode} and installed nothing.',

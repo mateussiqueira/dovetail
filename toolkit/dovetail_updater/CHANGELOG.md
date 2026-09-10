@@ -1,5 +1,17 @@
 # Changelog
 
+## Não publicado
+
+Os instaladores deixavam o diretório de rascunho para trás. No Windows, o
+caminho do `.msi` — que é aguardado — retornava sem apagar; no Linux, o apagar
+ficava depois do `await`, então um runner que lançava (pkexec ausente, pipe
+quebrado) pulava a limpeza. Cada corrida de testes deixava vinte e poucos
+`dovetail_update*` no temp do sistema; havia 91 nesta máquina.
+
+O caminho do `.exe` (NSIS, lançado e nunca aguardado) **continua** deixando o
+arquivo, de propósito e agora com teste: o instalador ainda o lê depois de este
+processo ter retornado.
+
 ## 0.1.1 — 2026-09-09
 
 Nada no código mudou. A 0.1.0 foi publicada com o README em português e com

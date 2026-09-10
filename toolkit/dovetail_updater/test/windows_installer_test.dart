@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:dovetail_updater/dovetail_updater.dart';
@@ -282,5 +283,63 @@ void main() {
         isNot(anyOf(contains('/quiet'), contains('/passive'))),
       );
     });
+  });
+
+  group('what is left behind in the scratch directory', () {
+    late Directory scratch;
+
+    setUp(() {
+      scratch = Directory.systemTemp.createTempSync('dovetail_test');
+      addTearDown(() {
+        if (scratch.existsSync()) scratch.deleteSync(recursive: true);
+      });
+    });
+
+    test('an awaited msi should leave no file behind', () async {
+      // msiexec was awaited, so the installer has been read. Before this the
+      // MSI path returned without deleting, and every test run left the
+      // package in the host's temp directory — 81 of them were found there.
+      await WindowsInstaller(
+        runner: _Recording(),
+        scratchDirectory: scratch.path,
+      ).install(artifactNamed('client_2.1.0_x64.msi'));
+
+      expect(scratch.existsSync(), false);
+    });
+
+    test('an msi that fails should still clean up', () async {
+      final _Recording runner = _Recording()..exitCode = 1603;
+
+      await expectLater(
+        WindowsInstaller(
+          runner: runner,
+          scratchDirectory: scratch.path,
+        ).install(artifactNamed('client_2.1.0_x64.msi')),
+        throwsA(isA<UpdateFailure>()),
+      );
+
+      expect(scratch.existsSync(), false);
+    });
+
+    test(
+      'a detached exe must keep its file, because the installer is still reading it',
+      () async {
+        // The opposite invariant, pinned so nobody "fixes" the leak here: NSIS
+        // is launched and never awaited, and it reads its own file after this
+        // process has returned. Deleting it would hand the user an installer
+        // that vanished under it.
+        await WindowsInstaller(
+          runner: _Recording(),
+          launcher: _RecordingLauncher(),
+          scratchDirectory: scratch.path,
+        ).install(artifactNamed('client_2.1.0_x64.exe'));
+
+        expect(scratch.existsSync(), true);
+        expect(
+          scratch.listSync().single.path,
+          endsWith('client_2.1.0_x64.exe'),
+        );
+      },
+    );
   });
 }

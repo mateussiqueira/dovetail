@@ -563,6 +563,10 @@
             "the path the host reports a linux host without APPIMAGE should say what is missing": "the AppImage rule only applies on Linux"
           }
         },
+        "test/linux_installer_scratch_test.dart": {
+          "declared": 1,
+          "skips": {}
+        },
         "test/linux_installer_test.dart": {
           "declared": 18,
           "skips": {}
@@ -592,7 +596,7 @@
           "skips": {}
         },
         "test/windows_installer_test.dart": {
-          "declared": 16,
+          "declared": 19,
           "skips": {}
         }
       }

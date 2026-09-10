@@ -98,10 +98,17 @@ final class LinuxInstaller implements UpdateInstaller {
 
     final List<String> command = argumentsFor(format, package.path);
     final bool elevated = alreadyPrivileged();
-    final ProcessOutcome applied = elevated
-        ? await runner.run(command.first, command.sublist(1))
-        : await runner.run(pkexec, command);
-    scratch.deleteSync(recursive: true);
+    final ProcessOutcome applied;
+    try {
+      applied = elevated
+          ? await runner.run(command.first, command.sublist(1))
+          : await runner.run(pkexec, command);
+    } finally {
+      // In a `finally`, not after the await: a runner that throws — pkexec
+      // absent, a broken pipe — used to leave the package sitting in the
+      // system temp directory, on the very host that runs the tests.
+      scratch.deleteSync(recursive: true);
+    }
 
     if (!applied.succeeded) {
       throw UpdateFailure(
