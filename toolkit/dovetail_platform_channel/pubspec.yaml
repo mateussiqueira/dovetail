@@ -35,5 +35,18 @@ dev_dependencies:
 flutter:
   plugin:
     platforms:
+      # Os tres, desde 09/09/2026. Ate entao so o Windows tinha nativo proprio
+      # — o guarda de instancia unica —, e macOS e Linux vinham inteiros de
+      # plugins do pub.dev. A sonda de aparencia nao tinha como vir de la: os
+      # plugins de tema devolvem claro/escuro, porque e o que o Flutter modela,
+      # e o terceiro estado se perdia antes de chegar.
+      #
+      # `ffiPlugin` nos tres, e nao canal de metodo: o ABI e uma funcao C que
+      # devolve um inteiro, e um canal para isso seria serializacao, fila de
+      # mensagens e assincronia para ler um numero.
       windows:
+        ffiPlugin: true
+      macos:
+        ffiPlugin: true
+      linux:
         ffiPlugin: true

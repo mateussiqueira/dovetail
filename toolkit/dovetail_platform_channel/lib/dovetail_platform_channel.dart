@@ -1,3 +1,5 @@
+export 'package:dovetail_platform_channel/src/appearance/system_appearance.dart';
+export 'package:dovetail_platform_channel/src/appearance/system_appearance_probe.dart';
 export 'package:dovetail_platform_channel/src/bundle/bundle_info.dart';
 export 'package:dovetail_platform_channel/src/deep_link/deep_link_inbox.dart';
 export 'package:dovetail_platform_channel/src/deep_link/joined_deep_link_inbox.dart';
