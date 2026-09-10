@@ -23,4 +23,17 @@ abstract interface class WindowSurface {
 
   Stream<WindowFrameState> frameChanges();
   Stream<void> closeRequests();
+
+  /// Cada vez que esta janela volta a ser a janela em foco.
+  ///
+  /// Existe por causa de permissão. O usuário concede ou revoga FORA do app —
+  /// nos Ajustes do sistema — e volta; sem um sinal na volta, o app continua
+  /// dizendo "negado" até ser reiniciado, e a pessoa que acabou de liberar vê
+  /// a tela insistir que não liberou. A janela é de quem sabe que ela voltou,
+  /// então o sinal é daqui.
+  ///
+  /// [frameChanges] também carrega `focused` e não serve para isto: ele
+  /// publica a cada redimensionamento e a cada maximizar, e uma releitura de
+  /// permissão presa nele iria ao sistema durante todo arrasto de borda.
+  Stream<void> focusGains();
 }

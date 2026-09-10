@@ -16,6 +16,7 @@ final class WindowManagerSurface with WindowListener implements WindowSurface {
       StreamController<void>.broadcast();
   final StreamController<WindowFrameState> _frameChanges =
       StreamController<WindowFrameState>.broadcast();
+  final StreamController<void> _focusGains = StreamController<void>.broadcast();
 
   bool _attached = false;
 
@@ -59,6 +60,7 @@ final class WindowManagerSurface with WindowListener implements WindowSurface {
     await detach();
     await _closeRequests.close();
     await _frameChanges.close();
+    await _focusGains.close();
   }
 
   @override
@@ -134,6 +136,9 @@ final class WindowManagerSurface with WindowListener implements WindowSurface {
   Stream<void> closeRequests() => _closeRequests.stream;
 
   @override
+  Stream<void> focusGains() => _focusGains.stream;
+
+  @override
   void onWindowClose() {
     if (!_closeRequests.isClosed) {
       _closeRequests.add(null);
@@ -149,8 +154,18 @@ final class WindowManagerSurface with WindowListener implements WindowSurface {
   @override
   void onWindowUnmaximize() => _publishFrame();
 
+  /// Foco publica nos DOIS canais, e não é engano.
+  ///
+  /// O quadro muda — `focused` é parte dele — e quem guarda geometria continua
+  /// escutando ali. O outro canal é o sinal de retomada, sem o resto do quadro
+  /// junto, para quem só precisa reler o que mudou fora do app.
   @override
-  void onWindowFocus() => _publishFrame();
+  void onWindowFocus() {
+    if (!_focusGains.isClosed) {
+      _focusGains.add(null);
+    }
+    _publishFrame();
+  }
 
   @override
   void onWindowBlur() => _publishFrame();
@@ -159,6 +174,15 @@ final class WindowManagerSurface with WindowListener implements WindowSurface {
     if (_frameChanges.isClosed) {
       return;
     }
-    _frameChanges.add(await frameState());
+    final WindowFrameState state = await frameState();
+    // A segunda verificação não repete a primeira. `frameState` são quatro
+    // idas ao nativo, e um `dispose` no meio delas fecha o controlador com o
+    // quadro já no ar: sem esta linha, fechar a janela enquanto o sistema
+    // manda um evento de foco lança "Cannot add new events after calling
+    // close" numa zona que ninguém observa.
+    if (_frameChanges.isClosed) {
+      return;
+    }
+    _frameChanges.add(state);
   }
 }

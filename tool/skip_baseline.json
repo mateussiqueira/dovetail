@@ -358,11 +358,19 @@
           "skips": {}
         },
         "test/local_notifications_notifier_test.dart": {
-          "declared": 11,
+          "declared": 21,
           "skips": {}
         },
         "test/panel_test.dart": {
           "declared": 25,
+          "skips": {}
+        },
+        "test/permission/notification_permission_test.dart": {
+          "declared": 12,
+          "skips": {}
+        },
+        "test/permission/permission_state_test.dart": {
+          "declared": 7,
           "skips": {}
         },
         "test/platform_capabilities_test.dart": {
@@ -386,7 +394,7 @@
           "skips": {}
         },
         "test/window_manager_surface_test.dart": {
-          "declared": 15,
+          "declared": 17,
           "skips": {}
         },
         "test/window_state_keeper_test.dart": {
@@ -399,6 +407,26 @@
         },
         "test/windows_single_instance_test.dart": {
           "declared": 11,
+          "skips": {}
+        }
+      }
+    },
+    "toolkit/dovetail_privileged_helper": {
+      "suites": {
+        "test/approval_pane_test.dart": {
+          "declared": 4,
+          "skips": {}
+        },
+        "test/darwin/darwin_service_status_test.dart": {
+          "declared": 8,
+          "skips": {}
+        },
+        "test/helper_state_test.dart": {
+          "declared": 4,
+          "skips": {}
+        },
+        "test/registration_guard_test.dart": {
+          "declared": 7,
           "skips": {}
         }
       }

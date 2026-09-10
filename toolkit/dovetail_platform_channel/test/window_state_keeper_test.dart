@@ -106,6 +106,9 @@ final class _Window implements WindowSurface {
   );
   @override
   Stream<void> closeRequests() => const Stream<void>.empty();
+
+  @override
+  Stream<void> focusGains() => const Stream<void>.empty();
 }
 
 void main() {

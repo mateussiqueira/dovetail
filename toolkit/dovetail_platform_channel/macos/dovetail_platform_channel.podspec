@@ -11,10 +11,12 @@ Pod::Spec.new do |s|
   s.version          = '0.1.0'
   s.summary          = 'Desktop platform surface for Flutter, Dovetail toolkit.'
   s.description      = <<-DESC
-The macOS half of the Dovetail desktop platform channel. Today it carries one
-symbol: the system appearance probe, which distinguishes "the system asked for
-light" from "the system did not ask", a difference Flutter's platformBrightness
-cannot express.
+The macOS half of the Dovetail desktop platform channel. Two things live here:
+the system appearance probe, an FFI symbol that distinguishes "the system asked
+for light" from "the system did not ask" — a difference Flutter's
+platformBrightness cannot express — and the notification permission plugin, on
+a method channel because UNUserNotificationCenter answers through a completion
+handler and a C function returning an int cannot wait for a person to click.
                        DESC
   s.homepage         = 'https://github.com/mateussiqueira/dovetail'
   s.license          = { :file => '../LICENSE' }
@@ -22,6 +24,10 @@ cannot express.
   s.source           = { :path => '.' }
   s.source_files     = 'Classes/**/*'
   s.dependency 'FlutterMacOS'
+  # Declarados, e nao deixados para o autolink dos modulos: o
+  # UserNotifications so entrou aqui em 10/09/2026, com a permissao de
+  # notificacao, e um framework que aparece por acidente some por acidente.
+  s.frameworks = 'AppKit', 'UserNotifications'
 
   s.platform = :osx, '10.14'
   s.pod_target_xcconfig = {

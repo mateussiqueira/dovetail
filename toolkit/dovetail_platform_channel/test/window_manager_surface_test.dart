@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 
 import 'package:dovetail_platform_channel/dovetail_platform_channel.dart';
@@ -189,6 +190,45 @@ void main() {
       surface.onWindowClose();
 
       await expectLater(first, completes);
+    });
+
+    test('a focus gain should reach a stream of its own', () async {
+      final Future<void> gained = surface.focusGains().first;
+
+      surface.onWindowFocus();
+
+      await expectLater(
+        gained,
+        completes,
+        reason:
+            'this is the signal that a permission granted outside the app — '
+            'in System Settings — has a chance of being noticed. Without it '
+            'the app keeps saying "denied" until it is restarted',
+      );
+    });
+
+    test('nothing but focus should reach that stream', () async {
+      final List<void> gains = <void>[];
+      final StreamSubscription<void> listening = surface.focusGains().listen(
+        gains.add,
+      );
+      addTearDown(listening.cancel);
+
+      surface
+        ..onWindowResized()
+        ..onWindowMaximize()
+        ..onWindowUnmaximize()
+        ..onWindowBlur();
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        gains,
+        isEmpty,
+        reason:
+            'frameChanges carries focused and publishes on all of these, so a '
+            'permission re-read hung on it would go to the system through '
+            'every window drag',
+      );
     });
 
     test('each frame event should publish the state', () async {

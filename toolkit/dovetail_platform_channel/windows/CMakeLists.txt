@@ -8,6 +8,7 @@ add_library(${PROJECT_NAME} SHARED
   "guard_window.cpp"
   "launch_payload.cpp"
   "dovetail_system_appearance.cpp"
+  "dovetail_notification_permission.cpp"
 )
 
 apply_standard_settings(${PROJECT_NAME})

@@ -115,7 +115,7 @@ Instância única é ✓ no macOS e no Linux, onde um socket de domínio Unix re
 
 | Superfície | Contrato |
 |---|---|
-| `WindowSurface` | show/hide/focus/minimize/restore/maximize, arraste da barra própria, prevent close, skip taskbar, always-on-top, `setBounds`/`bounds`, `frameChanges()`, `closeRequests()` |
+| `WindowSurface` | show/hide/focus/minimize/restore/maximize, arraste da barra própria, prevent close, skip taskbar, always-on-top, `setBounds`/`bounds`, `frameChanges()`, `closeRequests()`, `focusGains()` |
 | `TraySurface` | ícone, menu como dado selado, tooltip com queda no Linux, `commands()`, `gestures()` |
 | `PanelSurface` | abre a janela principal ancorada na bandeja, `dismissals()`; no Linux reporta ausência |
 | `DisplayProbe` | ponto do cursor, área útil do monitor sob um ponto, todas as áreas úteis |
@@ -123,7 +123,8 @@ Instância única é ✓ no macOS e no Linux, onde um socket de domínio Unix re
 | `SingleInstanceVerdict` · `ForwardedLaunch` | `primary`/`secondary`, e os argumentos que a segunda instância encaminhou |
 | `LaunchAtLogin` | `isEnabled` · `enable` · `disable` |
 | `DeepLinkInbox` | `initialLink()` · `links()` |
-| `SystemNotifier` | `show` · `cancel` · `cancelAll` |
+| `SystemNotifier` | `show` · `cancel` · `cancelAll` · `permission` |
+| `NotificationPermission` · `PermissionState` | `state()` · `request()` · `openSettings()`, e os cinco estados em que uma permissão de notificação pode estar |
 | `ExternalOpener` | `openUrl` · `canOpenUrl` |
 | `BundleInfo` | nome, versão, build, identificador |
 
@@ -138,6 +139,16 @@ a janela assentar, porque arrastar emite um evento por pixel e gravar em cada
 um transforma um movimento de janela em centenas de escritas em disco.
 
 O menu é dado, não callback: `TrayCommand`, `TraySeparator` e `TraySubmenu` numa hierarquia selada. O id volta por `commands()` e o app decide o que fazer — igual ao que o Tauri fazia emitindo evento em vez de chamar função.
+
+Permissão não é capacidade. `PlatformCapabilities.supports` responde uma
+pergunta que não muda; `NotificationPermission` responde uma que muda com o app
+aberto, por uma decisão tomada fora dele. Por isso `PermissionState` tem cinco
+valores em vez de um booleano: em `notDetermined` ainda dá para pedir, em
+`denied` nunca mais — o sistema não mostra o diálogo duas vezes, e a única
+saída é `openSettings()` — e `restricted` não é escolha do usuário. Nada aqui
+pede sozinho: a inicialização deliberadamente não pede, para o diálogo chegar
+num momento que o app consiga explicar. Quando a pessoa concede nos Ajustes e
+volta, `focusGains()` é o sinal de reler o estado.
 
 ## O que não entra aqui
 

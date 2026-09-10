@@ -136,7 +136,7 @@ false on purpose, with a test, so nobody confuses "written" with "works".
 
 | Surface | Contract |
 |---|---|
-| `WindowSurface` | show/hide/focus/minimize/restore/maximize, dragging by a custom bar, prevent close, skip taskbar, always-on-top, `setBounds`/`bounds`, `frameChanges()`, `closeRequests()` |
+| `WindowSurface` | show/hide/focus/minimize/restore/maximize, dragging by a custom bar, prevent close, skip taskbar, always-on-top, `setBounds`/`bounds`, `frameChanges()`, `closeRequests()`, `focusGains()` |
 | `TraySurface` | icon, menu as sealed data, tooltip with the Linux fallback, `commands()`, `gestures()` |
 | `PanelSurface` | opens the main window anchored to the tray, `dismissals()`; on Linux it reports absence |
 | `DisplayProbe` | cursor point, work area of the display under a point, all work areas |
@@ -144,7 +144,8 @@ false on purpose, with a test, so nobody confuses "written" with "works".
 | `SingleInstanceVerdict` · `ForwardedLaunch` | `primary`/`secondary`, and the arguments the second instance forwarded |
 | `LaunchAtLogin` | `isEnabled` · `enable` · `disable` |
 | `DeepLinkInbox` | `initialLink()` · `links()` |
-| `SystemNotifier` | `show` · `cancel` · `cancelAll` |
+| `SystemNotifier` | `show` · `cancel` · `cancelAll` · `permission` |
+| `NotificationPermission` · `PermissionState` | `state()` · `request()` · `openSettings()`, and the five states a notification permission can be in |
 | `ExternalOpener` | `openUrl` · `canOpenUrl` |
 | `BundleInfo` | name, version, build, identifier |
 
@@ -163,6 +164,17 @@ The menu is data, not a callback: `TrayCommand`, `TraySeparator` and
 `TraySubmenu` in a sealed hierarchy. The id comes back through `commands()` and
 the app decides what to do — the same as what Tauri did by emitting an event
 instead of calling a function.
+
+Permission is not capability. `PlatformCapabilities.supports` answers a
+question that never changes; `NotificationPermission` answers one that changes
+while the app is open, because of a decision taken outside it. That is why
+`PermissionState` has five values instead of a boolean: `notDetermined` may
+still ask, `denied` may never ask again — the system does not show the dialog
+twice, so the only way back is `openSettings()` — and `restricted` is not the
+user's choice at all. Nothing here asks on its own: initialisation deliberately
+does not, so the dialog arrives at a moment the app can explain. When the
+person grants it in System Settings and comes back, `focusGains()` is the
+signal to read the state again.
 
 ## What does not come in here
 

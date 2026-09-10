@@ -46,6 +46,7 @@ const List<(String, String)> _packages = <(String, String)>[
   ('toolkit/dovetail_form_validation', 'dart'),
   ('toolkit/dovetail_process_runner', 'dart'),
   ('toolkit/dovetail_platform_channel', 'flutter'),
+  ('toolkit/dovetail_privileged_helper', 'flutter'),
   ('toolkit/dovetail_shortcut_channel', 'flutter'),
   ('toolkit/dovetail', 'flutter'),
   ('toolkit/dovetail_rust_core', 'flutter'),

@@ -44,9 +44,18 @@ flutter:
       # `ffiPlugin` nos tres, e nao canal de metodo: o ABI e uma funcao C que
       # devolve um inteiro, e um canal para isso seria serializacao, fila de
       # mensagens e assincronia para ler um numero.
+      #
+      # O macOS declara os DOIS. A regra de cima continua valendo para a
+      # aparencia e para a permissao do Windows — inteiro, sincrono, FFI —, e
+      # cai para a autorizacao de notificacao do macOS:
+      # `UNUserNotificationCenter.requestAuthorization` recebe um bloco de
+      # conclusao e responde quando a pessoa clicar no dialogo, que pode ser
+      # nunca. Nao ha funcao C que expresse isso sem travar a thread do Dart
+      # ate alguem decidir.
       windows:
         ffiPlugin: true
       macos:
         ffiPlugin: true
+        pluginClass: DovetailPlatformChannelPlugin
       linux:
         ffiPlugin: true

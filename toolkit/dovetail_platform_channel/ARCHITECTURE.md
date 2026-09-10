@@ -59,6 +59,67 @@ domínio Unix resolve, e o `dart:io` os suporta nessas duas. No Windows a receit
 máquina aqui é Windows, então a capacidade responde `false`. Isso é declarado com
 teste, para ninguém confundir *escrito* com *funciona*.
 
+## Permissão não é capacidade, e juntar as duas custa caro
+
+`PlatformCapability` responde uma pergunta que não muda: esta plataforma sabe
+notificar? A resposta vale para a vida inteira do processo, sai de
+`defaultTargetPlatform` e não pergunta nada ao sistema.
+
+Permissão é a pergunta oposta. Muda enquanto o app está aberto, por uma decisão
+tomada **fora** dele, e some depois de ter sido dada. O pacote não tinha esse
+conceito, e a falta dele produziu dois defeitos que estavam no ar:
+
+1. `DarwinInitializationSettings` liga os três pedidos de permissão sozinho, e
+   nenhum código daqui os desligava. O diálogo do macOS aparecia como efeito
+   colateral do boot, antes de a pessoa ter qualquer ideia do que o app quer
+   notificar. Um "não" ali é definitivo: o sistema não reexibe o diálogo.
+2. `initialize()` devolve `Future<bool?>`, que no macOS **é o veredito da
+   concessão**, e a resposta era descartada. `isAvailable` dizia `true` depois
+   de a pessoa apertar "Não permitir", e `show()` sumia com o aviso em silêncio.
+
+`PermissionState` tem quatro estados e mais um, e nenhum é decorativo:
+
+| estado | quem produz | o que a UI faz |
+|---|---|---|
+| `notDetermined` | macOS antes do diálogo | pode pedir; `request()` funciona |
+| `granted` | os três | nada |
+| `denied` | macOS depois do "não"; Windows com o app desligado nos Ajustes | só `openSettings()`; pedir de novo não faz nada |
+| `restricted` | Windows sob `NoToastApplicationNotification` | nem os Ajustes resolvem; é política |
+| `unsupported` | Linux, e todo build sem o nativo | entrega, e não oferece botão nenhum |
+
+O booleano juntaria `notDetermined` e `denied`, que pedem jornadas opostas: no
+primeiro o diálogo ainda abre, no segundo ele nunca mais abre. Uma tela feita
+sobre "pode ou não pode" manda a pessoa apertar um botão que deixou de fazer
+efeito, e ninguém descobre por quê.
+
+Não existe `PlatformCapability.notificationPermission`, e a ausência é
+deliberada: seriam duas fontes para a mesma pergunta, e uma hora elas
+discordam — a lista dizendo "esta plataforma pede permissão" enquanto o nativo
+não carregou e `state()` já respondeu `unsupported`.
+
+## O canal de método que quebra a regra do FFI
+
+O nativo deste pacote é `ffiPlugin`: função C, inteiro de volta. A autorização
+de notificação do macOS não cabe nessa forma —
+`UNUserNotificationCenter.requestAuthorization` recebe um bloco de conclusão e
+responde quando a pessoa clicar, que pode ser nunca. O pubspec declara
+`pluginClass` **e** `ffiPlugin: true` para o macOS por isso; a aparência
+continua atravessando por FFI, e só a permissão usa canal.
+
+O Windows fica no FFI porque lá não há diálogo nenhum: a permissão é uma chave
+de registro, e ler uma chave é síncrono.
+
+## A permissão volta de fora, e a janela é quem percebe
+
+O caso que todo mundo esquece: a pessoa concede nos Ajustes do sistema, volta
+para o app, e o app continua dizendo "negado" até ser reiniciado. Não há
+notificação de mudança para escutar — o que existe é o retorno do foco.
+
+`WindowSurface.focusGains()` é esse sinal, e é uma stream separada de
+`frameChanges()` de propósito: o quadro publica a cada redimensionamento e a
+cada maximizar, e uma releitura de permissão presa nele iria ao sistema durante
+todo arrasto de borda.
+
 ## A geometria do painel, e o ramo morto que ela tinha
 
 `PanelGeometry` escolhe o lado a partir de **qual lado tem espaço**, não de qual
@@ -138,6 +199,14 @@ Tudo abaixo é lido de documentação, não medido:
 - `XGrabKey`, `HKLM`, `WM_COPYDATA`, mutex nomeado.
 - O `StatusNotifierItem` real de qualquer ambiente Linux.
 - O item de login aparecendo com o nome certo nas Preferências do Sistema.
+- As duas chaves de registro da permissão de notificação:
+  `Notifications\Settings\<AppUserModelId>\Enabled` e a política
+  `NoToastApplicationNotification`. O `.cpp` compila em `mingw` daqui — o
+  `tool/build_guard_probe.sh` é o molde —, e compilar não é ler o registro de
+  ninguém.
+- O diálogo do macOS aparecendo, e o painel `x-apple.systempreferences:` abrindo
+  na página certa. Isso pede um `.app` empacotado e assinado; o que está provado
+  aqui é que o canal chama `state` e `request` e traduz os cinco códigos.
 
 O que está provado aqui é contrato e cálculo: a geometria do painel por
 aritmética, o formato de fio por comparação byte a byte, e o mapeamento de cada

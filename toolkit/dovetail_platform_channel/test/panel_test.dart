@@ -405,6 +405,9 @@ final class _RecordingWindow implements WindowSurface {
   Stream<void> closeRequests() => const Stream<void>.empty();
 
   @override
+  Stream<void> focusGains() => const Stream<void>.empty();
+
+  @override
   Future<bool> isMaximized() async => false;
 
   @override

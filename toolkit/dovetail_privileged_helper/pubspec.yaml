@@ -1,0 +1,45 @@
+name: dovetail_privileged_helper
+description: >-
+  Installs and reports the privileged component a sandboxed Flutter desktop app
+  cannot be: a launch daemon on macOS, a service on Windows, a systemd unit on
+  Linux. Answers with a state, never a bool.
+version: 0.1.0
+repository: https://github.com/mateussiqueira/dovetail
+issue_tracker: https://github.com/mateussiqueira/dovetail/issues
+
+environment:
+  sdk: ^3.12.0
+  flutter: ">=3.24.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  dovetail_process_runner: ^0.1.0
+  ffi: ^2.1.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  plugin:
+    platforms:
+      # Two platforms, and two shapes, because the two questions are not the
+      # same question.
+      #
+      # macOS is a method channel: `SMAppService` is Objective-C with an
+      # `NSError` out-parameter and an availability guard, and none of that
+      # crosses a C ABI without being flattened first.
+      #
+      # Windows is `ffiPlugin`, like the single-instance guard next door: the
+      # service control manager answers in integers, and a channel for three
+      # integers would be serialisation, a message queue and asynchrony to
+      # read three integers.
+      #
+      # Linux is absent on purpose. Its whole native side would be spawning
+      # `systemctl`, which Dart already does — see ARCHITECTURE.md.
+      macos:
+        pluginClass: DovetailPrivilegedHelperPlugin
+      windows:
+        ffiPlugin: true

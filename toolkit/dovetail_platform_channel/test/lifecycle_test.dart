@@ -75,6 +75,9 @@ final class _Window implements WindowSurface {
   Stream<void> closeRequests() => const Stream<void>.empty();
 
   @override
+  Stream<void> focusGains() => const Stream<void>.empty();
+
+  @override
   Future<WindowFrameState> frameState() async => const WindowFrameState(
     size: Size(360, 480),
     maximized: false,

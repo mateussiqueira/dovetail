@@ -16,7 +16,7 @@ and ship it on Windows, macOS and Linux.
 This is open **because it is not finished**, and the list below is the
 invitation.
 
-What is proven on one machine: **1344 testes Dart declarados, 45 pulados** —
+What is proven on one machine: **1398 testes Dart declarados, 45 pulados** —
 the ten packages pass their own tests, the CLI builds, bundles, signs and
 verifies a release end to end against a local host with a private CA, and the
 updater refuses a manifest without a valid signature.
@@ -55,6 +55,7 @@ missing information. Open an issue with your operating system and the output.
 | [`dovetail_signer`](https://pub.dev/packages/dovetail_signer) | signs and notarises, and refuses when it cannot prove it |
 | [`dovetail_updater`](https://pub.dev/packages/dovetail_updater) | verifies a minisign-signed manifest and updates |
 | [`dovetail_platform_channel`](https://pub.dev/packages/dovetail_platform_channel) | single instance and window integration |
+| [`dovetail_privileged_helper`](https://pub.dev/packages/dovetail_privileged_helper) | the root daemon, service or unit a sandboxed app cannot be |
 | [`dovetail_shortcut_channel`](https://pub.dev/packages/dovetail_shortcut_channel) | global shortcut, with or without window focus |
 | [`dovetail_process_runner`](https://pub.dev/packages/dovetail_process_runner) | external process with a timeout and a typed outcome |
 | [`dovetail_form_validation`](https://pub.dev/packages/dovetail_form_validation) | form validation that does not depend on a widget |
@@ -72,8 +73,9 @@ check existed.
 | `toolkit/dovetail_cli` | 498 Dart | the pipeline, end to end, against a local host with a private CA |
 | `toolkit/dovetail_bundler` | 292 Dart | every artefact format, read back by its own header |
 | `toolkit/dovetail_updater` | 163 Dart | a manifest without a valid signature is refused |
-| `toolkit/dovetail_platform_channel` | 170 Dart | window, tray, single instance, deep links, appearance |
+| `toolkit/dovetail_platform_channel` | 201 Dart | window, tray, single instance, deep links, appearance |
 | `toolkit/dovetail_signer` | 94 Dart | signing refuses what it cannot prove |
+| `toolkit/dovetail_privileged_helper` | 23 Dart | the state a bool collapses, and the refusal paths |
 | `toolkit/dovetail_shortcut_channel` | 55 Dart | the global shortcut, with and without window focus |
 | `toolkit/dovetail_form_validation` | 29 Dart | validation with no widget in sight |
 | `toolkit/dovetail_process_runner` | 23 Dart | timeout and typed outcome |
