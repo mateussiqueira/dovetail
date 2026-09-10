@@ -26,9 +26,18 @@ const String _runFile = 'dist/verify-run.json';
 
 /// Every package, and the runner that owns it.
 ///
-/// `product/` is here as well as `toolkit/`. The toolkit is the part meant to
-/// be reused, but the app is the only thing that proves the toolkit joins up,
-/// and a gate that stops at the library lets the joint rot between commits.
+/// Ten packages, all under `toolkit/`, all public. Until 2026-09-09 there
+/// were twelve: `product/desktop_core_bridge` and `product/vpn_desktop` sat
+/// here too, on the argument that the app is the only thing that proves the
+/// toolkit joins up. The app left for `example-rust`, where it consumes
+/// `dovetail` and `dovetail_rust_core` from pub.dev — so the joint is still
+/// proven, just on the other side of the boundary, by a consumer that
+/// resolves the way every other consumer does.
+///
+/// What this list no longer contains is a package that cannot resolve from a
+/// clean clone. That is the property to keep: every entry here is fetchable
+/// by anyone who clones this repository, and no target has to be told to
+/// stand down because a private sibling is missing.
 const List<(String, String)> _packages = <(String, String)>[
   ('toolkit/dovetail_bundler', 'dart'),
   ('toolkit/dovetail_signer', 'dart'),
@@ -40,37 +49,21 @@ const List<(String, String)> _packages = <(String, String)>[
   ('toolkit/dovetail_shortcut_channel', 'flutter'),
   ('toolkit/dovetail', 'flutter'),
   ('toolkit/dovetail_rust_core', 'flutter'),
-  ('product/desktop_core_bridge', 'flutter'),
-  ('product/vpn_desktop', 'flutter'),
 ];
-
-/// O alvo que nao rodou, e o motivo, com o mesmo cabecalho que ele teria.
-///
-/// Devolve 0 porque nao rodar nao e falhar — mas imprime a linha, que e a
-/// diferenca entre "pulou e disse" e "saiu verde". Um resumo em que `frb ok`
-/// aparece sem o codegen ter sido consultado e um resumo que mente.
-int _skippedBridge(String target) {
-  stdout.writeln('── $target ──');
-  stdout.writeln(
-    '  skipped  pede product/desktop_core_bridge, que resolve as crates no '
-    'irmao privado (--only)',
-  );
-  return 0;
-}
 
 /// Os pacotes que este alvo deve tocar.
 ///
-/// `--only` nao e conveniencia: e a unica forma de este repositorio ser
-/// verificavel por quem nao tem os dois irmaos privados. `product/vpn_desktop`
-/// resolve o design system em `../../../example-design-system` e
-/// `product/desktop_core_bridge` puxa as crates de `../../../example-rust`,
-/// entao qualquer alvo que os inclua morre no `pub get` de um clone limpo.
+/// `--only` era a unica forma de este repositorio ser verificavel por quem
+/// nao tem os dois irmaos privados: `product/vpn_desktop` resolvia o design
+/// system em `../../../example-design-system` e `product/desktop_core_bridge` puxava
+/// as crates de `../../../example-rust`, entao qualquer alvo que os
+/// incluisse morria no `pub get` de um clone limpo. Dai vinham `_skippedBridge`
+/// e o desvio de `_pluginCoverage`: andaimes para um alvo saber recusar.
 ///
-/// Antes disto, `fast` — o alvo que o `pre-commit` roda — ignorava `--only` e
-/// analisava os doze, e `cross --only toolkit` chamava `_pluginCoverage` de
-/// qualquer jeito: os dois comandos que o CI ja invocava achando que eram
-/// toolkit-only nao eram, e o primeiro `git commit` de um segundo engenheiro
-/// falhava.
+/// Com o produto fora, isso acabou — os dez pacotes resolvem de um clone
+/// limpo, e `--only` volta a ser o que o nome diz: iterar num pacote so, a
+/// um segundo em vez de quarenta e seis. Nao ha mais alvo que precise pular
+/// por nao alcancar um irmao, e nenhum andaime desses sobrou aqui.
 List<(String, String)> _selected(String? only) => <(String, String)>[
   for (final (String, String) each in _packages)
     if (only == null || each.$1.contains(only)) each,
@@ -149,10 +142,8 @@ targets   doctor    the host: tools present, hooks installed
           bless     make the last run the baseline (refuses partial or red)
           cross     typecheck the Windows/Linux natives from this host
           rust      cargo test + clippy on the crates
-          frb       the bridge codegen is current
-          ffi       a Dart call reaches Rust and comes back (macOS)
           release   the whole macOS pipeline against a local host, signed and
-                    verified end to end (macOS, needs the product built)
+                    verified end to end (macOS, needs DOVETAIL_PRODUCT)
           readme    the README table agrees with the baseline
           install   point core.hooksPath at tool/githooks
           all       every target above, exit code decided at the end
@@ -162,6 +153,22 @@ targets   doctor    the host: tools present, hooks installed
             dart tool/verify.dart test --only dovetail_form_validation     ~1s
           against the whole thing at ~46s. A --only run is visibly partial —
           the readme target lists what did not run, and bless refuses it.
+
+This repository no longer contains an app. Two targets and a handful of
+suites prove things that need one, and they take it as an input rather than
+finding it in the tree. Unset, each skips and says so.
+
+DOVETAIL_PRODUCT=<dir>      a product root: pubspec.yaml, dovetail.yaml, and
+                            a built .app under build/macos. `release` signs
+                            and serves it; a dovetail_cli suite checks the
+                            app reads every define the build embeds.
+DOVETAIL_SAMPLE_APP=<dir>   any built .app, for the suites that must read a
+                            real bundle instead of fabricated bytes: Mach-O
+                            against lipo, codesign, the deployment-target
+                            floor Xcode substitutes.
+
+Both are `example-app` on this machine, one as a directory and the
+other as the bundle inside its build/.
 
 DOVETAIL_LANES=<n>       dart packages tested at once (default 3)
 DOVETAIL_SUITE_JOBS=<n>  suites per package at once   (default 4)
@@ -194,10 +201,6 @@ Future<int> _run(List<String> arguments) async {
       return _cross(only: _only(arguments));
     case 'rust':
       return _rustTests(only: _only(arguments));
-    case 'frb':
-      return _bridgeIsGenerated();
-    case 'ffi':
-      return _ffiCrosses();
     case 'release':
       return _releaseProof(only: _only(arguments));
     case 'readme':
@@ -216,16 +219,12 @@ Future<int> _run(List<String> arguments) async {
 // ---------------------------------------------------------------- all
 
 Future<int> _all({String? only}) async {
-  // `frb` e `ffi` leem `product/desktop_core_bridge` — o codegen num, o app
-  // de exemplo no outro —, e esse pacote puxa as crates do irmao privado.
-  // Sob `--only toolkit` eles nao tem o que ler, e a escolha aqui e dizer
-  // isso em vez de devolver 0: `_ffiCrosses` ja tem o habito de imprimir
-  // "skipped" e retornar verde fora do macOS, e verde onde nao se provou nada
-  // e exatamente o que este arquivo existe para impedir.
-  final bool bridge = _selected(
-    only,
-  ).any(((String, String) each) => each.$1 == 'product/desktop_core_bridge');
-
+  // Havia dois alvos a mais aqui — `frb` e `ffi` —, e um booleano decidindo
+  // se eles tinham o que ler. Os dois provavam `product/desktop_core_bridge`:
+  // que a ponte gerada batia com o Rust que a gera, e que uma chamada Dart
+  // atravessava ate o Rust e voltava. Sairam com o produto, para
+  // `example-rust`, e o booleano com eles.
+  //
   // Everything runs and everything reports, then the exit code is decided at
   // the end. Stopping at the first failure is right for a pipeline that runs
   // on every push; it is wrong for the only check on the machine, where a
@@ -234,8 +233,6 @@ Future<int> _all({String? only}) async {
   final int fastCode = await _fast(only: only);
   final int crossCode = _cross(only: only);
   final int rustCode = _rustTests(only: only);
-  final int frbCode = bridge ? _bridgeIsGenerated() : _skippedBridge('frb');
-  final int ffiCode = bridge ? _ffiCrosses() : _skippedBridge('ffi');
   final int releaseCode = _releaseProof(only: only);
   final int readmeCode = _readme();
   final _Run run = await _test(only: only);
@@ -251,8 +248,6 @@ Future<int> _all({String? only}) async {
       fastCode == 0 &&
       crossCode == 0 &&
       rustCode == 0 &&
-      frbCode == 0 &&
-      ffiCode == 0 &&
       releaseCode == 0 &&
       readmeCode == 0 &&
       !run.failed &&
@@ -265,8 +260,6 @@ Future<int> _all({String? only}) async {
       'fast ${fastCode == 0 ? 'ok' : 'failed'} · '
       'cross ${crossCode == 0 ? 'ok' : 'failed'} · '
       'rust ${rustCode == 0 ? 'ok' : 'failed'} · '
-      'frb ${frbCode == 0 ? 'ok' : 'failed'} · '
-      'ffi ${ffiCode == 0 ? 'ok' : 'failed'} · '
       'release ${releaseCode == 0 ? 'ok' : 'failed'} · '
       'readme ${readmeCode == 0 ? 'ok' : 'failed'} · '
       'test ${run.failed ? 'failed' : 'ok'} · '
@@ -282,6 +275,27 @@ Future<int> _all({String? only}) async {
 
 // ---------------------------------------------------------------- doctor
 
+/// A versao pinada da runtime do flutter_rust_bridge.
+///
+/// Lida do `Cargo.toml` em vez de escrita aqui: dois lugares para o mesmo
+/// numero e um lugar para eles discordarem. Lia-se de
+/// `product/desktop_core_bridge/rust/Cargo.toml`, que saiu da arvore; o pin
+/// que sobrou e o do template — `=2.13.0` nos dois, quando isto foi medido —
+/// e ele e o que importa agora, porque e o que viaja para quem roda
+/// `dovetail bridge init`.
+String get _frbPinned {
+  final File cargo = File(
+    '$repoRoot/tool/sdk/templates/bridge/rust/Cargo.toml',
+  );
+  if (!cargo.existsSync()) {
+    return '';
+  }
+  final RegExpMatch? pinned = RegExp(
+    r'flutter_rust_bridge\s*=\s*"=([0-9.]+)"',
+  ).firstMatch(cargo.readAsStringSync());
+  return pinned?.group(1) ?? '';
+}
+
 int _doctor() {
   stdout.writeln('── doctor ──');
   int missing = 0;
@@ -293,14 +307,23 @@ int _doctor() {
       missing++;
     }
   }
-  // Nao esta em `_required` porque o portao inteiro roda sem ele — mas mexer
-  // na ponte nao. Quem clona e edita `rust/src/api/` sem esta ferramenta
-  // escreve um metodo que o Dart nunca ve, e nada avisa.
+  // Nao esta em `_required` porque nada aqui o invoca mais. Enquanto o
+  // produto morava nesta arvore, o alvo `frb` rodava o codegen a cada
+  // corrida; agora o unico caminho que o chama e `tool/ci/prove_bridge.sh`,
+  // o canario que `tool/release.sh` roda antes de publicar — e ele gera uma
+  // ponte a partir de `tool/sdk/templates/bridge`, que e de onde sai o pin
+  // lido aqui.
+  //
+  // A advertencia continua porque a armadilha continua: o CLI errado gera
+  // codigo que quebra em TEMPO DE EXECUCAO, no app de quem baixou, com uma
+  // mensagem sobre hash de conteudo que nao nomeia causa nenhuma. So que
+  // agora ela quebra o app do consumidor a partir do template daqui, e nao
+  // o app que morava ao lado.
   if (_which('flutter_rust_bridge_codegen') == null) {
     stdout.writeln(
-      '  absent   flutter_rust_bridge_codegen — sem ele o Dart da ponte nao '
-      'se regenera. cargo install flutter_rust_bridge_codegen '
-      '--version $_frbPinned',
+      '  absent   flutter_rust_bridge_codegen — sem ele '
+      'tool/ci/prove_bridge.sh nao roda. cargo install '
+      'flutter_rust_bridge_codegen --version $_frbPinned',
     );
   }
 
@@ -317,16 +340,61 @@ int _doctor() {
 
   // Detected, never written. core.hooksPath is shared by every worktree, so a
   // command that quietly sets it changes how another session commits.
-  final String configured = _git(<String>['config', '--get', 'core.hooksPath']);
-  final String wanted = '$repoRoot/tool/githooks';
-  if (configured.trim() != wanted) {
+  //
+  // Compared by CONTENT, not by path. `core.hooksPath` is one absolute path
+  // shared by every worktree, and it can only name one of them; comparing it
+  // against `$repoRoot/tool/githooks` therefore reported "not installed" in
+  // every worktree except the one `install` happened to run in — while the
+  // hooks were installed and running there all the same. And the advice was a
+  // dead end: `install` refuses when the config is already set, telling you to
+  // change it by hand, so `doctor` sent you to a command that would say no.
+  //
+  // What matters is whether the configured directory holds THIS repository's
+  // hooks, and any worktree's copy answers that: they are tracked files, so
+  // the bytes are the same wherever they are checked out.
+  final String configured = _git(<String>[
+    'config',
+    '--get',
+    'core.hooksPath',
+  ]).trim();
+  if (!_hooksAreOurs(configured)) {
     stdout.writeln(
-      '  hooks    not installed. Run: dart tool/verify.dart install',
+      configured.isEmpty
+          ? '  hooks    not installed. Run: dart tool/verify.dart install'
+          : '  hooks    core.hooksPath is "$configured", which is not this '
+                'repository\'s tool/githooks',
     );
   }
 
   stdout.writeln(missing == 0 ? '  ok' : '  $missing required tool missing');
   return missing == 0 ? 0 : 1;
+}
+
+/// O `core.hooksPath` configurado aponta para os hooks DESTE repositorio?
+///
+/// Nao basta comparar com o caminho deste worktree: a config e uma so, e ela
+/// so pode nomear um deles. O que se pergunta e se o diretorio configurado tem
+/// os mesmos hooks que a arvore tem — e como sao arquivos rastreados, os bytes
+/// batem em qualquer checkout.
+bool _hooksAreOurs(String configured) {
+  if (configured.isEmpty) {
+    return false;
+  }
+  final Directory ours = Directory('$repoRoot/tool/githooks');
+  if (!ours.existsSync()) {
+    return false;
+  }
+  for (final FileSystemEntity entity in ours.listSync()) {
+    if (entity is! File) {
+      continue;
+    }
+    final File there = File('$configured/${entity.uri.pathSegments.last}');
+    if (!there.existsSync() ||
+        there.readAsStringSync() != entity.readAsStringSync()) {
+      return false;
+    }
+  }
+  return true;
 }
 
 int _install() {
@@ -339,6 +407,15 @@ int _install() {
 
   if (configured == wanted) {
     stdout.writeln('hooks already point at $wanted');
+    return 0;
+  }
+  // Instalado a partir de OUTRO worktree: os hooks valem aqui do mesmo jeito,
+  // porque o caminho e absoluto e a config e compartilhada. Dizer isso e nao
+  // recusar como se fosse um caminho estranho.
+  if (_hooksAreOurs(configured)) {
+    stdout.writeln(
+      'hooks already installed, from another worktree: $configured',
+    );
     return 0;
   }
   if (configured.isNotEmpty) {
@@ -426,8 +503,18 @@ Future<int> _fast({String? only}) async {
 /// o hook de push roda numa worktree e ali esse e o caso comum — o `fast`
 /// tinha ficado para tras, e o `fast` e o primeiro comando que alguem roda.
 ///
-/// `--enforce-lockfile` porque os locks sao versionados: resolucao que nao
-/// bate com eles e deriva, nao detalhe a absorver em silencio.
+/// SEM `--enforce-lockfile`, e isso mudou em 10/09/2026.
+///
+/// A politica antiga — "os locks sao versionados, entao resolucao que nao bate
+/// com eles e deriva" — cabia quando havia APLICACAO nesta arvore. Aplicacao
+/// versiona lock; biblioteca publicada, nao: quem resolve e o consumidor, e um
+/// lock aqui prometeria uma resolucao que ninguem la fora tem.
+///
+/// Saiu o `product/` e sobrou a politica, contradizendo o `.gitignore` de cada
+/// pacote — todos ignoram `pubspec.lock`, todos publicam. O efeito era um
+/// portao vermelho permanente em `dovetail_signer`, `dovetail_updater` e
+/// `dovetail_cli`: exigir um arquivo que a arvore proibe. Um portao que nao
+/// tem como ficar verde deixa de ser lido.
 int _resolveUnresolved({String? only}) {
   final List<(String, String)> unresolved = <(String, String)>[
     for (final (String package, String runner) in _selected(only))
@@ -446,7 +533,6 @@ int _resolveUnresolved({String? only}) {
     final ProcessResult resolved = Process.runSync(runner, <String>[
       'pub',
       'get',
-      '--enforce-lockfile',
     ], workingDirectory: '$repoRoot/$package');
     if (resolved.exitCode != 0) {
       failed++;
@@ -475,15 +561,17 @@ int _format({String? only}) {
 
   // Uma invocacao, e nao vinte e oito.
   //
-  // Era um `dart format` por (pacote x diretorio): treze pacotes vezes ate
-  // tres diretorios, cada um pagando o custo de subir o formatador. Medido
-  // nesta maquina, 2,25-2,60s de um alvo que roda em todo commit. O `dart
-  // format` aceita a lista inteira de uma vez, e ai o custo e um.
+  // Era um `dart format` por (pacote x diretorio): cada pacote vezes ate tres
+  // diretorios, cada um pagando o custo de subir o formatador. Medido nesta
+  // maquina, 2,25-2,60s de um alvo que roda em todo commit. O `dart format`
+  // aceita a lista inteira de uma vez, e ai o custo e um.
   //
-  // `tool` entra sempre, inclusive sob `--only`. Nao depende de irmao nenhum,
-  // e e o diretorio que todo contribuidor toca: deixa-lo de fora do lane que
-  // um clone sem os irmaos consegue rodar seria tirar do portao justamente o
-  // arquivo que define o portao.
+  // `tool` entra sempre, inclusive sob `--only`: e o diretorio que todo
+  // contribuidor toca, e deixa-lo de fora seria tirar do portao justamente o
+  // arquivo que define o portao. A razao escrita aqui antes era outra — que
+  // `tool` nao dependia de irmao nenhum, e por isso cabia no lane que um
+  // clone sem os irmaos conseguia rodar. Isso deixou de distinguir coisa
+  // alguma quando `product/` saiu: nada aqui depende de irmao.
   final List<String> targets = <String>[
     for (final (String package, _) in _selected(only))
       for (final String each in ours)
@@ -559,6 +647,16 @@ int _cross({String? only}) {
           '-std=c++17',
           '-I',
           'include',
+          // O header do ABI compartilhado mora fora de `windows/`, porque os
+          // tres nativos leem o MESMO. Um `.h` por plataforma para um ABI so
+          // e como eles saem de sincronia sem ninguem ver.
+          //
+          // O caminho tem de ser O MESMO que o `CMakeLists.txt` passa. Ele
+          // dizia `desktop_platform_channel`, o nome de pre-publicacao, e o
+          // efeito nao foi um portao vermelho: foi um portao que compilava
+          // arquivos diferentes dos que o build compila.
+          '-I',
+          '../include/dovetail_platform_channel',
           '-DDOVETAIL_BUILDING_DLL',
           name,
           '-o',
@@ -578,26 +676,74 @@ int _cross({String? only}) {
       // The Dart side looks these up by name through dart:ffi. A rename on
       // either side is a crash on a machine nobody here has, so the two lists
       // are compared where it costs nothing.
-      final ProcessResult symbols = Process.runSync(
-        'x86_64-w64-mingw32-nm',
-        <String>['-g', '${scratch.path}/single_instance_guard.cpp.o'],
+      //
+      // Both sides are SWEPT, and neither is a written list. It used to name
+      // one object file and one Dart file, which was true while the package
+      // had one native source; the appearance probe arrived as a second, and
+      // a check that has to be edited to keep covering the tree is a check
+      // that silently stops covering it. Now: every symbol any Dart file in
+      // the package looks up has to be exported by some object file compiled
+      // here.
+      final StringBuffer exported = StringBuffer();
+      for (final FileSystemEntity object in scratch.listSync()) {
+        if (!object.path.endsWith('.o')) {
+          continue;
+        }
+        exported.writeln(
+          Process.runSync('x86_64-w64-mingw32-nm', <String>[
+            '-g',
+            object.path,
+          ]).stdout.toString(),
+        );
+      }
+
+      final Set<String> wanted = <String>{};
+      final Directory dartSide = Directory(
+        '$repoRoot/toolkit/dovetail_platform_channel/lib',
       );
-      final String exported = symbols.stdout.toString();
-      final String dart = File(
-        '$repoRoot/toolkit/dovetail_platform_channel/lib/src/instance/'
-        'windows_single_instance.dart',
-      ).readAsStringSync();
-      for (final RegExpMatch match in RegExp(
-        "'(Dovetail[A-Za-z]+)'",
-      ).allMatches(dart)) {
-        final String symbol = match.group(1)!;
-        if (!exported.contains(' T $symbol')) {
-          failed++;
+      for (final FileSystemEntity file in dartSide.listSync(recursive: true)) {
+        if (file is! File || !file.path.endsWith('.dart')) {
+          continue;
+        }
+        final String source = file.readAsStringSync();
+        // Só os arquivos que de fato fazem FFI. Um `Dovetail…` citado num
+        // comentário de outro arquivo não é um símbolo a exigir da DLL.
+        if (!source.contains('dart:ffi')) {
+          continue;
+        }
+        for (final RegExpMatch match in RegExp(
+          "'(Dovetail[A-Za-z]+)'",
+        ).allMatches(source)) {
+          wanted.add(match.group(1)!);
+        }
+      }
+
+      final String all = exported.toString();
+      int absent = 0;
+      for (final String symbol in wanted.toList()..sort()) {
+        if (!all.contains(' T $symbol')) {
+          absent++;
           stdout.writeln(
             '  MISSING  $symbol — Dart looks it up and the DLL would not '
             'export it',
           );
         }
+      }
+      failed += absent;
+      if (wanted.isEmpty) {
+        failed++;
+        stdout.writeln(
+          '  MISSING  no FFI symbol found on the Dart side — the sweep is '
+          'looking in the wrong place, and a green here would mean nothing',
+        );
+      } else if (absent == 0) {
+        // So quando nao falta nenhum. A linha ja saiu uma vez logo abaixo de
+        // um MISSING, dizendo "5 exportados como o Dart espera" enquanto um
+        // deles nao estava — um resumo que contradiz a linha de cima e um
+        // resumo que ensina a nao ler o resto.
+        stdout.writeln(
+          '  ok       ${wanted.length} FFI symbol(s) exported as Dart expects',
+        );
       }
     } finally {
       scratch.deleteSync(recursive: true);
@@ -644,24 +790,6 @@ int _cross({String? only}) {
 
   failed += _clippy(only: only);
 
-  // `_pluginCoverage` le o manifesto de plugins de `product/vpn_desktop` e,
-  // quando ele falta, o REGENERA com `flutter pub get --enforce-lockfile` —
-  // que resolve o design system no repositorio irmao privado. Era a chamada
-  // que fazia `cross --only toolkit` (`ci.yml`) nao ser toolkit-only.
-  //
-  // Pular dizendo por que, e nao em silencio: um alvo que sai verde tendo
-  // deixado de checar e pior do que um que recusa.
-  if (_selected(
-    only,
-  ).any(((String, String) each) => each.$1 == 'product/vpn_desktop')) {
-    failed += _pluginCoverage();
-  } else {
-    stdout.writeln(
-      '  skipped  plugin coverage — pede product/vpn_desktop, que resolve '
-      'o design system no irmao privado',
-    );
-  }
-
   // Two vendored copies of an ARCHIVED dependency. They had already drifted
   // apart by seventeen files — cosmetically, as it turned out, but nobody
   // could tell without checking, and that is the whole problem with a
@@ -669,8 +797,16 @@ int _cross({String? only}) {
   //
   // Compared in Dart, not with `diff`: diff is a Unix binary and the Windows
   // runner would silently lose this check.
+  //
+  // A primeira copia era `product/desktop_core_bridge/cargokit`, e ela saiu
+  // com o produto. Havia uma TERCEIRA — `tool/sdk/templates/bridge/cargokit`,
+  // identica as outras duas quando isto foi medido —, entao a checagem nao
+  // perdeu o par: ganhou um melhor. A copia do template e a que viaja para
+  // quem gera uma ponte com `dovetail bridge init`, o que faz dela a copia
+  // cuja deriva um consumidor sente — e ate agora ninguem a comparava com
+  // nada.
   const List<String> copies = <String>[
-    'product/desktop_core_bridge/cargokit',
+    'tool/sdk/templates/bridge/cargokit',
     'toolkit/dovetail_shortcut_channel/cargokit',
   ];
   final List<String> drift = _driftBetween(
@@ -954,14 +1090,12 @@ Future<_Outcome> _runPackage(String package, String runner) async {
   // A fresh checkout has no .dart_tool and `dart test` will not create one.
   // The push hook runs in a worktree, so this is the common case there.
   if (!File('$repoRoot/$package/.dart_tool/package_config.json').existsSync()) {
-    // --enforce-lockfile: the locks are versioned, so a resolution that no
-    // longer matches them is drift, not a detail to absorb quietly. Without
-    // it the same commit resolves different graphs on different days and the
-    // baseline slowly stops describing anything.
+    // No --enforce-lockfile. Every package here is a published library and
+    // every one gitignores its lock, so enforcing one demands a file the tree
+    // forbids. See _resolveUnresolved for the whole story.
     final ProcessResult resolved = await Process.run(runner, <String>[
       'pub',
       'get',
-      '--enforce-lockfile',
     ], workingDirectory: '$repoRoot/$package');
     if (resolved.exitCode != 0) {
       return _Outcome(
@@ -1368,7 +1502,6 @@ int _rustFormat({String? only}) {
     for (final String crate in const <String>[
       'toolkit/dovetail_rust_core/rust',
       'toolkit/dovetail_shortcut_channel/rust',
-      'product/desktop_core_bridge/rust',
     ])
       if (only == null || crate.contains(only)) crate,
   ];
@@ -1394,20 +1527,28 @@ int _rustFormat({String? only}) {
   return 1;
 }
 
-/// O FFI atravessa de verdade?
+/// O produto que a esteira vai assinar, quando houver um.
 ///
-/// Tudo o mais aqui prova forma: que compila, que tipa, que os 51 metodos do
-/// nucleo estao na ponte, que o gerado bate com o Rust. Nada disso prova que
-/// uma chamada Dart chega no Rust e volta com o valor — e essa prova existia,
-/// em `example/integration_test/bridge_test.dart`, rodada **a mao**.
+/// Era `product/vpn_desktop`, uma constante, porque o app morava aqui. Ele
+/// mudou para `example-app` e esta prova ficou — de proposito. O que
+/// ela prova e do TOOLKIT: assina, empacota, escreve manifesto, serve por
+/// https e le de volta com o parser do cliente. O produto e so a entrada, e
+/// entrada e coisa que se declara.
 ///
-/// Cinco testes: `isSupported`, uma chamada assincrona que devolve a versao do
-/// crate, o contrato do helper, `ensureInitialized` idempotente, e uma chamada
-/// `#[frb(sync)]` respondendo sem passar por Future. Custam 53 segundos porque
-/// sobem um app de verdade, e e por isso que este alvo nao esta no `fast`.
-///
-/// **Abre uma janela.** Nao ha como nao abrir: o `integration_test` do Flutter
-/// e o app rodando, e o valor do teste vem justamente disso.
+/// `DOVETAIL_PRODUCT` aceita caminho absoluto ou relativo a raiz. Sem ela a
+/// prova PULA dizendo o que falta — que e diferente de passar. Um caminho
+/// que existe mas nao tem `.app` construido tambem pula, e nomeia o `.app`
+/// que procurou: as duas frases tem de ser distinguiveis, senao "nao provei"
+/// vira "esta tudo bem".
+String? _productUnderTest() {
+  final String? declared = Platform.environment['DOVETAIL_PRODUCT'];
+  if (declared == null || declared.trim().isEmpty) {
+    return null;
+  }
+  final String path = declared.trim();
+  return File(path).isAbsolute ? path : '$repoRoot/$path';
+}
+
 /// A esteira macOS inteira contra um host local: assina o `.app` de dentro
 /// para fora, monta e assina o dmg, gera o `.app.tar.gz` que o updater
 /// instala, escreve o manifesto, serve o `dist/` por https com uma CA privada
@@ -1418,25 +1559,17 @@ int _rustFormat({String? only}) {
 /// Developer ID) seguem o mesmo contrato do real, e o script diz o que NAO
 /// prova: Gatekeeper, notarizacao, DNS. Ver docs/release-simulado.md.
 ///
-/// Pula quando nao ha `.app` construido — e o caso do worktree do pre-push, e
-/// de qualquer clone limpo — e diz isso. Construir aqui custaria dez minutos
-/// por push; provar a esteira sobre um build que existe custa um minuto. E
-/// pula sob um `--only` que nao pede o produto, como frb e ffi: sem isso, um
-/// `all --only dovetail_form_validation` — que existe para custar um segundo — pagava
-/// a esteira inteira.
+/// Pula sob `--only`: `--only` estreita a corrida a UM pacote, e esta prova
+/// nao e de pacote nenhum — e da esteira. Sem isso, `all --only
+/// form_validation`, que existe para custar um segundo, pagava um minuto de
+/// esteira. Antes a regra era "o `--only` seleciona `product/vpn_desktop`?",
+/// e ela deixou de existir junto com o pacote.
 int _releaseProof({String? only}) {
   stdout.writeln('── release ──');
   const String script = 'tool/ci/prove_update.sh';
-  const String product = 'product/vpn_desktop';
-  const String built =
-      '$product/build/macos/Build/Products/Release/vpn_desktop.app';
 
-  // O mesmo contrato do frb e do ffi: um `--only` que nao seleciona o produto
-  // nao paga um minuto de esteira. Sem isto, `all --only dovetail_form_validation` —
-  // que existe para custar um segundo — rodava a prova inteira.
-  if (only != null &&
-      !_selected(only).any(((String, String) each) => each.$1 == product)) {
-    stdout.writeln('  skipped  pede $product (--only)');
+  if (only != null) {
+    stdout.writeln('  skipped  a esteira nao e de um pacote so (--only)');
     return 0;
   }
   if (!Platform.isMacOS) {
@@ -1446,13 +1579,56 @@ int _releaseProof({String? only}) {
     );
     return 0;
   }
-  if (!Directory('$repoRoot/$built').existsSync()) {
+
+  final String? product = _productUnderTest();
+  if (product == null) {
     stdout.writeln(
-      '  skipped  sem $built — rode `dovetail build` em product/vpn_desktop '
-      'para a esteira ter o que assinar',
+      '  skipped  sem DOVETAIL_PRODUCT — o app saiu desta arvore em '
+      '2026-09-09 e a esteira precisa de um .app para assinar. Aponte-a '
+      'para um produto construido:',
+    );
+    stdout.writeln(
+      '           DOVETAIL_PRODUCT=../example-app dart '
+      'tool/verify.dart release',
     );
     return 0;
   }
+  if (!Directory(product).existsSync()) {
+    stdout.writeln(
+      '  FAILED   DOVETAIL_PRODUCT aponta para $product, que nao existe',
+    );
+    return 1;
+  }
+
+  // O nome do binario sai do pubspec do produto, como o script faz: escrever
+  // `vpn_desktop` aqui amarraria a esteira a UM produto de novo, que e
+  // exatamente o que esta mudanca desfaz.
+  final File pubspec = File('$product/pubspec.yaml');
+  if (!pubspec.existsSync()) {
+    stdout.writeln(
+      '  FAILED   sem $product/pubspec.yaml — isto nao e a raiz de um produto',
+    );
+    return 1;
+  }
+  final RegExpMatch? named = RegExp(
+    r'^name:\s*(\S+)',
+    multiLine: true,
+  ).firstMatch(pubspec.readAsStringSync());
+  if (named == null) {
+    stdout.writeln('  FAILED   $product/pubspec.yaml nao declara um `name:`');
+    return 1;
+  }
+  final String binary = named.group(1)!;
+  final String built =
+      '$product/build/macos/Build/Products/Release/$binary.app';
+  if (!Directory(built).existsSync()) {
+    stdout.writeln(
+      '  skipped  sem $built — rode `dovetail build` em $product para a '
+      'esteira ter o que assinar',
+    );
+    return 0;
+  }
+
   for (final String tool in <String>['openssl', 'minisign', 'python3']) {
     if (_which(tool) == null) {
       stdout.writeln('  MISSING  $tool');
@@ -1460,11 +1636,12 @@ int _releaseProof({String? only}) {
     }
   }
 
-  final ProcessResult ran = Process.runSync('bash', <String>[
-    script,
-    '--host',
-    'macos',
-  ], workingDirectory: repoRoot);
+  final ProcessResult ran = Process.runSync(
+    'bash',
+    <String>[script, '--host', 'macos'],
+    workingDirectory: repoRoot,
+    environment: <String, String>{'PRODUCT': product},
+  );
   final String output = '${ran.stdout}${ran.stderr}';
 
   if (ran.exitCode == 0 && output.contains('prove_update: ok')) {
@@ -1491,204 +1668,6 @@ int _releaseProof({String? only}) {
   return 1;
 }
 
-int _ffiCrosses() {
-  stdout.writeln('── ffi ──');
-  const String example = 'product/desktop_core_bridge/example';
-
-  if (!Platform.isMacOS) {
-    stdout.writeln(
-      '  skipped  este alvo roda o app de verdade, e o unico device provado '
-      'aqui e macOS',
-    );
-    return 0;
-  }
-  if (_which('flutter') == null) {
-    stdout.writeln('  MISSING  flutter');
-    return 1;
-  }
-
-  final ProcessResult ran = Process.runSync('flutter', <String>[
-    'test',
-    'integration_test/bridge_test.dart',
-    '-d',
-    'macos',
-  ], workingDirectory: '$repoRoot/$example');
-
-  final String output = ran.stdout.toString();
-  final RegExpMatch? passed = RegExp(
-    r'\+(\d+): All tests passed',
-  ).firstMatch(output);
-
-  if (ran.exitCode == 0 && passed != null) {
-    stdout.writeln(
-      '  ok       ${passed.group(1)} crossings, Dart to Rust and back',
-    );
-    return 0;
-  }
-
-  stdout.writeln('  FAILED   the FFI seam did not answer');
-  for (final String line
-      in const LineSplitter()
-          .convert(output.isEmpty ? ran.stderr.toString() : output)
-          .where(
-            (String line) =>
-                line.contains('Error') ||
-                line.contains('Failed') ||
-                line.contains('Exception'),
-          )
-          .take(6)) {
-    stdout.writeln('           ${line.trim()}');
-  }
-  return 1;
-}
-
-/// A versao pinada da runtime do flutter_rust_bridge.
-///
-/// Lida do `Cargo.toml` em vez de escrita aqui: dois lugares para o mesmo
-/// numero e um lugar para eles discordarem.
-String get _frbPinned {
-  final String cargo = File(
-    '$repoRoot/product/desktop_core_bridge/rust/Cargo.toml',
-  ).readAsStringSync();
-  final RegExpMatch? pinned = RegExp(
-    r'flutter_rust_bridge\s*=\s*"=([0-9.]+)"',
-  ).firstMatch(cargo);
-  return pinned?.group(1) ?? '';
-}
-
-/// O CLI que gera e a runtime que executa tem de ser a mesma versao.
-///
-/// O CLI e instalado global (`cargo install`) e a runtime e pinada no
-/// `Cargo.toml`. Com versoes diferentes, o codigo gerado nao casa com a
-/// runtime que o executa — e o frb tem uma checagem propria que dispara **em
-/// tempo de execucao**, no app de quem baixou, com uma mensagem sobre hash de
-/// conteudo que nao diz nada sobre a causa.
-///
-/// Pior: quem tem o CLI errado regenera e **commita** codigo que quebra na
-/// maquina de todos os outros. E o "funciona na minha maquina" mais caro deste
-/// stack, porque a diferenca esta fora da arvore.
-int _codegenVersionMatchesRuntime() {
-  final String pinned = _frbPinned;
-  if (pinned.isEmpty) {
-    stdout.writeln(
-      '  FAILED   could not read the pinned flutter_rust_bridge version from '
-      'rust/Cargo.toml',
-    );
-    return 1;
-  }
-
-  final ProcessResult asked = Process.runSync(
-    'flutter_rust_bridge_codegen',
-    <String>['--version'],
-  );
-  final RegExpMatch? installed = RegExp(
-    r'([0-9]+\.[0-9]+\.[0-9]+)',
-  ).firstMatch(asked.stdout.toString());
-
-  if (installed == null) {
-    stdout.writeln(
-      '  FAILED   flutter_rust_bridge_codegen --version said '
-      'nothing a version could be read from',
-    );
-    return 1;
-  }
-  if (installed.group(1) == pinned) {
-    stdout.writeln('  ok       codegen $pinned matches the pinned runtime');
-    return 0;
-  }
-
-  stdout.writeln(
-    '  MISMATCH codegen ${installed.group(1)} against runtime $pinned',
-  );
-  stdout.writeln(
-    '           Generated code from the wrong CLI fails at RUNTIME, in the '
-    'app of whoever downloaded it, with a content-hash message that names '
-    'no cause. Fix the tool, not the pin:',
-  );
-  stdout.writeln(
-    '           cargo install flutter_rust_bridge_codegen --version $pinned',
-  );
-  return 1;
-}
-
-/// A ponte gerada esta em sincronia com o Rust que a gerou?
-///
-/// Este e o precipicio de DX deste stack, e foi medido em vez de suposto:
-/// acrescente `pub fn nova_coisa()` em `rust/src/api/`, NAO rode o codegen, e
-/// o `cargo check` passa. O `frb_generated.rs` continua valido, a app continua
-/// compilando, e o metodo simplesmente **nao existe do lado Dart** — sem erro
-/// em lugar nenhum. Quem escreveu a funcao vai procurar por que
-/// `core.novaCoisa()` nao existe, e a resposta e "rode o codegen", que nada
-/// diz.
-///
-/// O jeito de conferir e gerar e comparar. Nao ha como pedir ao codegen que
-/// escreva fora do pacote — ele resolve `dart_output` contra a raiz Dart e
-/// recusa —, entao a checagem gera NO LUGAR e restaura depois. Por isso ela
-/// recusa comecar com esses caminhos sujos: com mudanca em curso ali, nao ha
-/// como distinguir defasagem de trabalho.
-int _bridgeIsGenerated() {
-  stdout.writeln('── frb ──');
-  const String package = 'product/desktop_core_bridge';
-  const List<String> generated = <String>[
-    '$package/lib/src/rust',
-    '$package/rust/src/frb_generated.rs',
-  ];
-
-  if (_which('flutter_rust_bridge_codegen') == null) {
-    stdout.writeln(
-      '  absent   flutter_rust_bridge_codegen — install with: '
-      'cargo install flutter_rust_bridge_codegen --version $_frbPinned',
-    );
-    return 0;
-  }
-
-  final int mismatched = _codegenVersionMatchesRuntime();
-  if (mismatched != 0) {
-    return mismatched;
-  }
-
-  final String dirty = _git(<String>['status', '--porcelain', ...generated]);
-  if (dirty.trim().isNotEmpty) {
-    stdout.writeln(
-      '  skipped  the generated bridge has uncommitted changes, so stale '
-      'cannot be told from work in progress',
-    );
-    return 0;
-  }
-
-  final ProcessResult ran = Process.runSync(
-    'flutter_rust_bridge_codegen',
-    <String>['generate'],
-    workingDirectory: '$repoRoot/$package',
-  );
-
-  if (ran.exitCode != 0) {
-    stdout.writeln('  FAILED   codegen did not run');
-    stdout.writeln(
-      '           ${ran.stderr.toString().trim().split('\n').last}',
-    );
-    return 1;
-  }
-
-  final String drift = _git(<String>['status', '--porcelain', ...generated]);
-  if (drift.trim().isEmpty) {
-    stdout.writeln('  ok       the bridge matches the Rust that generates it');
-    return 0;
-  }
-
-  // Restaura: um portao que edita a arvore de quem o rodou e um portao que
-  // assusta. O que ele deve fazer e dizer o comando.
-  _git(<String>['checkout', '--', ...generated]);
-  stdout.writeln('  STALE    the generated bridge is behind rust/src/api/');
-  for (final String line in const LineSplitter().convert(drift).take(6)) {
-    stdout.writeln('           ${line.trim()}');
-  }
-  stdout.writeln(
-    '           Run: cd $package && flutter_rust_bridge_codegen generate',
-  );
-  return 1;
-}
-
 /// Os testes que rodam em Rust.
 ///
 /// O portao tinha `cargo check` e `cargo clippy` e nao tinha `cargo test`, e
@@ -1709,15 +1688,18 @@ int _rustTests({String? only}) {
   }
 
   // `--only <substr>` narrows the crates, like `test --only` does for
-  // packages. The CI legs that are not macOS use it to prove the toolkit
-  // crates on their host and leave `product/desktop_core_bridge` out: that
-  // crate drags the example-rust crates by path, and none of them has
-  // ever compiled for a Linux or Windows host — proving that is the app-on-
-  // Windows/Linux item, not the gate-on-Windows/Linux item.
+  // packages.
+  //
+  // Eram tres crates. A terceira, `product/desktop_core_bridge/rust`, puxava
+  // as crates do example-rust por caminho e nunca compilou para Linux nem
+  // para Windows — por isso as pernas de CI que nao sao macOS rodavam
+  // `--only toolkit`, que era o jeito de dizer "sem a crate do produto". As
+  // duas que sobraram compilam nos tres hosts, entao aquelas pernas podem
+  // largar o `--only`: ele deixou de significar "menos a que nao compila
+  // aqui" e voltou a significar "so esta, porque estou iterando nela".
   const List<String> allCrates = <String>[
     'toolkit/dovetail_rust_core/rust',
     'toolkit/dovetail_shortcut_channel/rust',
-    'product/desktop_core_bridge/rust',
   ];
   final List<String> crates = only == null
       ? allCrates
@@ -1758,10 +1740,6 @@ int _rustTests({String? only}) {
     }
   }
 
-  // O `desktop_core_bridge/rust` entrou depois: ele e repasse, e por isso
-  // ficou sem teste tanto tempo. Mas o mapeamento de `CoreError` para
-  // `CoreFailure` nao e repasse — e decisao, e a interface de erro do app
-  // inteiro se apoia nela.
   failed += _rustConventions(crates);
   stdout.writeln(failed == 0 ? '  ok' : '  $failed crate(s) failed');
   return failed == 0 ? 0 : 1;
@@ -1848,7 +1826,6 @@ int _clippy({String? only}) {
   const List<String> allCrates = <String>[
     'toolkit/dovetail_rust_core/rust',
     'toolkit/dovetail_shortcut_channel/rust',
-    'product/desktop_core_bridge/rust',
   ];
   final List<String> crates = only == null
       ? allCrates
@@ -1886,119 +1863,6 @@ int _clippy({String? only}) {
     stdout.writeln('  LINT     $crate');
     for (final String line in ours.take(8)) {
       stdout.writeln('           ${line.trim()}');
-    }
-  }
-  return failed;
-}
-
-/// Plugin capabilities the product ships without on some desktop platform.
-///
-/// A gap here is invisible from this Mac: the Dart still compiles, the build
-/// still succeeds, and the missing implementation surfaces as a
-/// MissingPluginException on a machine nobody here has. Reading the plugin
-/// manifest costs nothing and turns that into a fact with a name.
-///
-/// Federated plugins are counted as one capability — `url_launcher_macos`,
-/// `url_launcher_windows` and `url_launcher_linux` are three packages and one
-/// answer — so only the suffix is stripped, not the meaning.
-const Set<String> _federatedSuffixes = <String>{'_macos', '_windows', '_linux'};
-
-/// Known gaps, each with the reason it is known. A gap that is NOT here fails
-/// the target; one that is here is reported and passes, because the fix lives
-/// in another repository and a gate that stays red is a gate nobody reads.
-const Map<String, String> _acceptedPluginGaps = <String, String>{
-  'dovetail_platform_channel':
-      'windows only, on purpose: the single-instance guard needs C++ only '
-      'there, and this is our own plugin',
-  'gtk':
-      'a transitive dependency of the Linux implementations, Linux by '
-      'definition',
-  'mobile_scanner':
-      'macOS only, and no Windows or Linux implementation exists. It arrives '
-      'through the design system barrel, which exports qr_scanner_view. The '
-      'desktop product has no QR feature at all — zero of the 818 text keys '
-      'mention one — so nothing calls it. It would surface as a '
-      'MissingPluginException on Windows, and the fix is in the design '
-      'system, not here.',
-};
-
-int _pluginCoverage() {
-  const String manifest = 'product/vpn_desktop/.flutter-plugins-dependencies';
-  File file = File('$repoRoot/$manifest');
-  if (!file.existsSync()) {
-    // A clean clone has no generated manifest, and a check that quietly
-    // stands down on the clean clone is a check that does not exist in CI —
-    // the only place where every run starts clean. Generate it with the same
-    // locked resolution the test lane uses, and refuse when it still cannot
-    // be produced instead of going green without looking.
-    final ProcessResult resolved = Process.runSync('flutter', <String>[
-      'pub',
-      'get',
-      '--enforce-lockfile',
-    ], workingDirectory: '$repoRoot/product/vpn_desktop');
-    if (resolved.exitCode != 0) {
-      stdout.writeln('  FAILED   $manifest could not be generated');
-      stdout.writeln(
-        '           ${resolved.stderr.toString().trim().split('\n').first}',
-      );
-      return 1;
-    }
-    file = File('$repoRoot/$manifest');
-    if (!file.existsSync()) {
-      stdout.writeln(
-        '  FAILED   $manifest still missing after flutter pub get',
-      );
-      return 1;
-    }
-  }
-
-  final Map<String, Object?> decoded =
-      jsonDecode(file.readAsStringSync()) as Map<String, Object?>;
-  final Map<String, Object?> plugins =
-      decoded['plugins']! as Map<String, Object?>;
-
-  const List<String> desktop = <String>['macos', 'windows', 'linux'];
-  final Map<String, Set<String>> covered = <String, Set<String>>{};
-  for (final String platform in desktop) {
-    for (final Object? entry
-        in (plugins[platform] as List<Object?>?) ?? <Object?>[]) {
-      String name = (entry! as Map<String, Object?>)['name']! as String;
-      for (final String suffix in _federatedSuffixes) {
-        if (name.endsWith(suffix)) {
-          name = name.substring(0, name.length - suffix.length);
-          break;
-        }
-      }
-      covered.putIfAbsent(name, () => <String>{}).add(platform);
-    }
-  }
-
-  int failed = 0;
-  for (final String name in covered.keys.toList()..sort()) {
-    final Set<String> missing = desktop.toSet()..removeAll(covered[name]!);
-    if (missing.isEmpty) {
-      continue;
-    }
-    final String where = (missing.toList()..sort()).join(', ');
-    final String? reason = _acceptedPluginGaps[name];
-    if (reason == null) {
-      failed++;
-      stdout.writeln('  MISSING  $name has no implementation for $where');
-      stdout.writeln(
-        '           If that is intended, say so in _acceptedPluginGaps.',
-      );
-    } else {
-      stdout.writeln('  known    $name is absent on $where — $reason');
-    }
-  }
-
-  for (final String name in _acceptedPluginGaps.keys) {
-    if (!covered.containsKey(name)) {
-      failed++;
-      stdout.writeln(
-        '  STALE    $name is excused from a gap it no longer has, or is no '
-        'longer a dependency at all',
-      );
     }
   }
   return failed;
@@ -2248,13 +2112,24 @@ _Run _readRun() {
   );
 }
 
+/// A raiz do repositorio, reconhecida por `toolkit/` mais este proprio
+/// arquivo.
+///
+/// A marca era `toolkit/` + `product/`, e `product/` saiu da arvore em
+/// 2026-09-09: mantida, ela nao acharia raiz nenhuma. `tool/verify.dart` e a
+/// substituta certa por ser o que nao pode faltar — se ele nao esta ali,
+/// aquilo nao e a raiz deste repositorio, seja la o que mais tenha.
+///
+/// `toolkit/` sozinho seria frouxo demais: qualquer projeto gerado por
+/// `dovetail new` pode ter um, e um teste rodando de dentro de um scaffold
+/// escolheria o scaffold como raiz.
 String _findRepoRoot() {
   Directory here = Directory(
     Platform.environment['DOVETAIL_REPO_ROOT'] ?? Directory.current.path,
   ).absolute;
   for (int step = 0; step < 8; step++) {
     if (Directory('${here.path}/toolkit').existsSync() &&
-        Directory('${here.path}/product').existsSync()) {
+        File('${here.path}/tool/verify.dart').existsSync()) {
       return here.path;
     }
     final Directory parent = here.parent;

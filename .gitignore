@@ -21,3 +21,7 @@ target/
 
 # Sistema
 .DS_Store
+
+# A saida da ultima corrida do portao. E artefato: o que se versiona e o
+# baseline (tool/skip_baseline.json), que e conferido, nao o relatorio bruto.
+dist/

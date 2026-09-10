@@ -1,113 +1,13 @@
 {
   "packages": {
-    "product/desktop_core_bridge": {
+    "toolkit/dovetail": {
       "suites": {
-        "test/account_contract_test.dart": {
-          "declared": 10,
+        "test/barrel_resolves_alone_test.dart": {
+          "declared": 1,
           "skips": {}
         },
-        "test/billing_contract_test.dart": {
-          "declared": 4,
-          "skips": {}
-        },
-        "test/core_coverage_test.dart": {
-          "declared": 4,
-          "skips": {}
-        },
-        "test/desktop_core_bridge_test.dart": {
-          "declared": 11,
-          "skips": {}
-        },
-        "test/mail_contract_test.dart": {
-          "declared": 8,
-          "skips": {}
-        },
-        "test/notices_contract_test.dart": {
-          "declared": 2,
-          "skips": {}
-        },
-        "test/session_contract_test.dart": {
-          "declared": 8,
-          "skips": {}
-        },
-        "test/settings_contract_test.dart": {
-          "declared": 4,
-          "skips": {}
-        },
-        "test/signup_contract_test.dart": {
-          "declared": 2,
-          "skips": {}
-        },
-        "test/speedtest_contract_test.dart": {
-          "declared": 3,
-          "skips": {}
-        },
-        "test/split_tunnel_contract_test.dart": {
-          "declared": 3,
-          "skips": {}
-        }
-      }
-    },
-    "product/vpn_desktop": {
-      "suites": {
-        "test/infra/core/core_failure_mapper_test.dart": {
+        "test/barrel_test.dart": {
           "declared": 6,
-          "skips": {}
-        },
-        "test/infra/core/rust_core_adapters_test.dart": {
-          "declared": 16,
-          "skips": {}
-        },
-        "test/infra/core_failure_mapper_test.dart": {
-          "declared": 8,
-          "skips": {}
-        },
-        "test/l10n/arb_parity_test.dart": {
-          "declared": 4,
-          "skips": {}
-        },
-        "test/main/app_release_test.dart": {
-          "declared": 6,
-          "skips": {}
-        },
-        "test/main/desktop_app_test.dart": {
-          "declared": 4,
-          "skips": {}
-        },
-        "test/main/entitlements_test.dart": {
-          "declared": 2,
-          "skips": {}
-        },
-        "test/main/factories/update_watch_factory_test.dart": {
-          "declared": 7,
-          "skips": {}
-        },
-        "test/main/release_config_test.dart": {
-          "declared": 4,
-          "skips": {}
-        },
-        "test/main/tray_presence_test.dart": {
-          "declared": 12,
-          "skips": {}
-        },
-        "test/main/update_watch_test.dart": {
-          "declared": 10,
-          "skips": {}
-        },
-        "test/presentation/change_notifier_home_presenter_test.dart": {
-          "declared": 23,
-          "skips": {}
-        },
-        "test/presentation/change_notifier_update_presenter_test.dart": {
-          "declared": 9,
-          "skips": {}
-        },
-        "test/ui/pages/home_page_test.dart": {
-          "declared": 14,
-          "skips": {}
-        },
-        "test/ui/pages/update_notice_test.dart": {
-          "declared": 9,
           "skips": {}
         }
       }
@@ -212,228 +112,6 @@
         }
       }
     },
-    "toolkit/dovetail_platform_channel": {
-      "suites": {
-        "test/desktop_platform_channel_test.dart": {
-          "declared": 3,
-          "skips": {}
-        },
-        "test/executable_path_test.dart": {
-          "declared": 7,
-          "skips": {}
-        },
-        "test/joined_deep_link_inbox_test.dart": {
-          "declared": 11,
-          "skips": {}
-        },
-        "test/lifecycle_test.dart": {
-          "declared": 9,
-          "skips": {}
-        },
-        "test/local_notifications_notifier_test.dart": {
-          "declared": 11,
-          "skips": {}
-        },
-        "test/panel_test.dart": {
-          "declared": 25,
-          "skips": {}
-        },
-        "test/platform_capabilities_test.dart": {
-          "declared": 6,
-          "skips": {}
-        },
-        "test/screen_retriever_probe_test.dart": {
-          "declared": 10,
-          "skips": {}
-        },
-        "test/session_bus_test.dart": {
-          "declared": 7,
-          "skips": {}
-        },
-        "test/socket_single_instance_test.dart": {
-          "declared": 9,
-          "skips": {}
-        },
-        "test/tray_manager_surface_test.dart": {
-          "declared": 10,
-          "skips": {}
-        },
-        "test/window_manager_surface_test.dart": {
-          "declared": 15,
-          "skips": {}
-        },
-        "test/window_state_keeper_test.dart": {
-          "declared": 10,
-          "skips": {}
-        },
-        "test/window_state_test.dart": {
-          "declared": 20,
-          "skips": {}
-        },
-        "test/windows_single_instance_test.dart": {
-          "declared": 11,
-          "skips": {}
-        }
-      }
-    },
-    "toolkit/dovetail_shortcut_channel": {
-      "suites": {
-        "test/native_shortcut_surface_test.dart": {
-          "declared": 17,
-          "skips": {
-            "a chord the backend cannot parse should carry its own words": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "a chord the policy refuses should never reach the backend": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "a disposed registry should free the slot for the next one": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "a disposed surface should refuse instead of touching freed memory": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "a press for a released chord should not reach the stream": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "a press should cross the thread boundary and reach the stream": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "a released chord should become bindable again": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "a second registry in one process should be refused by name": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "every press should name the chord it came from": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "releaseAll should drop every binding at once": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "releasing a name nobody bound should be quiet": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "releasing the same name twice should refuse, not pass quietly": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "should bind a real chord and hand back a native id": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "the backend it reports should be the one this host has": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "the loader should name every place it looked": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "the native status should not be discarded on releaseAll": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
-            "the same chord bound twice should be refused, not doubled": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships"
-          }
-        },
-        "test/shipped_surface_test.dart": {
-          "declared": 5,
-          "skips": {
-            "the press injector must not travel in a shipped build a library without the symbol should load, not refuse": "the crate is not built for this run",
-            "the press injector must not travel in a shipped build asking for a press without the symbol should say why": "the crate is not built for this run"
-          }
-        },
-        "test/shortcut_chord_test.dart": {
-          "declared": 30,
-          "skips": {}
-        },
-        "test/shortcut_refusal_test.dart": {
-          "declared": 3,
-          "skips": {}
-        }
-      }
-    },
-    "toolkit/dovetail_signer": {
-      "suites": {
-        "test/authenticode_test.dart": {
-          "declared": 8,
-          "skips": {}
-        },
-        "test/checksum_writer_test.dart": {
-          "declared": 3,
-          "skips": {}
-        },
-        "test/macos_signer_test.dart": {
-          "declared": 15,
-          "skips": {}
-        },
-        "test/nested_code_folder_test.dart": {
-          "declared": 8,
-          "skips": {}
-        },
-        "test/nested_library_test.dart": {
-          "declared": 8,
-          "skips": {}
-        },
-        "test/notarization_step_test.dart": {
-          "declared": 15,
-          "skips": {}
-        },
-        "test/osslsigncode_test.dart": {
-          "declared": 10,
-          "skips": {}
-        },
-        "test/real_codesign_test.dart": {
-          "declared": 2,
-          "skips": {
-            "against the app this repository actually builds signing inside out ad hoc should satisfy the system verifier": "needs macOS and a built vpn_desktop.app; run flutter build macos --debug in product/vpn_desktop first",
-            "against the app this repository actually builds the signed bundle should report a signature, not an absence": "needs macOS and a built vpn_desktop.app"
-          }
-        },
-        "test/real_universal_codesign_test.dart": {
-          "declared": 5,
-          "skips": {}
-        },
-        "test/real_update_signer_test.dart": {
-          "declared": 12,
-          "skips": {}
-        },
-        "test/signing_policy_test.dart": {
-          "declared": 8,
-          "skips": {}
-        }
-      }
-    },
-    "toolkit/dovetail_updater": {
-      "suites": {
-        "test/fuzz_manifest_test.dart": {
-          "declared": 5,
-          "skips": {}
-        },
-        "test/fuzz_minisign_test.dart": {
-          "declared": 4,
-          "skips": {}
-        },
-        "test/http_artifact_fetcher_test.dart": {
-          "declared": 20,
-          "skips": {}
-        },
-        "test/installer_for_host_test.dart": {
-          "declared": 10,
-          "skips": {
-            "the path the host reports a linux host without APPIMAGE should say what is missing": "the AppImage rule only applies on Linux"
-          }
-        },
-        "test/linux_installer_test.dart": {
-          "declared": 18,
-          "skips": {}
-        },
-        "test/manifest_test.dart": {
-          "declared": 33,
-          "skips": {}
-        },
-        "test/manifest_writer_test.dart": {
-          "declared": 13,
-          "skips": {}
-        },
-        "test/minisign_test.dart": {
-          "declared": 16,
-          "skips": {}
-        },
-        "test/platform_key_arch_test.dart": {
-          "declared": 6,
-          "skips": {}
-        },
-        "test/pub_date_test.dart": {
-          "declared": 8,
-          "skips": {}
-        },
-        "test/update_flow_test.dart": {
-          "declared": 14,
-          "skips": {}
-        },
-        "test/windows_installer_test.dart": {
-          "declared": 16,
-          "skips": {}
-        }
-      }
-    },
-    "toolkit/dovetail": {
-      "suites": {
-        "test/barrel_resolves_alone_test.dart": {
-          "declared": 1,
-          "skips": {}
-        },
-        "test/barrel_test.dart": {
-          "declared": 5,
-          "skips": {}
-        }
-      }
-    },
     "toolkit/dovetail_cli": {
       "suites": {
         "test/app_template_test.dart": {
@@ -462,7 +140,9 @@
         },
         "test/build_defines_contract_test.dart": {
           "declared": 1,
-          "skips": {}
+          "skips": {
+            "every define the build emits should be read by the product": "este contrato mede um app real contra os defines que o build emite, e o app do produto não mora no repositório público. Rode-o no monorepo que carrega product/, ou aponte um app seu."
+          }
         },
         "test/bundle_arch_test.dart": {
           "declared": 5,
@@ -488,7 +168,7 @@
           "skips": {}
         },
         "test/docs_index_test.dart": {
-          "declared": 4,
+          "declared": 5,
           "skips": {}
         },
         "test/doctor_command_test.dart": {
@@ -655,6 +335,74 @@
         }
       }
     },
+    "toolkit/dovetail_platform_channel": {
+      "suites": {
+        "test/appearance/system_appearance_test.dart": {
+          "declared": 6,
+          "skips": {}
+        },
+        "test/dovetail_platform_channel_test.dart": {
+          "declared": 3,
+          "skips": {}
+        },
+        "test/executable_path_test.dart": {
+          "declared": 7,
+          "skips": {}
+        },
+        "test/joined_deep_link_inbox_test.dart": {
+          "declared": 11,
+          "skips": {}
+        },
+        "test/lifecycle_test.dart": {
+          "declared": 9,
+          "skips": {}
+        },
+        "test/local_notifications_notifier_test.dart": {
+          "declared": 11,
+          "skips": {}
+        },
+        "test/panel_test.dart": {
+          "declared": 25,
+          "skips": {}
+        },
+        "test/platform_capabilities_test.dart": {
+          "declared": 6,
+          "skips": {}
+        },
+        "test/screen_retriever_probe_test.dart": {
+          "declared": 10,
+          "skips": {}
+        },
+        "test/session_bus_test.dart": {
+          "declared": 7,
+          "skips": {}
+        },
+        "test/socket_single_instance_test.dart": {
+          "declared": 9,
+          "skips": {}
+        },
+        "test/tray_manager_surface_test.dart": {
+          "declared": 10,
+          "skips": {}
+        },
+        "test/window_manager_surface_test.dart": {
+          "declared": 15,
+          "skips": {}
+        },
+        "test/window_state_keeper_test.dart": {
+          "declared": 10,
+          "skips": {}
+        },
+        "test/window_state_test.dart": {
+          "declared": 20,
+          "skips": {}
+        },
+        "test/windows_single_instance_test.dart": {
+          "declared": 11,
+          "skips": {}
+        }
+      }
+    },
     "toolkit/dovetail_process_runner": {
       "suites": {
         "test/system_process_runner_test.dart": {
@@ -671,6 +419,152 @@
       "suites": {
         "test/bridge_test.dart": {
           "declared": 13,
+          "skips": {}
+        }
+      }
+    },
+    "toolkit/dovetail_shortcut_channel": {
+      "suites": {
+        "test/native_shortcut_surface_test.dart": {
+          "declared": 17,
+          "skips": {
+            "a chord the backend cannot parse should carry its own words": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "a chord the policy refuses should never reach the backend": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "a disposed registry should free the slot for the next one": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "a disposed surface should refuse instead of touching freed memory": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "a press for a released chord should not reach the stream": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "a press should cross the thread boundary and reach the stream": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "a released chord should become bindable again": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "a second registry in one process should be refused by name": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "every press should name the chord it came from": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "releaseAll should drop every binding at once": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "releasing a name nobody bound should be quiet": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "releasing the same name twice should refuse, not pass quietly": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "should bind a real chord and hand back a native id": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "the backend it reports should be the one this host has": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "the loader should name every place it looked": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "the native status should not be discarded on releaseAll": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships",
+            "the same chord bound twice should be refused, not doubled": "run cargo build --release --features test-probe in rust/ to let this suite drive the real registry; the pure Dart suite covers the rest, and a build without that feature is what ships"
+          }
+        },
+        "test/shipped_surface_test.dart": {
+          "declared": 5,
+          "skips": {
+            "the press injector must not travel in a shipped build a library without the symbol should load, not refuse": "the crate is not built for this run",
+            "the press injector must not travel in a shipped build asking for a press without the symbol should say why": "the crate is not built for this run"
+          }
+        },
+        "test/shortcut_chord_test.dart": {
+          "declared": 30,
+          "skips": {}
+        },
+        "test/shortcut_refusal_test.dart": {
+          "declared": 3,
+          "skips": {}
+        }
+      }
+    },
+    "toolkit/dovetail_signer": {
+      "suites": {
+        "test/authenticode_test.dart": {
+          "declared": 8,
+          "skips": {}
+        },
+        "test/checksum_writer_test.dart": {
+          "declared": 3,
+          "skips": {}
+        },
+        "test/macos_signer_test.dart": {
+          "declared": 15,
+          "skips": {}
+        },
+        "test/nested_code_folder_test.dart": {
+          "declared": 8,
+          "skips": {}
+        },
+        "test/nested_library_test.dart": {
+          "declared": 8,
+          "skips": {}
+        },
+        "test/notarization_step_test.dart": {
+          "declared": 15,
+          "skips": {}
+        },
+        "test/osslsigncode_test.dart": {
+          "declared": 10,
+          "skips": {}
+        },
+        "test/real_codesign_test.dart": {
+          "declared": 2,
+          "skips": {
+            "against the app this repository actually builds signing inside out ad hoc should satisfy the system verifier": "needs macOS and a built vpn_desktop.app; run flutter build macos --debug in product/vpn_desktop first",
+            "against the app this repository actually builds the signed bundle should report a signature, not an absence": "needs macOS and a built vpn_desktop.app"
+          }
+        },
+        "test/real_universal_codesign_test.dart": {
+          "declared": 5,
+          "skips": {}
+        },
+        "test/real_update_signer_test.dart": {
+          "declared": 12,
+          "skips": {}
+        },
+        "test/signing_policy_test.dart": {
+          "declared": 8,
+          "skips": {}
+        }
+      }
+    },
+    "toolkit/dovetail_updater": {
+      "suites": {
+        "test/fuzz_manifest_test.dart": {
+          "declared": 5,
+          "skips": {}
+        },
+        "test/fuzz_minisign_test.dart": {
+          "declared": 4,
+          "skips": {}
+        },
+        "test/http_artifact_fetcher_test.dart": {
+          "declared": 20,
+          "skips": {}
+        },
+        "test/installer_for_host_test.dart": {
+          "declared": 10,
+          "skips": {
+            "the path the host reports a linux host without APPIMAGE should say what is missing": "the AppImage rule only applies on Linux"
+          }
+        },
+        "test/linux_installer_test.dart": {
+          "declared": 18,
+          "skips": {}
+        },
+        "test/manifest_test.dart": {
+          "declared": 33,
+          "skips": {}
+        },
+        "test/manifest_writer_test.dart": {
+          "declared": 13,
+          "skips": {}
+        },
+        "test/minisign_test.dart": {
+          "declared": 16,
+          "skips": {}
+        },
+        "test/platform_key_arch_test.dart": {
+          "declared": 6,
+          "skips": {}
+        },
+        "test/pub_date_test.dart": {
+          "declared": 8,
+          "skips": {}
+        },
+        "test/update_flow_test.dart": {
+          "declared": 14,
+          "skips": {}
+        },
+        "test/windows_installer_test.dart": {
+          "declared": 16,
           "skips": {}
         }
       }
