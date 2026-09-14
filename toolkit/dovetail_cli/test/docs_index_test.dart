@@ -31,6 +31,13 @@ const List<String> _ignoredPaths = <String>[
   '/ephemeral/',
   '/graphify-out/',
   '/.git/',
+  // A worktree is a SECOND checkout of this same repository, inside it. The
+  // `.md` files it carries are the same files under another prefix, and
+  // counting them twice makes the index impossible to satisfy: no line can
+  // cite `.claude/worktrees/<name>/docs/x.md`, because the name is different
+  // every session. The sibling repository went red for exactly this, from
+  // having a worktree open and nothing else.
+  '/.claude/',
 ];
 
 /// Documentos deliberadamente fora do índice, com o motivo escrito.
