@@ -29,8 +29,8 @@ stays here is what came after them.
 | Binary diagnostics — structured log with rotation in the final catch | ✅ done | the AOT build used to die with a stack trace and no reporting channel |
 | Tests for the `probe`/`inspect`/`ship` wrappers | ✅ done | flagged by the coverage audit |
 | Release orchestration — `tool/release.sh` runs both builds and both canaries in order | ✅ done | each step had already proven green on its own; the script is the right order |
-| Windows binary | blocked | `dart compile exe` does not cross-compile to Windows |
-| macOS Intel binary | blocked | no `x86_64-apple-darwin` target on this host |
+| Windows binary | blocked | `dart compile exe` refuses `windows_x64`, confirmed 14/09/2026. It is the CLI that is blocked and not the machine: Rust reaches Windows from this same Mac, `x86_64-pc-windows-gnu` in 0.58s against a mingw linker that was already installed |
+| macOS Intel binary | blocked | `dart compile exe` refuses `macos_x64`. The only cross targets it accepts from an arm64 Mac are `linux_arm`, `linux_arm64`, `linux_riscv64` and `linux_x64`. The earlier note blamed a missing `x86_64-apple-darwin`, which **is** installed — the refusal is Dart's, and no `rustup target add` moves it. Measured 14/09/2026 |
 | Public distribution (notarisation) | blocked | Developer ID and notarisation do not exist |
 | Hosted CI | blocked | the account does not run Actions. The workflow itself is valid (actionlint), and the public repository needs no token: the ten packages resolve against each other through `pubspec_overrides.yaml` |
 
