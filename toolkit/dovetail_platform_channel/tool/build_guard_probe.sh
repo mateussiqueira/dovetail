@@ -66,7 +66,7 @@ echo "==> a second launch forwarded to the first"
 "$wine" "$out/guard_probe.exe" primary "$key-b" > "$out/primary.log" 2>/dev/null &
 primary=$!
 sleep 2
-"$wine" "$out/guard_probe.exe" secondary "$key-b" --quiet myid://pair/9f2c \
+"$wine" "$out/guard_probe.exe" secondary "$key-b" --quiet example://pair/9f2c \
   2>/dev/null | sed 's/^/    /'
 wait $primary
 sed 's/^/    /' "$out/primary.log"

@@ -21,8 +21,12 @@ Isso não é preferência de estilo. É o que mantém o package reutilizável en
 revendas e o que faz o grep de pureza continuar vazio:
 
 ```bash
-grep -rniE "vpn|tunnel|reseller|myid" lib
+cd ../dovetail_cli && dart test test/toolkit_purity_test.dart
 ```
+
+A lista de palavras mora naquele teste, e não aqui, porque uma cópia dela em
+cada `ARCHITECTURE.md` é uma cópia que envelhece — e a segunda a envelhecer
+seria a que alguém usaria para conferir.
 
 ## O menu de bandeja é dado, não callback
 

@@ -60,12 +60,12 @@ void main() {
       final Future<ForwardedLaunch> forwarded = primary.launches().first;
 
       await instance('com.example.app').claim(
-        arguments: <String>['myid://activate/abc123'],
+        arguments: <String>['example://activate/abc123'],
         workingDirectory: '/home/user',
       );
 
       final ForwardedLaunch launch = await forwarded;
-      expect(launch.arguments, <String>['myid://activate/abc123']);
+      expect(launch.arguments, <String>['example://activate/abc123']);
       expect(launch.workingDirectory, '/home/user');
     },
   );
@@ -77,9 +77,9 @@ void main() {
 
     await instance(
       'com.example.app',
-    ).claim(arguments: <String>['--quiet', 'myid://pair/9f2c']);
+    ).claim(arguments: <String>['--quiet', 'example://pair/9f2c']);
 
-    expect((await forwarded).arguments.last, 'myid://pair/9f2c');
+    expect((await forwarded).arguments.last, 'example://pair/9f2c');
   });
 
   test(

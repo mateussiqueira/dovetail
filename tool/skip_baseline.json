@@ -306,7 +306,7 @@
           "skips": {}
         },
         "test/toolkit_purity_test.dart": {
-          "declared": 4,
+          "declared": 6,
           "skips": {}
         },
         "test/update_command_test.dart": {

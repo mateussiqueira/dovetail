@@ -86,11 +86,11 @@ void main() {
 
   test('decode should split the working directory from the arguments', () {
     final ForwardedLaunch launch = WindowsSingleInstance.decode(
-      'C:\\Users\\x\u0000\u0000--quiet\u0000myid://pair/9f2c',
+      'C:\\Users\\x\u0000\u0000--quiet\u0000example://pair/9f2c',
     );
 
     expect(launch.workingDirectory, r'C:\Users\x');
-    expect(launch.arguments, <String>['--quiet', 'myid://pair/9f2c']);
+    expect(launch.arguments, <String>['--quiet', 'example://pair/9f2c']);
   });
 
   test('decode should handle a launch with no arguments', () {
@@ -113,11 +113,11 @@ void main() {
     'a path with a space should survive, which a space separator would not',
     () {
       final ForwardedLaunch launch = WindowsSingleInstance.decode(
-        'C:\\Program Files\\Example\u0000\u0000myid://pair/1',
+        'C:\\Program Files\\Example\u0000\u0000example://pair/1',
       );
 
       expect(launch.workingDirectory, r'C:\Program Files\Example');
-      expect(launch.arguments, <String>['myid://pair/1']);
+      expect(launch.arguments, <String>['example://pair/1']);
     },
   );
 

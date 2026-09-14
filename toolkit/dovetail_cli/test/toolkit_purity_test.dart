@@ -57,6 +57,77 @@ Iterable<File> _sourceUnder(Directory toolkit) sync* {
   }
 }
 
+/// Every file a package carries, not only the source it ships.
+///
+/// `_sourceUnder` answers a narrow question — does the code we publish name
+/// the product — and it is right to stay narrow: a README that says "a VPN
+/// client cannot open a tunnel from its GUI process" is explaining why the
+/// package exists, and forbidding that sentence would forbid the
+/// documentation.
+///
+/// The product's own NAME is the other kind of word, and it needed the other
+/// kind of scan. It was sitting in four files no glob here reached — two test
+/// fixtures, a shell probe and an architecture note — as a deep link nobody
+/// had a reason to spell that way. A fixture is published too.
+Iterable<File> _everyTextFileUnder(Directory toolkit) sync* {
+  const Set<String> skipped = <String>{
+    'build',
+    'target',
+    '.dart_tool',
+    'cargokit',
+    '.git',
+  };
+  const Set<String> binary = <String>{
+    '.png',
+    '.jpg',
+    '.jpeg',
+    '.gif',
+    '.ico',
+    '.icns',
+    '.pdf',
+    '.zip',
+    '.gz',
+    '.tar',
+    '.a',
+    '.dylib',
+    '.so',
+    '.dll',
+    '.exe',
+    '.bin',
+    '.ttf',
+    '.otf',
+    '.woff',
+    '.woff2',
+    '.lock',
+  };
+
+  Iterable<File> walk(Directory dir) sync* {
+    for (final FileSystemEntity entity in dir.listSync()) {
+      if (entity is Directory) {
+        if (skipped.contains(p.basename(entity.path))) {
+          continue;
+        }
+        yield* walk(entity);
+      } else if (entity is File && !binary.contains(p.extension(entity.path))) {
+        yield entity;
+      }
+    }
+  }
+
+  yield* walk(toolkit);
+}
+
+/// The product's name, which is not a domain word.
+///
+/// Separate from [_forbidden] because the two lists answer different
+/// questions and deserve different reach. A domain word is forbidden in
+/// shipped source and allowed in prose that explains the package; a name
+/// identifies one company's product and is never explaining anything.
+const String _productName = 'myid';
+
+/// The file that has to write the words in order to forbid them.
+const String _thisTest = 'toolkit_purity_test.dart';
+
 void main() {
   group('nothing in toolkit knows what this product is', () {
     late Directory toolkit;
@@ -125,7 +196,83 @@ void main() {
       expect(_forbidden, contains('vpn'));
       expect(_forbidden, contains('tunnel'));
       expect(_forbidden, contains('reseller'));
-      expect(_forbidden, contains('myid'));
+      expect(_forbidden, contains(_productName));
+    });
+
+    test('no file at all should carry the product name, fixtures included', () {
+      final List<String> found = <String>[];
+      for (final File file in _everyTextFileUnder(toolkit)) {
+        if (p.basename(file.path) == _thisTest) {
+          continue;
+        }
+        final String text = file.readAsStringSync().toLowerCase();
+        if (text.contains(_productName)) {
+          found.add(p.relative(file.path, from: toolkit.parent.path));
+        }
+      }
+
+      expect(
+        found,
+        isEmpty,
+        reason:
+            'a deep link spelled with the product scheme reads to a stranger '
+            'as the package belonging to that product, and it reads that way '
+            'from a test fixture exactly as well as from the library',
+      );
+    });
+
+    test('no shipped library should carry a signing key, and no file anywhere '
+        'should carry a secret one', () {
+      // The key itself, not the words that name its format. A minisign public
+      // key is `RW` plus fifty-four more base64 characters, and matching the
+      // phrase instead reported the parser, the config help and the probe —
+      // three files whose whole job is to READ a key the consumer supplies.
+      final RegExp publicKey = RegExp(r'\bRW[A-Za-z0-9+/]{54}\b');
+      // The exact line minisign writes at the top of a key file, and not the
+      // words on their own: "the minisign secret key every installed client
+      // already trusts" is help text, and `signature from minisign secret
+      // key` is the comment inside every .sig. Matching the phrase instead of
+      // the artefact reported seven files, all of them prose or a signature.
+      final RegExp secretKey = RegExp(
+        r'untrusted comment:\s*minisign encrypted secret key',
+        caseSensitive: false,
+      );
+
+      final List<String> shipped = <String>[];
+      final List<String> secrets = <String>[];
+
+      for (final File file in _everyTextFileUnder(toolkit)) {
+        if (p.basename(file.path) == _thisTest) {
+          continue;
+        }
+        final String text = file.readAsStringSync();
+        final String where = p.relative(file.path, from: toolkit.parent.path);
+        if (secretKey.hasMatch(text)) {
+          secrets.add(where);
+        }
+        if (publicKey.hasMatch(text) &&
+            (where.contains('/lib/') || where.contains('/bin/'))) {
+          shipped.add(where);
+        }
+      }
+
+      expect(
+        secrets,
+        isEmpty,
+        reason:
+            'the half of a signing pair that signs must never reach a '
+            'repository, and a check that waits for the publication step is a '
+            'check that runs after the mistake',
+      );
+      expect(
+        shipped,
+        isEmpty,
+        reason:
+            'the key an app trusts belongs to whoever ships that app. A '
+            'toolkit that hardcodes one in what it publishes hands every '
+            'consumer somebody else\'s trust root — and the private tree '
+            'still carries that exact mistake in a release command',
+      );
     });
   });
 }
