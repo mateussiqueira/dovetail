@@ -233,7 +233,7 @@ void main() {
       expect(note.detail, contains('checksums'));
     });
 
-    test('a declared service should be named by its unit file', () {
+    test('a declared linux unit should be named by its file', () {
       final ProjectReport report = reportFor(
         config: configWith(
           extra:
@@ -242,7 +242,7 @@ void main() {
         ),
       );
 
-      expect(noteOn(report, 'service').detail, 'demo-helper.service');
+      expect(noteOn(report, 'service (linux)').detail, 'demo-helper.service');
     });
   });
 

@@ -295,13 +295,18 @@ final class BundleCommand extends Command<int> {
       from: args.option('root'),
     )?.service;
 
-    if (service != null) {
-      stdout.writeln('service  ${service.unit.fileName}');
+    final SystemdUnit? unit = service?.unit;
+    if (unit != null) {
+      stdout.writeln('service  ${unit.fileName}');
     }
 
     final String format = args.option('linux-format')!;
 
-    if (format == 'appimage' && service != null) {
+    // A recusa e da UNIDADE, e nao da secao. Um produto que declara so o daemon
+    // do macOS nao tem helper de Linux para perder num AppImage, e recusar o
+    // formato por causa de uma declaracao de outra plataforma seria barrar o
+    // que nao esta quebrado.
+    if (format == 'appimage' && unit != null) {
       // Um AppImage nao instala nada: ele executa de um arquivo. Sem instalar
       // nao ha unit systemd, sem a unit nao ha helper privilegiado, e sem o
       // helper nao ha kill switch. O que sai nao e produto degradado — e uma
@@ -312,7 +317,7 @@ final class BundleCommand extends Command<int> {
       // ao rpm e nao chegam aqui, entao o servico sumia em silencio. O README
       // ja dizia isso em prosa; dizer em prosa nao impede ninguem.
       throw UsageException(
-        'this project declares a service (${service.unit.fileName}), and an '
+        'this project declares a service (${unit.fileName}), and an '
             'AppImage cannot install one.',
         'An AppImage runs from a file instead of installing, so there is no '
             'systemd unit, no privileged helper, and no kill switch — and the '

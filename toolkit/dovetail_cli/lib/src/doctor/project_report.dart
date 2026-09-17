@@ -1,6 +1,7 @@
 import 'package:dovetail_signer/dovetail_signer.dart';
 import 'package:dovetail_cli/src/config/dovetail_config.dart';
 import 'package:dovetail_cli/src/config/macos_signing_config.dart';
+import 'package:dovetail_cli/src/config/service_config.dart';
 
 enum ProjectFinding { ready, missing, notConfigured }
 
@@ -72,7 +73,7 @@ final class ProjectReport {
       _targetsNote(config, host),
       _updateNote(config),
       _signingNote(config, host, environment),
-      _serviceNote(config),
+      ..._serviceNotes(config),
     ]);
   }
 
@@ -201,18 +202,52 @@ final class ProjectReport {
     return null;
   }
 
-  static ProjectNote _serviceNote(DovetailConfig config) =>
-      config.service == null
-      ? const ProjectNote(
+  /// Uma linha por plataforma, porque a resposta e por plataforma.
+  ///
+  /// Enquanto havia uma linha so, ela falava de Linux: um produto que embarca
+  /// daemon no macOS e nao declara unit systemd lia "nenhum helper", o que era
+  /// verdade sobre o Linux e mentira sobre a maquina em que ele roda.
+  static List<ProjectNote> _serviceNotes(DovetailConfig config) {
+    final ServiceConfig? service = config.service;
+    if (service == null) {
+      return const <ProjectNote>[
+        ProjectNote(
           subject: 'service',
           finding: ProjectFinding.notConfigured,
-          detail: 'no privileged helper is installed by the linux packages',
+          detail: 'no privileged component is declared, on any platform',
+        ),
+      ];
+    }
+
+    return <ProjectNote>[
+      if (service.unit == null)
+        const ProjectNote(
+          subject: 'service (linux)',
+          finding: ProjectFinding.notConfigured,
+          detail: 'the deb and the rpm install no unit',
         )
-      : ProjectNote(
-          subject: 'service',
+      else
+        ProjectNote(
+          subject: 'service (linux)',
           finding: ProjectFinding.ready,
-          detail: config.service!.unit.fileName,
-        );
+          detail: service.unit!.fileName,
+        ),
+      if (service.macos == null)
+        const ProjectNote(
+          subject: 'service (macos)',
+          finding: ProjectFinding.notConfigured,
+          detail: 'no daemon travels in the bundle',
+        )
+      else
+        ProjectNote(
+          subject: 'service (macos)',
+          finding: ProjectFinding.ready,
+          detail:
+              '${service.macos!.plistFileName}  '
+              '(${service.macos!.route.name})',
+        ),
+    ];
+  }
 
   static String _hostFor(String os) => os == 'darwin' ? 'macos' : os;
 }

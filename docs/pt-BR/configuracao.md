@@ -286,6 +286,61 @@ Declarar esta seção **recusa o formato AppImage**: um AppImage não instala
 nada, então não há unit, não há helper e não há kill switch — e o que sai não é
 produto degradado, é uma janela que não conecta.
 
+### `service.macos`
+
+O mesmo componente privilegiado, na plataforma em que ele não chega por pacote.
+A seção era de Linux de ponta a ponta — unit systemd e política polkit — e o
+macOS tinha a mesma necessidade sem nada a declarar: o daemon não entrava no
+bundle, o `SMAppService` procurava um property list que não estava lá, e a tela
+dizia "não instalado" sobre algo que nunca chegou a ser empacotado.
+
+```yaml
+service:
+  macos:
+    label: com.example.demo.helper
+    program: demo-helper
+    route: bundled
+    entitlements: macos/Helper.entitlements
+```
+
+Cada metade vive sozinha: um projeto que entrega só macOS declara
+`service.macos` e nenhuma unit, e um que entrega só Linux fica como estava.
+
+#### `label`
+
+O rótulo do daemon no launchd e — com `.plist` no fim — o nome do arquivo que o
+`SMAppService` procura dentro do bundle. Tem de estar dentro do namespace do
+`identifier` do aplicativo: o launchd resolve o daemon por um nome que o
+sistema espera ali, e um rótulo declarado fora registra e nunca casa.
+
+#### `program`
+
+O nome que o binário do helper recebe **dentro do bundle**, e não o caminho em
+que ele foi construído: esse caminho muda com a máquina, e o que viaja é a
+cópia.
+
+#### `route`
+
+`bundled` (o padrão) viaja dentro do aplicativo, em
+`Contents/Library/LaunchDaemons`, e o aplicativo o registra em runtime com o
+`SMAppService` — a única rota que funciona a partir do `.dmg` que esta
+ferramenta produz, e a que dá ao usuário um interruptor em Ajustes do Sistema
+em vez de um pedido de senha. Exige assinatura válida e o **mesmo Team ID** no
+aplicativo e no daemon: um build assinado ad-hoc, que é o que o debug produz, é
+recusado no registro.
+
+`system` significa que um instalador rodando como root o coloca em
+`/Library/LaunchDaemons`. Não exige Developer ID e serve a máquina inteira, e
+exige um formato de pacote que esta ferramenta não constrói hoje — declará-la é
+dizer que a instalação acontece fora do `.dmg`.
+
+#### `entitlements`
+
+Os entitlements do **daemon**, que não são os do aplicativo. Normalmente
+ausentes, e está certo. O que ele nunca pode herdar é o `app-sandbox` do
+aplicativo: um daemon em sandbox não alcança socket, rede nem arquivo fora do
+contêiner dele, que é tudo o que ele existe para fazer.
+
 ### `name`, `description`, `exec-start`
 
 Nome do arquivo da unit, o que aparece no `systemctl status`, e o binário que

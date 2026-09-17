@@ -1,11 +1,13 @@
 import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_cli/src/config/config_failure.dart';
+import 'package:dovetail_cli/src/config/macos_service_config.dart';
 
 final class ServiceConfig {
   const ServiceConfig({
     required this.unit,
     required this.policy,
     required this.scripts,
+    required this.macos,
   });
 
   factory ServiceConfig.fromMap(
@@ -13,24 +15,80 @@ final class ServiceConfig {
     String origin, {
     required String identifier,
   }) {
-    final SystemdUnit unit = _unitOf(map, origin);
+    final MacosServiceConfig? macos = _macosOf(
+      map,
+      origin,
+      identifier: identifier,
+    );
+    final bool declaraLinux = _linuxKeys.any(map.containsKey);
+    if (macos == null && !declaraLinux) {
+      throw ConfigFailure(
+        'the service section declares no privileged component.',
+        remedy:
+            'give it a systemd unit (service.name) for Linux, a daemon '
+            '(service.macos) for macOS, or both. An empty section refuses the '
+            'AppImage format and installs nothing in exchange.',
+        origin: origin,
+      );
+    }
+
+    // Uma chave de Linux presente e um Linux INCOMPLETO, e nao um projeto que
+    // so quer macOS: o erro tem de continuar nomeando o campo que falta, em vez
+    // de dizer que a secao esta vazia.
+    final SystemdUnit? unit = declaraLinux ? _unitOf(map, origin) : null;
     return ServiceConfig(
       unit: unit,
       policy: _policyOf(map, origin, identifier: identifier),
-      scripts: ServiceScripts(
-        unitFileName: unit.fileName,
-        purgePaths: _stringList(
-          map['purge-paths'],
-          'service.purge-paths',
-          origin,
-        ),
-      ),
+      scripts: unit == null
+          ? null
+          : ServiceScripts(
+              unitFileName: unit.fileName,
+              purgePaths: _stringList(
+                map['purge-paths'],
+                'service.purge-paths',
+                origin,
+              ),
+            ),
+      macos: macos,
     );
   }
 
-  final SystemdUnit unit;
+  /// A unidade systemd. Nula num produto que declara só o daemon do macOS.
+  final SystemdUnit? unit;
   final PolkitPolicy? policy;
-  final ServiceScripts scripts;
+  final ServiceScripts? scripts;
+
+  /// O daemon do macOS. Nulo num produto que declara só a unidade do Linux.
+  final MacosServiceConfig? macos;
+
+  /// As chaves que descrevem a unidade systemd. Presença de qualquer uma
+  /// significa "este projeto declara Linux", mesmo que incompleto.
+  static const List<String> _linuxKeys = <String>[
+    'name',
+    'description',
+    'exec-start',
+    'capabilities',
+    'runtime-directory',
+    'state-directory',
+    'logs-directory',
+    'purge-paths',
+    'polkit',
+  ];
+
+  static MacosServiceConfig? _macosOf(
+    Map<String, Object?> map,
+    String origin, {
+    required String identifier,
+  }) {
+    final Object? section = map['macos'];
+    if (section == null) {
+      return null;
+    }
+    if (section is! Map<String, Object?>) {
+      throw ConfigFailure('service.macos must be a mapping.', origin: origin);
+    }
+    return MacosServiceConfig.fromMap(section, origin, identifier: identifier);
+  }
 
   static SystemdUnit _unitOf(Map<String, Object?> map, String origin) {
     final String name = _required(map, 'name', origin);
