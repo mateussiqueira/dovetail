@@ -1,0 +1,24 @@
+# A raiz do repositorio e um workspace DE PROPOSITO, e nao para buildar aqui.
+#
+# Sem manifesto nesta raiz, o cargo que resolve este repositorio como
+# dependencia git cai em "manifest discovery": varre a arvore inteira atras do
+# pacote pedido e TROPEÇA nos templates do SDK, que carregam `{{name}}_core` e
+# nao sao Cargo.toml valido. O erro aparece no consumidor, apontando para um
+# arquivo que ele nunca pediu — e `cargo test` morre antes de compilar qualquer
+# coisa.
+#
+# Declarar os membros resolve na origem: o cargo le ESTE manifesto, acha o
+# pacote entre os membros e nao varre mais nada. O `exclude` deixa escrito que
+# os templates nao sao membros, nem por acidente de um glob futuro.
+[workspace]
+resolver = "2"
+
+members = [
+  "toolkit/dovetail_rust_core/rust",
+  "toolkit/dovetail_shortcut_channel/rust",
+]
+
+exclude = [
+  "tool/sdk/templates",
+  "dist",
+]
