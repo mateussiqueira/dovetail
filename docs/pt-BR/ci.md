@@ -53,6 +53,22 @@ pre-push e de qualquer clone limpo — e diz o comando que o produz. Construir
 dentro do portão custaria dez minutos por push; provar a esteira sobre um build
 que já existe custa um minuto.
 
+O bundle que carrega um daemon privilegiado tem prova local própria,
+`tool/ci/prove_service.sh`. Ele constrói um app Flutter descartável
+(`flutter create` + `dovetail build --target macos --no-release`) e o assina
+com a identidade ad-hoc, `APPLE_SIGNING_IDENTITY=-`, depois assere os seis
+fatos que o `SMAppService` precisa: o property list onde ele procura, o
+`Label` igual ao nome do arquivo sem `.plist`, o `BundleProgram` relativo em
+`Contents/MacOS/<program>`, o binário lá e executável, `codesign --verify
+--deep --strict` no `.app`, e o daemon assinado com os entitlements DELE e
+sem nenhum `app-sandbox` do aplicativo — o defeito que o `ddb337c` fechou.
+Ele **não** é parte do portão: constrói um app Flutter do zero, que é
+exatamente o custo que o portão recusa pagar a cada push. E não prova
+registro — com a identidade ad-hoc os dois lados reportam
+`TeamIdentifier=not set`, então a recusa por divergência de Team ID roda e
+não pode disparar, e o registro real no `SMAppService` continua esperando um
+Developer ID.
+
 Esta frase foi falsa até 2026-09-05. O arquivo dizia "forma fria" e era uma
 gravação desta máquina quente: `diff tool/skip_baseline.json dist/verify-run.json`
 depois de uma corrida normal saía idêntico, e os testes que dependem do `.app`
