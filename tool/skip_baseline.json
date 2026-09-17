@@ -242,7 +242,7 @@
           "skips": {}
         },
         "test/project_report_test.dart": {
-          "declared": 18,
+          "declared": 21,
           "skips": {}
         },
         "test/readme_covers_commands_test.dart": {

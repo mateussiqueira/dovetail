@@ -1,7 +1,11 @@
+import 'dart:io';
+
 import 'package:dovetail_signer/dovetail_signer.dart';
 import 'package:dovetail_cli/src/config/dovetail_config.dart';
+import 'package:dovetail_cli/src/config/macos_service_config.dart';
 import 'package:dovetail_cli/src/config/macos_signing_config.dart';
 import 'package:dovetail_cli/src/config/service_config.dart';
+import 'package:path/path.dart' as p;
 
 enum ProjectFinding { ready, missing, notConfigured }
 
@@ -36,6 +40,11 @@ final class ProjectReport {
     required String? version,
     required String host,
     Map<String, String>? environment,
+
+    /// A raiz contra a qual `service.macos.binary` resolve. O `doctor` passa o
+    /// diretório do `dovetail.yaml`; nulo cai no cwd, como o relatório do app
+    /// já faz quando não há arquivo, para o resultado continuar decidível.
+    String? root,
   }) {
     if (config == null) {
       return const ProjectReport(<ProjectNote>[
@@ -73,7 +82,7 @@ final class ProjectReport {
       _targetsNote(config, host),
       _updateNote(config),
       _signingNote(config, host, environment),
-      ..._serviceNotes(config),
+      ..._serviceNotes(config, root),
     ]);
   }
 
@@ -207,7 +216,14 @@ final class ProjectReport {
   /// Enquanto havia uma linha so, ela falava de Linux: um produto que embarca
   /// daemon no macOS e nao declara unit systemd lia "nenhum helper", o que era
   /// verdade sobre o Linux e mentira sobre a maquina em que ele roda.
-  static List<ProjectNote> _serviceNotes(DovetailConfig config) {
+  ///
+  /// A declaracao do daemon, sozinha, nao e prova de nada: `dovetail build`
+  /// COPIA o binario e nao o compila, entao um projeto cujo daemon nunca foi
+  /// construido passava aqui como `ready` e quebrava no embed. Por isso o
+  /// caminho declarado em `service.macos.binary` e conferido no disco — a
+  /// mesma pergunta que a secao `spm` faz ao `.xcframework`, e pelo mesmo
+  /// motivo: quem esqueceu o passo so descobria no build.
+  static List<ProjectNote> _serviceNotes(DovetailConfig config, String? root) {
     final ServiceConfig? service = config.service;
     if (service == null) {
       return const <ProjectNote>[
@@ -239,14 +255,41 @@ final class ProjectReport {
           detail: 'no daemon travels in the bundle',
         )
       else
-        ProjectNote(
-          subject: 'service (macos)',
-          finding: ProjectFinding.ready,
-          detail:
-              '${service.macos!.plistFileName}  '
-              '(${service.macos!.route.name})',
-        ),
+        _macosServiceNote(service.macos!, root),
     ];
+  }
+
+  /// O daemon declarado existe onde o `service.macos.binary` diz?
+  ///
+  /// `missing` e nao `notConfigured`: sem o binario o embed RECUSA — o
+  /// `dovetail build` para —, entao o projeto nao pode ser publicado como
+  /// declarado. O detalhe nomeia o caminho declarado, que e o unico conserto
+  /// que quem le tem em maos: a ferramenta nao conhece a cadeia de build de
+  /// quem a usa.
+  static ProjectNote _macosServiceNote(
+    MacosServiceConfig daemon,
+    String? root,
+  ) {
+    final String declared = daemon.binary;
+    final File binary = File(
+      p.isAbsolute(declared)
+          ? declared
+          : p.join(root ?? Directory.current.path, declared),
+    );
+    if (!binary.existsSync()) {
+      return ProjectNote(
+        subject: 'service (macos)',
+        finding: ProjectFinding.missing,
+        detail:
+            '$declared is not on disk, and the bundle embeds it — build the '
+            'daemon before ship',
+      );
+    }
+    return ProjectNote(
+      subject: 'service (macos)',
+      finding: ProjectFinding.ready,
+      detail: '${daemon.plistFileName}  (${daemon.route.name})',
+    );
   }
 
   static String _hostFor(String os) => os == 'darwin' ? 'macos' : os;
