@@ -249,6 +249,10 @@
           "declared": 4,
           "skips": {}
         },
+        "test/release_canaries_test.dart": {
+          "declared": 2,
+          "skips": {}
+        },
         "test/release_command_test.dart": {
           "declared": 14,
           "skips": {}

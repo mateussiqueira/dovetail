@@ -64,7 +64,10 @@ equal to the file name without `.plist`, the relative `BundleProgram` at
 --verify --deep --strict` on the `.app`, and the daemon signed with its own
 entitlements and none of the application's `app-sandbox` — the defect
 `ddb337c` closed. It is **not** part of the gate: it builds a Flutter app from
-scratch, which is exactly the cost the gate refuses to pay on every push. And
+scratch, which is exactly the cost the gate refuses to pay on every push. It
+**is** the last step of `tool/release.sh`, so no version leaves without the
+bundle the daemon lands in being proved — and a canary in `tool/ci` that no
+release runs fails `release_canaries_test.dart` in `toolkit/dovetail_cli`. And
 it does not prove registration — with the ad-hoc identity both sides report
 `TeamIdentifier=not set`, so the Team ID refusal runs and cannot fire, and a
 real `SMAppService` registration still waits for a Developer ID.

@@ -12,10 +12,14 @@ set -euo pipefail
 #   3. tool/build_sdk.sh --target linux-x64 o tarball cross
 #   4. tool/ci/prove_sdk.sh                 canário: container limpo instala
 #   5. tool/ci/prove_bridge.sh              canário: o bridge gerado builda
+#   6. tool/ci/prove_service.sh             canário: o daemon chega ao bundle
 #
 # Cada passo recusa alto com o nome do script que falhou; a ordem importa —
 # o tarball macOS leva o XCFramework do passo 1, e o canário do passo 4 leva
 # o tarball linux do passo 3.
+#
+# O passo 6 constrói um app do zero (`flutter create` + `dovetail build`), então
+# exige `flutter` na máquina de release, além de `clang`, `plutil` e `codesign`.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
@@ -54,11 +58,18 @@ else
   echo "    aponte com \$DOVETAIL_CORE_PATH / \$DOVETAIL_WEAVE_PATH para prová-lo"
 fi
 
+# O canário do daemon responde a pergunta que nenhuma unidade respondeu: as seis
+# peças que o `SMAppService` exige produzem um bundle junto? Ele roda o CLI daqui
+# direto, sem ler tarball nenhum, e fica por último por ser o único passo que
+# paga um build de app inteiro — quem corta release paga esse preço depois de o
+# que é publicado já estar verde.
+step "prove_service.sh (canário do daemon embarcado)" bash tool/ci/prove_service.sh
+
 echo
 if [ "$bridge_proof" = "verde" ]; then
-  echo "release pronto: todos os passos e os dois canários verdes"
+  echo "release pronto: todos os passos e os três canários verdes"
 else
-  echo "release pronto: os passos e o canário do SDK verdes"
+  echo "release pronto: os passos e os canários do SDK e do serviço verdes"
   echo "  o canário do bridge NÃO rodou — o gerador do bridge segue não provado"
 fi
 find dist -maxdepth 1 -name 'dovetail-sdk-*.tar.gz' -exec echo "  {}" \; 2>/dev/null
