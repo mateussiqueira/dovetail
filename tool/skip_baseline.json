@@ -26,6 +26,10 @@
           "declared": 15,
           "skips": {}
         },
+        "test/daemon_embedder_test.dart": {
+          "declared": 7,
+          "skips": {}
+        },
         "test/deb_directory_test.dart": {
           "declared": 6,
           "skips": {}
@@ -211,6 +215,10 @@
           "declared": 6,
           "skips": {}
         },
+        "test/macos_service_config_test.dart": {
+          "declared": 9,
+          "skips": {}
+        },
         "test/manifest_command_test.dart": {
           "declared": 6,
           "skips": {}
@@ -294,7 +302,7 @@
           "skips": {}
         },
         "test/sign_command_test.dart": {
-          "declared": 38,
+          "declared": 42,
           "skips": {}
         },
         "test/sign_windows_test.dart": {

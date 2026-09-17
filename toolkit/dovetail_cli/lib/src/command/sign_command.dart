@@ -2,11 +2,14 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_signer/dovetail_signer.dart';
 import 'package:dovetail_cli/src/command/doctor_command.dart';
 import 'package:dovetail_cli/src/config/config_failure.dart';
 import 'package:dovetail_cli/src/config/config_locator.dart';
+import 'package:dovetail_cli/src/config/darwin_service_route.dart';
 import 'package:dovetail_cli/src/config/dovetail_config.dart';
+import 'package:dovetail_cli/src/config/macos_service_config.dart';
 import 'package:dovetail_cli/src/config/windows_signing_config.dart';
 import 'package:path/path.dart' as p;
 
@@ -134,7 +137,11 @@ final class SignCommand extends Command<int> {
     _requireOnDisk(bundle, flag: '--bundle');
     final String root = project.root;
 
-    final Map<String, String> nested = _nestedEntitlements(args);
+    final Map<String, String> nested = _nestedEntitlements(
+      args,
+      config: project.config,
+      root: root,
+    );
 
     final PolicyVerdict verdict = policy.decide(
       group: NotarizationCredentials.identity,
@@ -624,7 +631,30 @@ final class SignCommand extends Command<int> {
     return 0;
   }
 
-  Map<String, String> _nestedEntitlements(ArgResults args) {
+  /// The entitlements each nested binary is signed with, from the flags and
+  /// from the project's own declaration.
+  ///
+  /// The declared half is the one that was missing. A product whose
+  /// `service.macos` embeds a privileged component puts its binary inside the
+  /// bundle, and `codesign` walking the bundle signs it with whatever the
+  /// application got — including `app-sandbox`, which is the one thing that
+  /// component must never inherit, because a sandboxed process reaches no
+  /// socket and no disk outside its container. The key existed, was validated
+  /// and was documented; nothing read it, so every daemon shipped so far was
+  /// signed as if it were the app.
+  ///
+  /// Only the bundled route contributes. On the other one the component is
+  /// installed from outside the `.app`, so there is no nested binary here to
+  /// carry entitlements for.
+  ///
+  /// A flag for the same path wins over the declaration, and silently: the
+  /// person typing the flag is looking at this signature now, and the yaml was
+  /// written months ago.
+  Map<String, String> _nestedEntitlements(
+    ArgResults args, {
+    required DovetailConfig? config,
+    required String root,
+  }) {
     final Map<String, String> byPath = <String, String>{};
     for (final String entry in args.multiOption('entitlements-for')) {
       final int divider = entry.indexOf('=');
@@ -648,6 +678,34 @@ final class SignCommand extends Command<int> {
       }
       byPath[relative] = plist;
     }
+
+    final MacosServiceConfig? service = config?.service?.macos;
+    if (service == null ||
+        service.route != DarwinServiceRoute.bundled ||
+        service.entitlements == null) {
+      return byPath;
+    }
+    final String relative = DaemonEmbedder.programPathFor(service.program);
+    if (byPath.containsKey(relative)) {
+      return byPath;
+    }
+    final String plist = p.isAbsolute(service.entitlements!)
+        ? service.entitlements!
+        : p.join(root, service.entitlements!);
+    if (!File(plist).existsSync()) {
+      throw UsageException(
+        'service.macos.entitlements points at $plist, and there is no file '
+            'there.',
+        'Signing would fall back to the application\'s own entitlements for '
+            'the embedded component, which is the failure this key exists to '
+            'prevent. Fix the path or drop the key.\n\n$usage',
+      );
+    }
+    byPath[relative] = plist;
+    stdout.writeln(
+      'entitlements  $relative  '
+      '(${p.relative(plist, from: root)}; service.macos.entitlements)',
+    );
     return byPath;
   }
 }

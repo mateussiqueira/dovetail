@@ -705,6 +705,179 @@ $extra''');
       Directory(p.join(project.path, 'Example.app')).createSync();
     }
 
+    /// The yaml of a project that embeds a privileged component.
+    ///
+    /// `route` and `entitlements` are the two the tests below vary, because
+    /// they are the two that decide whether anything reaches codesign at all.
+    String serviceYaml({required String route, String? entitlements}) =>
+        'service:\n'
+        '  macos:\n'
+        '    label: com.example.demo.helper\n'
+        '    program: demo-helper\n'
+        '    binary: target/release/demo-helper\n'
+        '    route: $route\n'
+        '${entitlements == null ? '' : '    entitlements: $entitlements\n'}';
+
+    String helperEntitlementsAt(String relative) {
+      final String path = p.join(project.path, relative);
+      File(path)
+        ..createSync(recursive: true)
+        ..writeAsStringSync('<plist><!-- no app-sandbox --></plist>');
+      return path;
+    }
+
+    Future<_Recording> signBundle({
+      List<String> extra = const <String>[],
+    }) async {
+      final _Recording recording = _Recording();
+      final CommandRunner<int> runner = CommandRunner<int>('dovetail', 'test')
+        ..addCommand(
+          SignCommand(
+            runner: recording,
+            environment: <String, String>{
+              'APPLE_SIGNING_IDENTITY': 'Developer ID Application: X',
+            },
+            root: project.path,
+          ),
+        );
+      expect(
+        await runner.run(<String>[
+          'sign',
+          '--target',
+          'macos',
+          '--bundle',
+          p.join(project.path, 'Example.app'),
+          ...extra,
+        ]),
+        0,
+      );
+      return recording;
+    }
+
+    /// The codesign call that signed one nested path, or null.
+    List<String>? signatureOf(_Recording recording, String relative) {
+      final String absolute = p.join(project.path, 'Example.app', relative);
+      for (final List<String> call in recording.calls) {
+        if (call.first == 'codesign' && call.contains(absolute)) {
+          return call;
+        }
+      }
+      return null;
+    }
+
+    test('the declared entitlements of an embedded component should reach '
+        'codesign for that binary, and not the app\'s', () async {
+      projectWith(
+        'sign:\n  macos:\n    identity-env: APPLE_SIGNING_IDENTITY\n'
+        '${serviceYaml(route: 'bundled', entitlements: 'macos/Helper.entitlements')}',
+      );
+      final String helper = helperEntitlementsAt('macos/Helper.entitlements');
+      Directory(
+        p.join(project.path, 'Example.app', 'Contents', 'MacOS'),
+      ).createSync(recursive: true);
+      File(
+        p.join(project.path, 'Example.app', 'Contents', 'MacOS', 'demo-helper'),
+      ).writeAsStringSync('binary');
+
+      final List<String>? call = signatureOf(
+        await signBundle(),
+        p.join('Contents', 'MacOS', 'demo-helper'),
+      );
+
+      expect(
+        call,
+        isNotNull,
+        reason:
+            'the component lives inside the bundle, so codesign walks it '
+            'either way — the question was only ever which entitlements it '
+            'would carry',
+      );
+      expect(
+        call,
+        containsAllInOrder(<String>['--entitlements', helper]),
+        reason:
+            'without this the component is signed with whatever the '
+            'application got, and an application carries app-sandbox — which '
+            'leaves a privileged process unable to reach a socket or a disk '
+            'outside its container',
+      );
+    });
+
+    test('a component installed from outside the bundle should contribute no '
+        'entitlements here', () async {
+      projectWith(
+        'sign:\n  macos:\n    identity-env: APPLE_SIGNING_IDENTITY\n'
+        '${serviceYaml(route: 'system', entitlements: 'macos/Helper.entitlements')}',
+      );
+      helperEntitlementsAt('macos/Helper.entitlements');
+
+      final _Recording recording = await signBundle();
+
+      expect(
+        signatureOf(recording, p.join('Contents', 'MacOS', 'demo-helper')),
+        isNull,
+        reason:
+            'on that route the binary is put in place by an installer running '
+            'as root, so there is nothing inside this .app to sign for it',
+      );
+    });
+
+    test('a declared entitlements file that is not on disk should be refused, '
+        'naming the path', () async {
+      projectWith(
+        'sign:\n  macos:\n    identity-env: APPLE_SIGNING_IDENTITY\n'
+        '${serviceYaml(route: 'bundled', entitlements: 'macos/Absent.entitlements')}',
+      );
+
+      await expectLater(
+        signBundle(),
+        throwsA(
+          isA<UsageException>().having(
+            (UsageException error) => error.message,
+            'message',
+            contains('Absent.entitlements'),
+          ),
+        ),
+        reason:
+            'carrying on would sign the component with the application\'s '
+            'entitlements, which is the exact outcome the key exists to '
+            'prevent — a silent fallback is worse than a refusal',
+      );
+    });
+
+    test('a flag naming the same path should win over the declaration', () async {
+      projectWith(
+        'sign:\n  macos:\n    identity-env: APPLE_SIGNING_IDENTITY\n'
+        '${serviceYaml(route: 'bundled', entitlements: 'macos/Helper.entitlements')}',
+      );
+      helperEntitlementsAt('macos/Helper.entitlements');
+      final String override = helperEntitlementsAt('macos/Other.entitlements');
+      Directory(
+        p.join(project.path, 'Example.app', 'Contents', 'MacOS'),
+      ).createSync(recursive: true);
+      File(
+        p.join(project.path, 'Example.app', 'Contents', 'MacOS', 'demo-helper'),
+      ).writeAsStringSync('binary');
+
+      final List<String>? call = signatureOf(
+        await signBundle(
+          extra: <String>[
+            '--entitlements-for',
+            'Contents/MacOS/demo-helper=$override',
+          ],
+        ),
+        p.join('Contents', 'MacOS', 'demo-helper'),
+      );
+
+      expect(
+        call,
+        containsAllInOrder(<String>['--entitlements', override]),
+        reason:
+            'the person typing the flag is looking at this signature now, and '
+            'the yaml was written months ago',
+      );
+    });
+
     test('identity-env and the Release entitlements should both reach '
         'codesign', () async {
       projectWith('sign:\n  macos:\n    identity-env: MY_ID\n');
