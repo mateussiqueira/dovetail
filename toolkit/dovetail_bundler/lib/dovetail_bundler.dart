@@ -41,6 +41,7 @@ export 'package:dovetail_bundler/src/windows/nsis_text.dart';
 export 'package:dovetail_bundler/src/windows/nsis_utils.dart';
 export 'package:dovetail_bundler/src/windows/wix_source.dart';
 export 'package:dovetail_bundler/src/windows/wix_text.dart';
+export 'package:dovetail_bundler/src/xml_text.dart';
 export 'package:dovetail_bundler/src/windows/wix_tool.dart';
 export 'package:dovetail_bundler/src/windows/wixl_source.dart';
 export 'package:dovetail_bundler/src/windows/wixl_tool.dart';

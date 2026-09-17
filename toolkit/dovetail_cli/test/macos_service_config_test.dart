@@ -98,6 +98,31 @@ void main() {
       );
     });
 
+    test('a program name carrying XML metacharacters should be refused', () {
+      // O nome vira arquivo em Contents/MacOS, chave relativa que a
+      // assinatura procura, e entrada no plist — só a última decodifica
+      // entidades. Escapar uma ocorrência e não as outras deixaria cada
+      // consumidor obrigado a decodificar antes de abrir o caminho; a
+      // recusa no yaml é a única vez em que o erro aparece perto de quem
+      // pode consertá-lo.
+      expect(
+        () => _parse(
+          'service:\n'
+          '  macos:\n'
+          '    label: com.example.demo.helper\n'
+          '    program: demo&helper\n'
+          '    binary: target/release/demo-helper\n',
+        ),
+        throwsA(
+          isA<ConfigFailure>().having(
+            (ConfigFailure f) => f.message,
+            'message',
+            contains('program'),
+          ),
+        ),
+      );
+    });
+
     test('a section that declares nothing should be refused', () {
       expect(
         () => _parse('service:\n  purge-paths: []\n'),

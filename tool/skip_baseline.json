@@ -27,7 +27,7 @@
           "skips": {}
         },
         "test/daemon_embedder_test.dart": {
-          "declared": 7,
+          "declared": 9,
           "skips": {}
         },
         "test/deb_directory_test.dart": {
@@ -216,7 +216,7 @@
           "skips": {}
         },
         "test/macos_service_config_test.dart": {
-          "declared": 9,
+          "declared": 10,
           "skips": {}
         },
         "test/manifest_command_test.dart": {

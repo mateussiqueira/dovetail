@@ -1,4 +1,5 @@
 import 'package:dovetail_bundler/src/bundle_failure.dart';
+import 'package:dovetail_bundler/src/xml_text.dart';
 
 enum PolkitAuthorization {
   no('no'),
@@ -137,10 +138,8 @@ final class PolkitPolicy {
     return out.toString();
   }
 
-  static String _escape(String value) => value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&apos;');
+  /// A private copy became a delegation when the daemon property list
+  /// became the third generator emitting XML: the escape is none of the
+  /// three formats, it is the XML underneath them.
+  static String _escape(String value) => XmlText.attribute(value);
 }

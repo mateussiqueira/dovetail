@@ -45,6 +45,21 @@ final class MacosServiceConfig {
         origin: origin,
       );
     }
+    if (program.contains('&') ||
+        program.contains('<') ||
+        program.contains('>')) {
+      throw ConfigFailure(
+        'service.macos.program is "$program", which carries a character '
+        'XML reserves.',
+        remedy:
+            'the name becomes a file inside Contents/MacOS, a relative path '
+            'the signing step looks up, and a plist entry — only the last '
+            'of the three would decode XML entities. Name the binary '
+            'something the filesystem, the signer and the plist all agree '
+            'on.',
+        origin: origin,
+      );
+    }
 
     final String binary = _required(map, 'binary', origin);
 

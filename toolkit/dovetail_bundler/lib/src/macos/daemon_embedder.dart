@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dovetail_bundler/src/bundle_failure.dart';
+import 'package:dovetail_bundler/src/xml_text.dart';
 import 'package:path/path.dart' as p;
 
 /// Põe o componente privilegiado DENTRO do `.app`, que é o único lugar de onde
@@ -35,9 +36,17 @@ final class DaemonEmbedder {
     required String program,
     List<String> arguments = const <String>[],
   }) {
+    _requireEmbeddableProgramName(program);
+
+    // `arguments` e `label` saem do `dovetail.yaml` de quem usa o toolkit e
+    // entram em elementos <string>. Interpolados crus, um `&` de um argumento
+    // tipo "--mode a&b" fechava o XML antes da hora: o launchd não lê o
+    // plist, o daemon não registra, e o sintoma aparece na máquina de quem
+    // usa — a classe de recusa sobre a qual ele não pode agir.
+    final String embedded = programPathFor(program);
     final StringBuffer args = StringBuffer();
     for (final String argument in arguments) {
-      args.writeln('        <string>$argument</string>');
+      args.writeln('        <string>${XmlText.content(argument)}</string>');
     }
 
     return '''
@@ -46,12 +55,12 @@ final class DaemonEmbedder {
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>$label</string>
+    <string>${XmlText.content(label)}</string>
     <key>BundleProgram</key>
-    <string>${programPathFor(program)}</string>
+    <string>$embedded</string>
     <key>ProgramArguments</key>
     <array>
-        <string>${programPathFor(program)}</string>
+        <string>$embedded</string>
 ${args.toString().trimRight()}
     </array>
     <key>RunAtLoad</key>
@@ -63,6 +72,31 @@ ${args.toString().trimRight()}
 </dict>
 </plist>
 ''';
+  }
+
+  /// O `program` não é escapado, é recusado.
+  ///
+  /// O nome viaja em três lugares: o arquivo dentro de `Contents/MacOS/`, a
+  /// chave relativa que `sign --entitlements-for` e o próprio embedder usam
+  /// para achá-lo, e o plist. Só o plist decodifica entidades — escapar uma
+  /// ocorrência e não as outras transformaria cada consumidor presente e
+  /// futuro em alguém obrigado a decodificar antes de abrir o caminho. Um
+  /// nome de daemon legítimo não carrega `&`, `<` nem `>`, e a recusa custa
+  /// uma frase no yaml; o silêncio custaria um daemon que não registra.
+  static void _requireEmbeddableProgramName(String program) {
+    if (program.contains('&') ||
+        program.contains('<') ||
+        program.contains('>')) {
+      throw BundleFailure(
+        'service.macos.program is "$program", and a program name cannot '
+        'carry &, < or >.',
+        remedy:
+            'The name becomes a file inside Contents/MacOS, a path the '
+            'signing step looks up, and a plist entry — only the last of '
+            'the three would decode XML entities. Name the binary something '
+            'the filesystem, the signer and the plist all agree on.',
+      );
+    }
   }
 
   /// Copia o binário e escreve o plist. Idempotente: reescreve os dois.
@@ -77,6 +111,10 @@ ${args.toString().trimRight()}
     required String label,
     List<String> arguments = const <String>[],
   }) {
+    // Antes de qualquer cópia: um nome recusado não pode deixar metade de um
+    // daemon para trás no bundle.
+    _requireEmbeddableProgramName(program);
+
     final File source = File(binary);
     if (!source.existsSync()) {
       throw BundleFailure(
