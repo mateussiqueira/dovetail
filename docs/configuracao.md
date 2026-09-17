@@ -300,6 +300,8 @@ service:
   macos:
     label: com.example.demo.helper
     program: demo-helper
+    binary: target/release/demo-helper
+    arguments: [--service]
     route: bundled
     entitlements: macos/Helper.entitlements
 ```
@@ -318,6 +320,22 @@ expects there, and a label declared outside it registers and never matches.
 
 The name the helper binary gets **inside the bundle**, not the path where it
 was built: that path changes with the machine, and what ships is the copy.
+
+#### `binary`
+
+Where the built helper is **now**, relative to the project root. It is not
+`program`, and the difference matters: `program` is the name it gets inside the
+bundle, and this is where the build left it on this machine.
+
+dovetail embeds the daemon; it does not build it. It knows nothing about the
+toolchain that produces it, so it refuses loudly when the file is not there
+rather than shipping a bundle whose helper never arrives.
+
+#### `arguments`
+
+What the daemon is launched with, after its own path. Empty is the ordinary
+case; a binary that serves several modes takes the one that means "run as the
+service" here.
 
 #### `route`
 

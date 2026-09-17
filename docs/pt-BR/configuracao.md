@@ -299,6 +299,8 @@ service:
   macos:
     label: com.example.demo.helper
     program: demo-helper
+    binary: target/release/demo-helper
+    arguments: [--service]
     route: bundled
     entitlements: macos/Helper.entitlements
 ```
@@ -318,6 +320,22 @@ sistema espera ali, e um rótulo declarado fora registra e nunca casa.
 O nome que o binário do helper recebe **dentro do bundle**, e não o caminho em
 que ele foi construído: esse caminho muda com a máquina, e o que viaja é a
 cópia.
+
+#### `binary`
+
+Onde o helper construído está **agora**, relativo à raiz do projeto. Não é o
+`program`, e a diferença importa: `program` é o nome que ele recebe dentro do
+bundle, e este é o lugar em que o build o deixou nesta máquina.
+
+O dovetail embarca o daemon; não o constrói. Ele não conhece a cadeia que o
+produz, então recusa alto quando o arquivo não está lá, em vez de empacotar um
+bundle cujo helper nunca chega.
+
+#### `arguments`
+
+O que o daemon recebe ao subir, depois do caminho dele mesmo. Vazio é o caso
+comum; um binário que serve a vários modos recebe aqui o que significa "rode
+como o serviço".
 
 #### `route`
 

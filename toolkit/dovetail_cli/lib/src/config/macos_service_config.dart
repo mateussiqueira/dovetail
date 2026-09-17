@@ -11,7 +11,9 @@ final class MacosServiceConfig {
   const MacosServiceConfig({
     required this.label,
     required this.program,
+    required this.binary,
     required this.route,
+    required this.arguments,
     this.entitlements,
   });
 
@@ -44,6 +46,8 @@ final class MacosServiceConfig {
       );
     }
 
+    final String binary = _required(map, 'binary', origin);
+
     final Object? entitlements = map['entitlements'];
     if (entitlements != null && entitlements is! String) {
       throw ConfigFailure(
@@ -55,7 +59,9 @@ final class MacosServiceConfig {
     return MacosServiceConfig(
       label: label,
       program: program,
+      binary: binary,
       route: _routeOf(map, origin),
+      arguments: _arguments(map, origin),
       entitlements: entitlements as String?,
     );
   }
@@ -65,6 +71,17 @@ final class MacosServiceConfig {
 
   /// O nome do binário dentro do bundle.
   final String program;
+
+  /// Onde encontrar o binário AGORA, relativo à raiz do projeto.
+  ///
+  /// Separado de [program] porque são duas coisas: onde ele foi construído
+  /// nesta máquina, e o nome que ele recebe dentro do bundle. Esta ferramenta
+  /// não compila o daemon — não conhece a cadeia de build de quem a usa —, e
+  /// recusa alto quando o arquivo não está lá.
+  final String binary;
+
+  /// O que o daemon recebe na linha de comando, depois do próprio caminho.
+  final List<String> arguments;
 
   /// Por onde o daemon chega à máquina. Ver [DarwinServiceRoute].
   final DarwinServiceRoute route;
@@ -83,6 +100,29 @@ final class MacosServiceConfig {
   /// resolve o daemon pelo nome do arquivo, e um plist cujo `Label` divirja do
   /// nome não registra.
   String get plistFileName => '$label.plist';
+
+  static List<String> _arguments(Map<String, Object?> map, String origin) {
+    final Object? value = map['arguments'];
+    if (value == null) {
+      return const <String>[];
+    }
+    if (value is! List) {
+      throw ConfigFailure(
+        'service.macos.arguments must be a list.',
+        origin: origin,
+      );
+    }
+    return <String>[
+      for (final Object? entry in value)
+        if (entry is String)
+          entry
+        else
+          throw ConfigFailure(
+            'service.macos.arguments holds a non-string entry.',
+            origin: origin,
+          ),
+    ];
+  }
 
   static DarwinServiceRoute _routeOf(Map<String, Object?> map, String origin) {
     final Object? value = map['route'];

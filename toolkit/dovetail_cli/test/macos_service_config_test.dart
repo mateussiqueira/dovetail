@@ -20,7 +20,8 @@ const String _macos =
     'service:\n'
     '  macos:\n'
     '    label: com.example.demo.helper\n'
-    '    program: demo-helper\n';
+    '    program: demo-helper\n'
+    '    binary: target/release/demo-helper\n';
 
 void main() {
   group('the daemon it declares', () {
@@ -63,7 +64,8 @@ void main() {
           'service:\n'
           '  macos:\n'
           '    label: com.outro.helper\n'
-          '    program: demo-helper\n',
+          '    program: demo-helper\n'
+          '    binary: target/release/demo-helper\n',
         ),
         throwsA(
           isA<ConfigFailure>().having(
@@ -83,7 +85,8 @@ void main() {
           'service:\n'
           '  macos:\n'
           '    label: com.example.demo.helper\n'
-          '    program: target/debug/demo-helper\n',
+          '    program: target/debug/demo-helper\n'
+          '    binary: target/debug/demo-helper\n',
         ),
         throwsA(
           isA<ConfigFailure>().having(

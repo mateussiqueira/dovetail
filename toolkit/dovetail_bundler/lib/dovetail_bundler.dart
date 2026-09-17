@@ -17,6 +17,7 @@ export 'package:dovetail_bundler/src/linux/shlib_deps.dart';
 export 'package:dovetail_bundler/src/linux/systemd_unit.dart';
 export 'package:dovetail_bundler/src/macos/app_archive_bundler.dart';
 export 'package:dovetail_bundler/src/macos/bundle_architectures.dart';
+export 'package:dovetail_bundler/src/macos/daemon_embedder.dart';
 export 'package:dovetail_bundler/src/macos/dmg_bundler.dart';
 export 'package:dovetail_bundler/src/macos/mach_o.dart';
 export 'package:dovetail_bundler/src/macos/minimum_system_version.dart';
