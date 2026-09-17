@@ -115,6 +115,9 @@ final class DoctorCommand extends Command<int> {
       version: file == null ? null : _versionBeside(file),
       host: hostTarget(),
       environment: Platform.environment,
+      // O caminho que o `service.macos.binary` declara e relativo a RAIZ do
+      // projeto — a do yaml, nao a do cwd, que pode ser uma subpasta qualquer.
+      root: file == null ? null : ConfigLocator.rootFor(file),
     );
 
     stdout.writeln('project');

@@ -286,6 +286,88 @@ Declaring this section **refuses the AppImage format**: an AppImage installs
 nothing, so there is no unit, no helper and no kill switch — and what comes out
 is not a degraded product, it is a window that cannot connect.
 
+### `service.macos`
+
+The same privileged component, on the platform where it does not arrive through
+a package. The section was Linux from end to end — a systemd unit and a polkit
+policy — and macOS had the same need with nothing to declare: the daemon never
+entered the bundle, `SMAppService` looked for a property list that was not
+there, and the screen reported "not installed" about something that had never
+been packaged.
+
+```yaml
+service:
+  macos:
+    label: com.example.demo.helper
+    program: demo-helper
+    binary: target/release/demo-helper
+    arguments: [--service]
+    route: bundled
+    entitlements: macos/Helper.entitlements
+```
+
+Either half may stand alone: a project that ships only macOS declares
+`service.macos` and no unit, and one that ships only Linux keeps what it had.
+
+#### `label`
+
+The daemon's label in launchd, and — with `.plist` appended — the file name
+`SMAppService` looks up inside the bundle. It has to live inside the app's own
+`identifier` namespace: launchd resolves the daemon by a name the system
+expects there, and a label declared outside it registers and never matches.
+
+#### `program`
+
+The name the helper binary gets **inside the bundle**, not the path where it
+was built: that path changes with the machine, and what ships is the copy.
+
+#### `binary`
+
+Where the built helper is **now**, relative to the project root. It is not
+`program`, and the difference matters: `program` is the name it gets inside the
+bundle, and this is where the build left it on this machine.
+
+dovetail embeds the daemon; it does not build it. It knows nothing about the
+toolchain that produces it, so it refuses loudly when the file is not there
+rather than shipping a bundle whose helper never arrives.
+
+#### `arguments`
+
+What the daemon is launched with, after its own path. Empty is the ordinary
+case; a binary that serves several modes takes the one that means "run as the
+service" here.
+
+#### `route`
+
+`bundled` (the default) travels inside the app, in
+`Contents/Library/LaunchDaemons`, and the app registers it at runtime with
+`SMAppService` — the only route that works from the `.dmg` this tool produces,
+and the one that gives the user a switch in System Settings instead of a
+password prompt. It requires a valid signature and the **same Team ID** on app
+and daemon: a build signed ad-hoc, which is what debug produces, is refused at
+registration.
+
+The requirement is charged at signing, and not only written down: after signing
+a bundle whose configuration declares this route, `sign` reads the Team ID of
+the `.app` and of the embedded binary with `codesign -dv`, and refuses the two
+diverging, naming both values and the path where the daemon sits. The refusal
+the requirement would otherwise produce comes from `SMAppService`, on the
+user's machine, about which they can do nothing. The `system` route is never
+checked here: on it the binary is put in place by an installer outside the
+`.app`, and there is no embedded daemon whose Team ID has to match.
+
+`system` means an installer running as root puts it in
+`/Library/LaunchDaemons`. It needs no Developer ID and serves the whole
+machine, and it needs a package format this tool does not build today —
+declaring it says the installation happens outside the `.dmg`.
+
+#### `entitlements`
+
+The **daemon's** entitlements, which are not the app's. Usually absent, and
+that is fine. What it must never inherit is the app's `app-sandbox`: a daemon
+in a sandbox reaches no socket, no network and no file outside its container,
+which is everything it exists to do.
+
 ### `name`, `description`, `exec-start`
 
 The unit file's name, what shows up in `systemctl status`, and the binary that

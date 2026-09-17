@@ -54,6 +54,21 @@ clean clone — and names the command that produces one. Building inside the
 gate would cost ten minutes per push; proving the pipeline over a build that
 already exists costs one minute.
 
+The bundle that carries a privileged daemon has its own local proof,
+`tool/ci/prove_service.sh`. It builds a throwaway Flutter app
+(`flutter create` + `dovetail build --target macos --no-release`) and signs it
+with the ad-hoc identity, `APPLE_SIGNING_IDENTITY=-`, then asserts the six
+facts the `SMAppService` needs: the property list where it looks, its `Label`
+equal to the file name without `.plist`, the relative `BundleProgram` at
+`Contents/MacOS/<program>`, the binary there and executable, `codesign
+--verify --deep --strict` on the `.app`, and the daemon signed with its own
+entitlements and none of the application's `app-sandbox` — the defect
+`ddb337c` closed. It is **not** part of the gate: it builds a Flutter app from
+scratch, which is exactly the cost the gate refuses to pay on every push. And
+it does not prove registration — with the ad-hoc identity both sides report
+`TeamIdentifier=not set`, so the Team ID refusal runs and cannot fire, and a
+real `SMAppService` registration still waits for a Developer ID.
+
 That sentence was false until 2026-09-05. The file said "cold shape" and it
 was a recording from this machine, warm: `diff tool/skip_baseline.json
 dist/verify-run.json` after a normal run came out identical, and the tests

@@ -26,6 +26,8 @@ export 'package:dovetail_cli/src/config/dovetail_config.dart';
 export 'package:dovetail_cli/src/config/macos_signing_config.dart';
 export 'package:dovetail_cli/src/config/project_probe.dart';
 export 'package:dovetail_cli/src/config/pubspec_version.dart';
+export 'package:dovetail_cli/src/config/darwin_service_route.dart';
+export 'package:dovetail_cli/src/config/macos_service_config.dart';
 export 'package:dovetail_cli/src/config/service_config.dart';
 export 'package:dovetail_cli/src/config/update_config.dart';
 export 'package:dovetail_cli/src/config/windows_signing_config.dart';

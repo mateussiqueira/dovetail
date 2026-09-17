@@ -1,13 +1,17 @@
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
+import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_cli/src/build/build_defines.dart';
 import 'package:dovetail_cli/src/build/flutter_build.dart';
 import 'package:dovetail_cli/src/command/doctor_command.dart';
+import 'package:dovetail_cli/src/config/config_failure.dart';
 import 'package:dovetail_cli/src/config/config_locator.dart';
+import 'package:dovetail_cli/src/config/darwin_service_route.dart';
 import 'package:dovetail_cli/src/config/dovetail_config.dart';
+import 'package:dovetail_cli/src/config/macos_service_config.dart';
 import 'package:dovetail_cli/src/config/pubspec_version.dart';
-import 'package:dovetail_process_runner/dovetail_process_runner.dart';
+import 'package:path/path.dart' as p;
 
 final class BuildCommand extends Command<int> {
   BuildCommand() {
@@ -94,10 +98,63 @@ final class BuildCommand extends Command<int> {
       if (!built.succeeded) {
         return built.exitCode;
       }
-      stdout.writeln('output   ${FlutterBuild.outputFor[target]}');
+
+      final String output = FlutterBuild.outputOf(
+        target,
+        release: argResults!.flag('release'),
+      );
+      _embedDaemon(config, target: target, root: root, output: output);
+      stdout.writeln('output   $output');
     }
 
     return 0;
+  }
+
+  /// Poe o daemon dentro do `.app`, quando o projeto declara um embarcado.
+  ///
+  /// Aqui, e nao no `bundle`: o `.app` tem de estar completo ANTES de ser
+  /// assinado, e o dmg so embrulha o que ja existe. Um daemon que entrasse
+  /// depois da assinatura invalidaria o bundle inteiro.
+  void _embedDaemon(
+    DovetailConfig? config, {
+    required String target,
+    required String? root,
+    required String output,
+  }) {
+    final MacosServiceConfig? daemon = config?.service?.macos;
+    if (target != 'macos' ||
+        daemon == null ||
+        daemon.route != DarwinServiceRoute.bundled) {
+      return;
+    }
+
+    final String base = root ?? Directory.current.path;
+    final String appDirectory = _appIn(p.join(base, output));
+    const DaemonEmbedder().embed(
+      appDirectory: appDirectory,
+      binary: p.join(base, daemon.binary),
+      program: daemon.program,
+      label: daemon.label,
+      arguments: daemon.arguments,
+    );
+    stdout.writeln('daemon   ${daemon.plistFileName}');
+  }
+
+  /// O unico `.app` do diretorio de saida.
+  static String _appIn(String directory) {
+    final List<String> apps = <String>[
+      for (final FileSystemEntity entry in Directory(directory).listSync())
+        if (entry is Directory && entry.path.endsWith('.app')) entry.path,
+    ];
+    if (apps.length != 1) {
+      throw ConfigFailure(
+        'expected one .app in $directory, found ${apps.length}.',
+        remedy:
+            'the daemon is embedded into the bundle the build just produced; '
+            'with none, or with more than one, there is no way to tell which.',
+      );
+    }
+    return apps.single;
   }
 
   Map<String, String> _defines(String? root) {

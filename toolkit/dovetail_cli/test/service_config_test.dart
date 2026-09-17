@@ -33,10 +33,10 @@ void main() {
     test('a minimal service should parse', () {
       final ServiceConfig service = parse(_minimal).service!;
 
-      expect(service.unit.fileName, 'demo-helper.service');
-      expect(service.unit.execStart, '/usr/lib/demo/demo-helper');
+      expect(service.unit!.fileName, 'demo-helper.service');
+      expect(service.unit!.execStart, '/usr/lib/demo/demo-helper');
       expect(service.policy, isNull);
-      expect(service.scripts.unitFileName, 'demo-helper.service');
+      expect(service.scripts!.unitFileName, 'demo-helper.service');
     });
 
     test('a name that is not a unit file should be refused', () {
@@ -50,7 +50,7 @@ void main() {
     test('the scripts should always name the unit the package installs', () {
       final ServiceConfig service = parse(_minimal).service!;
 
-      expect(service.scripts.unitFileName, service.unit.fileName);
+      expect(service.scripts!.unitFileName, service.unit!.fileName);
     });
 
     test('capabilities should reach both the bounding set and ambient', () {
@@ -58,13 +58,13 @@ void main() {
         '$_minimal  capabilities: [CAP_NET_ADMIN, CAP_NET_RAW]\n',
       ).service!;
 
-      expect(service.unit.capabilityBoundingSet, <String>{
+      expect(service.unit!.capabilityBoundingSet, <String>{
         'CAP_NET_ADMIN',
         'CAP_NET_RAW',
       });
       expect(
-        service.unit.ambientCapabilities,
-        service.unit.capabilityBoundingSet,
+        service.unit!.ambientCapabilities,
+        service.unit!.capabilityBoundingSet,
         reason:
             'an ambient capability outside the bounding set is dropped in '
             'silence, and the helper starts without the privilege it needs',
@@ -75,13 +75,13 @@ void main() {
       expect(
         parse(
           '$_minimal  runtime-directory: demo\n',
-        ).service!.unit.runtimeDirectory!.mode,
+        ).service!.unit!.runtimeDirectory!.mode,
         '0750',
       );
       expect(
         parse(
           '$_minimal  state-directory:\n    name: demo\n    mode: "0700"\n',
-        ).service!.unit.stateDirectory!.mode,
+        ).service!.unit!.stateDirectory!.mode,
         '0700',
       );
     });
@@ -169,7 +169,7 @@ void main() {
         '$_minimal  purge-paths: [/var/lib/demo]\n',
       ).service!;
 
-      expect(service.scripts.purgePaths, <String>['/var/lib/demo']);
+      expect(service.scripts!.purgePaths, <String>['/var/lib/demo']);
     });
 
     test('a relative purge path should be refused by the bundler', () {

@@ -1,5 +1,16 @@
+import 'dart:io';
+
 import 'package:dovetail_cli/dovetail_cli.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+
+/// Um daemon embarcado, com o binario que o `build` copia e nao compila.
+const String _macosDaemon =
+    'service:\n'
+    '  macos:\n'
+    '    label: com.example.demo.helper\n'
+    '    program: demo-helper\n'
+    '    binary: target/release/demo-helper\n';
 
 DovetailConfig configWith({
   String targets = 'darwin-aarch64',
@@ -233,7 +244,7 @@ void main() {
       expect(note.detail, contains('checksums'));
     });
 
-    test('a declared service should be named by its unit file', () {
+    test('a declared linux unit should be named by its file', () {
       final ProjectReport report = reportFor(
         config: configWith(
           extra:
@@ -242,7 +253,70 @@ void main() {
         ),
       );
 
-      expect(noteOn(report, 'service').detail, 'demo-helper.service');
+      expect(noteOn(report, 'service (linux)').detail, 'demo-helper.service');
+    });
+
+    test('a declared daemon whose binary was never built should be missing, '
+        'naming the declared path', () {
+      // O `build` recusa sem ele — o embed copia, nao compila — e o doctor
+      // dizia `ok service (macos)` para o mesmo projeto. Dois comandos
+      // discordando sobre o que pode empacotar, e um deles mentindo.
+      final Directory root = Directory.systemTemp.createTempSync(
+        'dovetail_daemon',
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+
+      final ProjectReport report = ProjectReport.of(
+        config: configWith(extra: _macosDaemon),
+        version: '4.2.0',
+        host: 'macos',
+        root: root.path,
+      );
+
+      expect(noteOn(report, 'service (macos)').finding, ProjectFinding.missing);
+      expect(
+        noteOn(report, 'service (macos)').detail,
+        contains('target/release/demo-helper'),
+      );
+      expect(report.shipCanRelease, false);
+    });
+
+    test('a declared daemon whose binary is on disk should be ready', () {
+      final Directory root = Directory.systemTemp.createTempSync(
+        'dovetail_daemon',
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'target', 'release', 'demo-helper'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('binary');
+
+      final ProjectReport report = ProjectReport.of(
+        config: configWith(extra: _macosDaemon),
+        version: '4.2.0',
+        host: 'macos',
+        root: root.path,
+      );
+
+      expect(noteOn(report, 'service (macos)').finding, ProjectFinding.ready);
+      expect(
+        noteOn(report, 'service (macos)').detail,
+        contains('com.example.demo.helper.plist'),
+      );
+    });
+
+    test('a project with no macos daemon should keep saying none travels', () {
+      final ProjectReport report = reportFor(
+        config: configWith(
+          extra:
+              'service:\n  name: demo-helper.service\n'
+              '  description: d\n  exec-start: /usr/lib/demo/helper\n',
+        ),
+      );
+
+      expect(
+        noteOn(report, 'service (macos)').finding,
+        ProjectFinding.notConfigured,
+      );
     });
   });
 

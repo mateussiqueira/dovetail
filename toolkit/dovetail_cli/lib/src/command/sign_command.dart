@@ -2,11 +2,14 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
+import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_signer/dovetail_signer.dart';
 import 'package:dovetail_cli/src/command/doctor_command.dart';
 import 'package:dovetail_cli/src/config/config_failure.dart';
 import 'package:dovetail_cli/src/config/config_locator.dart';
+import 'package:dovetail_cli/src/config/darwin_service_route.dart';
 import 'package:dovetail_cli/src/config/dovetail_config.dart';
+import 'package:dovetail_cli/src/config/macos_service_config.dart';
 import 'package:dovetail_cli/src/config/windows_signing_config.dart';
 import 'package:path/path.dart' as p;
 
@@ -134,7 +137,11 @@ final class SignCommand extends Command<int> {
     _requireOnDisk(bundle, flag: '--bundle');
     final String root = project.root;
 
-    final Map<String, String> nested = _nestedEntitlements(args);
+    final Map<String, String> nested = _nestedEntitlements(
+      args,
+      config: project.config,
+      root: root,
+    );
 
     final PolicyVerdict verdict = policy.decide(
       group: NotarizationCredentials.identity,
@@ -179,6 +186,8 @@ final class SignCommand extends Command<int> {
           .toList(),
     );
     stdout.writeln('signed $bundle');
+
+    await _requireSameTeamIdAsTheApp(bundle, project.config?.service?.macos);
 
     if (!args.flag('notarize')) {
       return 0;
@@ -624,7 +633,30 @@ final class SignCommand extends Command<int> {
     return 0;
   }
 
-  Map<String, String> _nestedEntitlements(ArgResults args) {
+  /// The entitlements each nested binary is signed with, from the flags and
+  /// from the project's own declaration.
+  ///
+  /// The declared half is the one that was missing. A product whose
+  /// `service.macos` embeds a privileged component puts its binary inside the
+  /// bundle, and `codesign` walking the bundle signs it with whatever the
+  /// application got — including `app-sandbox`, which is the one thing that
+  /// component must never inherit, because a sandboxed process reaches no
+  /// socket and no disk outside its container. The key existed, was validated
+  /// and was documented; nothing read it, so every daemon shipped so far was
+  /// signed as if it were the app.
+  ///
+  /// Only the bundled route contributes. On the other one the component is
+  /// installed from outside the `.app`, so there is no nested binary here to
+  /// carry entitlements for.
+  ///
+  /// A flag for the same path wins over the declaration, and silently: the
+  /// person typing the flag is looking at this signature now, and the yaml was
+  /// written months ago.
+  Map<String, String> _nestedEntitlements(
+    ArgResults args, {
+    required DovetailConfig? config,
+    required String root,
+  }) {
     final Map<String, String> byPath = <String, String>{};
     for (final String entry in args.multiOption('entitlements-for')) {
       final int divider = entry.indexOf('=');
@@ -648,6 +680,115 @@ final class SignCommand extends Command<int> {
       }
       byPath[relative] = plist;
     }
+
+    final MacosServiceConfig? service = config?.service?.macos;
+    if (service == null ||
+        service.route != DarwinServiceRoute.bundled ||
+        service.entitlements == null) {
+      return byPath;
+    }
+    final String relative = DaemonEmbedder.programPathFor(service.program);
+    if (byPath.containsKey(relative)) {
+      return byPath;
+    }
+    final String plist = p.isAbsolute(service.entitlements!)
+        ? service.entitlements!
+        : p.join(root, service.entitlements!);
+    if (!File(plist).existsSync()) {
+      throw UsageException(
+        'service.macos.entitlements points at $plist, and there is no file '
+            'there.',
+        'Signing would fall back to the application\'s own entitlements for '
+            'the embedded component, which is the failure this key exists to '
+            'prevent. Fix the path or drop the key.\n\n$usage',
+      );
+    }
+    byPath[relative] = plist;
+    stdout.writeln(
+      'entitlements  $relative  '
+      '(${p.relative(plist, from: root)}; service.macos.entitlements)',
+    );
     return byPath;
   }
+
+  /// `SMAppService` refuses a daemon whose Team ID differs from the
+  /// application's — on the user's machine, at registration, with a message
+  /// about which they can do nothing: an app cannot be re-signed from where
+  /// the refusal shows up. [DarwinServiceRoute.bundled] writes the
+  /// requirement down; this is what charges it, at the one moment somebody
+  /// can still act on it — right after the signature that produced the
+  /// mismatch. The app and the embedded binary are read with `codesign -dv`
+  /// and compared; diverging is a refusal naming both values and where the
+  /// daemon sits.
+  ///
+  /// Only the bundled route is charged: on the `system` route an installer
+  /// running as root puts the binary in place from outside the `.app`, and
+  /// there is nothing nested here whose Team ID has to match. A Team ID
+  /// that cannot be read — an ad-hoc signature reports `not set` — is not a
+  /// refusal either: nothing was compared, and the registration refusal the
+  /// route already documents covers it. The skip path (no identity, no
+  /// signature) never reaches this method, and has to keep ending in 0.
+  Future<void> _requireSameTeamIdAsTheApp(
+    String bundle,
+    MacosServiceConfig? service,
+  ) async {
+    if (service == null || service.route != DarwinServiceRoute.bundled) {
+      return;
+    }
+    final String daemon = p.join(
+      bundle,
+      DaemonEmbedder.programPathFor(service.program),
+    );
+
+    final ProcessOutcome appDisplay = await _signingRunner.run(
+      'codesign',
+      <String>['-dv', bundle],
+    );
+    if (!appDisplay.succeeded) {
+      return;
+    }
+    final ProcessOutcome daemonDisplay = await _signingRunner.run(
+      'codesign',
+      <String>['-dv', daemon],
+    );
+    if (!daemonDisplay.succeeded) {
+      throw SigningFailure(
+        'the daemon the configuration embeds is not inside the bundle that '
+        'was just signed.',
+        remedy:
+            '`codesign -dv` read nothing at $daemon, and a bundled daemon '
+            'that signing never reached registers for nobody: SMAppService '
+            'looks the property list up inside the app. Embed the binary '
+            'before signing, which is what build does, or fix the '
+            'service.macos.program name.',
+      );
+    }
+
+    final String? appTeam = _teamIdOf(appDisplay);
+    final String? daemonTeam = _teamIdOf(daemonDisplay);
+    if (appTeam == null || daemonTeam == null || appTeam == daemonTeam) {
+      return;
+    }
+    throw SigningFailure(
+      'the embedded daemon and the application carry different Team IDs.',
+      remedy:
+          'the application signs with Team ID $appTeam, and the daemon at '
+          '$daemon signs with $daemonTeam. SMAppService refuses the '
+          'registration of a daemon whose Team ID differs from the app\'s, '
+          'on the user\'s machine, with a message about which they can do '
+          'nothing. Sign both with the same team.',
+    );
+  }
+
+  /// The Team ID a `codesign -dv` display reports, or null when it reports
+  /// none.
+  ///
+  /// The display is written on STDERR, not on stdout — and a runner is free
+  /// to hand the two streams over merged, so the line is looked for in both
+  /// places it can arrive. `TeamIdentifier=not set`, which is what an
+  /// ad-hoc or missing signature reports, matches nothing: there is no
+  /// value to compare, and nothing was compared.
+  static String? _teamIdOf(ProcessOutcome outcome) => RegExp(
+    r'TeamIdentifier=(\w{10})\b',
+  ).firstMatch('${outcome.stdout}\n${outcome.stderr}')?.group(1);
 }

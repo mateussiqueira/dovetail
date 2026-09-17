@@ -15,6 +15,26 @@ final class FlutterBuild {
     'linux': 'build/linux/x64/release/bundle',
   };
 
+  /// Onde o Flutter grava, considerando o modo.
+  ///
+  /// [outputFor] fala de release e so. Enquanto era ele quem imprimia o
+  /// caminho, `build --no-release` gravava em `Debug` e anunciava `Release` —
+  /// e quem passasse essa linha ao `--app-dir` do `bundle` empacotava um
+  /// diretorio que podia ate existir, de um build anterior, com outro
+  /// conteudo.
+  static String outputOf(String target, {required bool release}) {
+    final String caminho = outputFor[target]!;
+    if (release) {
+      return caminho;
+    }
+    return switch (target) {
+      'macos' => 'build/macos/Build/Products/Debug',
+      'windows' => 'build/windows/x64/runner/Debug',
+      'linux' => 'build/linux/x64/debug/bundle',
+      _ => caminho,
+    };
+  }
+
   static List<String> argumentsFor(
     String target, {
     bool release = true,

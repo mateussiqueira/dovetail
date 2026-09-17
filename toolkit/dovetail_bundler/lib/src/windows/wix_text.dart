@@ -1,17 +1,15 @@
+import 'package:dovetail_bundler/src/xml_text.dart';
+
 abstract final class WixText {
   static const int identifierLimit = 72;
 
-  static String attribute(String value) => value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&apos;');
+  /// The name stays, and delegates: seventeen call sites say what they mean
+  /// with these two, and what they mean is WiX source text — the escape
+  /// itself is [XmlText]'s, shared with the polkit policy and the daemon
+  /// plist, which were the reason not to write a third copy here.
+  static String attribute(String value) => XmlText.attribute(value);
 
-  static String content(String value) => value
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;');
+  static String content(String value) => XmlText.content(value);
 
   static String identifier(String value, {String prefix = 'id'}) {
     final StringBuffer buffer = StringBuffer();
