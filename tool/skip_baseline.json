@@ -302,7 +302,7 @@
           "skips": {}
         },
         "test/sign_command_test.dart": {
-          "declared": 42,
+          "declared": 48,
           "skips": {}
         },
         "test/sign_windows_test.dart": {

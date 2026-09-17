@@ -347,6 +347,15 @@ em vez de um pedido de senha. Exige assinatura válida e o **mesmo Team ID** no
 aplicativo e no daemon: um build assinado ad-hoc, que é o que o debug produz, é
 recusado no registro.
 
+A exigência é cobrada na assinatura, e não só escrita: depois de assinar um
+bundle cuja configuração declara esta rota, o `sign` lê o Team ID do `.app` e
+do binário embarcado com `codesign -dv`, e recusa os dois divergindo, dizendo
+os dois valores e o caminho em que o daemon está. A recusa que a exigência
+produziria vem do `SMAppService`, na máquina de quem usa, sobre a qual ele não
+pode agir. A rota `system` nunca é conferida aqui: nela o binário é posto no
+lugar por um instalador fora do `.app`, e não há daemon embarcado cujo Team ID
+tenha de casar.
+
 `system` significa que um instalador rodando como root o coloca em
 `/Library/LaunchDaemons`. Não exige Developer ID e serve a máquina inteira, e
 exige um formato de pacote que esta ferramenta não constrói hoje — declará-la é

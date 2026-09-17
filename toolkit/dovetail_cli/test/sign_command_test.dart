@@ -956,6 +956,252 @@ $extra''');
     });
   });
 
+  group('the Team ID the bundle and its embedded daemon carry', () {
+    late Directory project;
+
+    setUp(() => project = Directory.systemTemp.createTempSync('sign_teamid'));
+    tearDown(() => project.deleteSync(recursive: true));
+
+    /// A project whose daemon was embedded, and the recording standing in
+    /// for `codesign` while signing and while reading the Team IDs back.
+    ///
+    /// The two `-dv` reads answer what a real `codesign -dv` would: the app
+    /// first, the daemon second, the display on STDERR, `not set` when the
+    /// signature is ad-hoc. [daemonOnDisk] false is a daemon that signing
+    /// never reached — the second read fails, like it would on disk.
+    ({Future<int?> Function() run, _Recording recording}) bundleWithDaemon({
+      required String route,
+      String appTeamId = 'not set',
+      String daemonTeamId = 'not set',
+      bool daemonOnDisk = true,
+    }) {
+      File(p.join(project.path, 'dovetail.yaml')).writeAsStringSync(
+        'identifier: com.example.demo\nname: Demo\nmanufacturer: Example\n'
+        'targets: [darwin-aarch64]\n'
+        'service:\n  macos:\n'
+        '    label: com.example.demo.helper\n'
+        '    program: demo-helper\n'
+        '    binary: target/release/demo-helper\n'
+        '    route: $route\n',
+      );
+      final String app = p.join(project.path, 'Example.app');
+      Directory(app).createSync();
+      if (daemonOnDisk) {
+        Directory(p.join(app, 'Contents', 'MacOS')).createSync(recursive: true);
+        File(
+          p.join(app, 'Contents', 'MacOS', 'demo-helper'),
+        ).writeAsStringSync('binary');
+      }
+      final _Recording recording = _Recording();
+      int teamIdReads = 0;
+      recording.onRun = (String executable, List<String> arguments) {
+        if (executable != 'codesign' || !arguments.contains('-dv')) {
+          return null;
+        }
+        teamIdReads++;
+        final bool readingTheDaemon = teamIdReads == 2;
+        return ProcessOutcome(
+          exitCode: daemonOnDisk || !readingTheDaemon ? 0 : 1,
+          stdout: '',
+          stderr:
+              'Executable=/x\nIdentifier=com.example.demo.helper\n'
+              'TeamIdentifier=${readingTheDaemon ? daemonTeamId : appTeamId}\n',
+        );
+      };
+      Future<int?> run() {
+        final CommandRunner<int> runner = CommandRunner<int>('dovetail', 'test')
+          ..addCommand(
+            SignCommand(
+              runner: recording,
+              environment: <String, String>{
+                'APPLE_SIGNING_IDENTITY': 'Developer ID Application: X',
+              },
+              root: project.path,
+            ),
+          );
+        return runner.run(<String>[
+          'sign',
+          '--target',
+          'macos',
+          '--bundle',
+          app,
+        ]);
+      }
+
+      return (run: run, recording: recording);
+    }
+
+    int readsOf(_Recording recording) => recording.calls
+        .where((List<String> call) => call.contains('-dv'))
+        .length;
+
+    test('a daemon whose Team ID differs from the app\'s should be refused, '
+        'naming both values and where the daemon sits', () async {
+      final steps = bundleWithDaemon(
+        route: 'bundled',
+        appTeamId: 'TEAMAAAAAA',
+        daemonTeamId: 'TEAMB88888',
+      );
+
+      await expectLater(
+        steps.run(),
+        throwsA(
+          isA<SigningFailure>().having(
+            (SigningFailure failure) => failure.remedy,
+            'remedy',
+            allOf(
+              contains('TEAMAAAAAA'),
+              contains('TEAMB88888'),
+              contains('demo-helper'),
+            ),
+          ),
+        ),
+        reason:
+            'o SMAppService recusa o registro na máquina de quem usa, com uma '
+            'mensagem sobre a qual ele não pode agir — a recusa tem de '
+            'acontecer aqui, onde re-assinar custa um comando',
+      );
+      expect(
+        readsOf(steps.recording),
+        2,
+        reason: 'o app e o daemon embarcado são os dois lidos, não um',
+      );
+    });
+
+    test('the refusal should still read the Team ID when a runner hands the '
+        'display over on stdout, merged with stderr', () async {
+      // `codesign -dv` escreve o display no STDERR. Um runner não é obrigado
+      // a manter os dois canais separados — um que junta tudo no stdout é
+      // legítimo —, e o parser que olhasse só um deles pararia de ver um
+      // Team ID que a máquina real imprime no outro.
+      final _Recording recording = _Recording();
+      int teamIdReads = 0;
+      recording.onRun = (String executable, List<String> arguments) {
+        if (executable != 'codesign' || !arguments.contains('-dv')) {
+          return null;
+        }
+        teamIdReads++;
+        final String team = teamIdReads == 1 ? 'TEAMAAAAAA' : 'TEAMB88888';
+        return ProcessOutcome(
+          exitCode: 0,
+          stdout: 'Executable=/x\nTeamIdentifier=$team\n',
+          stderr: '',
+        );
+      };
+      final String app = p.join(project.path, 'Example.app');
+      Directory(p.join(app, 'Contents', 'MacOS')).createSync(recursive: true);
+      File(
+        p.join(app, 'Contents', 'MacOS', 'demo-helper'),
+      ).writeAsStringSync('binary');
+      File(p.join(project.path, 'dovetail.yaml')).writeAsStringSync(
+        'identifier: com.example.demo\nname: Demo\nmanufacturer: Example\n'
+        'targets: [darwin-aarch64]\n'
+        'service:\n  macos:\n'
+        '    label: com.example.demo.helper\n'
+        '    program: demo-helper\n'
+        '    binary: target/release/demo-helper\n'
+        '    route: bundled\n',
+      );
+      final CommandRunner<int> runner = CommandRunner<int>('dovetail', 'test')
+        ..addCommand(
+          SignCommand(
+            runner: recording,
+            environment: <String, String>{
+              'APPLE_SIGNING_IDENTITY': 'Developer ID Application: X',
+            },
+            root: project.path,
+          ),
+        );
+
+      await expectLater(
+        runner.run(<String>['sign', '--target', 'macos', '--bundle', app]),
+        throwsA(
+          isA<SigningFailure>().having(
+            (SigningFailure failure) => failure.remedy,
+            'remedy',
+            allOf(contains('TEAMAAAAAA'), contains('TEAMB88888')),
+          ),
+        ),
+      );
+    });
+
+    test('the system route should run no comparison at all', () async {
+      final steps = bundleWithDaemon(
+        route: 'system',
+        appTeamId: 'TEAMAAAAAA',
+        daemonTeamId: 'TEAMB88888',
+      );
+
+      expect(await steps.run(), 0);
+      expect(
+        readsOf(steps.recording),
+        0,
+        reason:
+            'na rota system o binário é posto no lugar por um instalador fora '
+            'do .app; não há daemon embarcado cujo Team ID tenha de casar',
+      );
+    });
+
+    test('no service.macos should run no comparison at all', () async {
+      File(p.join(project.path, 'dovetail.yaml')).writeAsStringSync(
+        'identifier: com.example.demo\nname: Demo\nmanufacturer: Example\n'
+        'targets: [darwin-aarch64]\n',
+      );
+      Directory(p.join(project.path, 'Example.app')).createSync();
+      final _Recording recording = _Recording();
+      final CommandRunner<int> runner = CommandRunner<int>('dovetail', 'test')
+        ..addCommand(
+          SignCommand(
+            runner: recording,
+            environment: <String, String>{
+              'APPLE_SIGNING_IDENTITY': 'Developer ID Application: X',
+            },
+            root: project.path,
+          ),
+        );
+
+      expect(
+        await runner.run(<String>[
+          'sign',
+          '--target',
+          'macos',
+          '--bundle',
+          p.join(project.path, 'Example.app'),
+        ]),
+        0,
+      );
+      expect(readsOf(recording), 0);
+    });
+
+    test('a Team ID reported as not set on both sides should end in 0: '
+        'nothing was compared', () async {
+      final steps = bundleWithDaemon(route: 'bundled');
+
+      expect(await steps.run(), 0);
+      expect(readsOf(steps.recording), 2);
+    });
+
+    test('a daemon that signing never reached should be refused before any '
+        'Team ID is compared', () async {
+      final steps = bundleWithDaemon(route: 'bundled', daemonOnDisk: false);
+
+      await expectLater(
+        steps.run(),
+        throwsA(
+          isA<SigningFailure>().having(
+            (SigningFailure failure) => failure.message,
+            'message',
+            contains('not inside the bundle'),
+          ),
+        ),
+        reason:
+            'um daemon ausente produz, na máquina de quem usa, o mesmo '
+            'resultado do que a ausência do registro: nada. Aqui a recusa '
+            'aponta o caminho que estava vazio',
+      );
+    });
+  });
+
   group('the identity variable the config names', () {
     DovetailConfig configNaming(String variable) => DovetailConfig.parse('''
 identifier: com.example.demo
@@ -1035,6 +1281,11 @@ sign:
 final class _Recording implements ProcessRunner {
   final List<List<String>> calls = <List<String>>[];
 
+  /// A test installing this hook answers specific calls itself — the
+  /// `codesign -dv` reads, which report what a real one would — and
+  /// returns null for the calls it does not care about.
+  ProcessOutcome? Function(String executable, List<String> arguments)? onRun;
+
   @override
   Future<ProcessOutcome> run(
     String executable,
@@ -1045,6 +1296,10 @@ final class _Recording implements ProcessRunner {
     Duration? timeout,
   }) async {
     calls.add(<String>[executable, ...arguments]);
+    final ProcessOutcome? answered = onRun?.call(executable, arguments);
+    if (answered != null) {
+      return answered;
+    }
     return ProcessOutcome(
       exitCode: 0,
       stdout: arguments.contains('submit')

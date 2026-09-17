@@ -347,6 +347,15 @@ password prompt. It requires a valid signature and the **same Team ID** on app
 and daemon: a build signed ad-hoc, which is what debug produces, is refused at
 registration.
 
+The requirement is charged at signing, and not only written down: after signing
+a bundle whose configuration declares this route, `sign` reads the Team ID of
+the `.app` and of the embedded binary with `codesign -dv`, and refuses the two
+diverging, naming both values and the path where the daemon sits. The refusal
+the requirement would otherwise produce comes from `SMAppService`, on the
+user's machine, about which they can do nothing. The `system` route is never
+checked here: on it the binary is put in place by an installer outside the
+`.app`, and there is no embedded daemon whose Team ID has to match.
+
 `system` means an installer running as root puts it in
 `/Library/LaunchDaemons`. It needs no Developer ID and serves the whole
 machine, and it needs a package format this tool does not build today —

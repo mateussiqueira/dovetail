@@ -187,6 +187,8 @@ final class SignCommand extends Command<int> {
     );
     stdout.writeln('signed $bundle');
 
+    await _requireSameTeamIdAsTheApp(bundle, project.config?.service?.macos);
+
     if (!args.flag('notarize')) {
       return 0;
     }
@@ -708,4 +710,85 @@ final class SignCommand extends Command<int> {
     );
     return byPath;
   }
+
+  /// `SMAppService` refuses a daemon whose Team ID differs from the
+  /// application's — on the user's machine, at registration, with a message
+  /// about which they can do nothing: an app cannot be re-signed from where
+  /// the refusal shows up. [DarwinServiceRoute.bundled] writes the
+  /// requirement down; this is what charges it, at the one moment somebody
+  /// can still act on it — right after the signature that produced the
+  /// mismatch. The app and the embedded binary are read with `codesign -dv`
+  /// and compared; diverging is a refusal naming both values and where the
+  /// daemon sits.
+  ///
+  /// Only the bundled route is charged: on the `system` route an installer
+  /// running as root puts the binary in place from outside the `.app`, and
+  /// there is nothing nested here whose Team ID has to match. A Team ID
+  /// that cannot be read — an ad-hoc signature reports `not set` — is not a
+  /// refusal either: nothing was compared, and the registration refusal the
+  /// route already documents covers it. The skip path (no identity, no
+  /// signature) never reaches this method, and has to keep ending in 0.
+  Future<void> _requireSameTeamIdAsTheApp(
+    String bundle,
+    MacosServiceConfig? service,
+  ) async {
+    if (service == null || service.route != DarwinServiceRoute.bundled) {
+      return;
+    }
+    final String daemon = p.join(
+      bundle,
+      DaemonEmbedder.programPathFor(service.program),
+    );
+
+    final ProcessOutcome appDisplay = await _signingRunner.run(
+      'codesign',
+      <String>['-dv', bundle],
+    );
+    if (!appDisplay.succeeded) {
+      return;
+    }
+    final ProcessOutcome daemonDisplay = await _signingRunner.run(
+      'codesign',
+      <String>['-dv', daemon],
+    );
+    if (!daemonDisplay.succeeded) {
+      throw SigningFailure(
+        'the daemon the configuration embeds is not inside the bundle that '
+        'was just signed.',
+        remedy:
+            '`codesign -dv` read nothing at $daemon, and a bundled daemon '
+            'that signing never reached registers for nobody: SMAppService '
+            'looks the property list up inside the app. Embed the binary '
+            'before signing, which is what build does, or fix the '
+            'service.macos.program name.',
+      );
+    }
+
+    final String? appTeam = _teamIdOf(appDisplay);
+    final String? daemonTeam = _teamIdOf(daemonDisplay);
+    if (appTeam == null || daemonTeam == null || appTeam == daemonTeam) {
+      return;
+    }
+    throw SigningFailure(
+      'the embedded daemon and the application carry different Team IDs.',
+      remedy:
+          'the application signs with Team ID $appTeam, and the daemon at '
+          '$daemon signs with $daemonTeam. SMAppService refuses the '
+          'registration of a daemon whose Team ID differs from the app\'s, '
+          'on the user\'s machine, with a message about which they can do '
+          'nothing. Sign both with the same team.',
+    );
+  }
+
+  /// The Team ID a `codesign -dv` display reports, or null when it reports
+  /// none.
+  ///
+  /// The display is written on STDERR, not on stdout — and a runner is free
+  /// to hand the two streams over merged, so the line is looked for in both
+  /// places it can arrive. `TeamIdentifier=not set`, which is what an
+  /// ad-hoc or missing signature reports, matches nothing: there is no
+  /// value to compare, and nothing was compared.
+  static String? _teamIdOf(ProcessOutcome outcome) => RegExp(
+    r'TeamIdentifier=(\w{10})\b',
+  ).firstMatch('${outcome.stdout}\n${outcome.stderr}')?.group(1);
 }
