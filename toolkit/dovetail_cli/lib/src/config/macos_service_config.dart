@@ -15,6 +15,7 @@ final class MacosServiceConfig {
     required this.route,
     required this.arguments,
     this.entitlements,
+    this.instructions,
   });
 
   factory MacosServiceConfig.fromMap(
@@ -71,6 +72,14 @@ final class MacosServiceConfig {
       );
     }
 
+    final Object? instructions = map['instructions'];
+    if (instructions != null && instructions is! String) {
+      throw ConfigFailure(
+        'service.macos.instructions must be a path.',
+        origin: origin,
+      );
+    }
+
     return MacosServiceConfig(
       label: label,
       program: program,
@@ -78,6 +87,7 @@ final class MacosServiceConfig {
       route: _routeOf(map, origin),
       arguments: _arguments(map, origin),
       entitlements: entitlements as String?,
+      instructions: instructions as String?,
     );
   }
 
@@ -108,6 +118,8 @@ final class MacosServiceConfig {
   /// aplicativo — um daemon em sandbox não alcança rede, disco nem socket
   /// fora do contêiner, que é tudo o que ele existe para fazer.
   final String? entitlements;
+
+  final String? instructions;
 
   /// O arquivo que o `SMAppService` procura dentro do bundle.
   ///

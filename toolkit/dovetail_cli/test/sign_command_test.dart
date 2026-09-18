@@ -1283,13 +1283,12 @@ sign:
       Directory(bundle).createSync();
 
       final int? outcome =
-          await (CommandRunner<int>('dovetail', 'test')
-                ..addCommand(
-                  SignCommand(
-                    runner: recording,
-                    environment: const <String, String>{},
-                  ),
-                ))
+          await (CommandRunner<int>('dovetail', 'test')..addCommand(
+                SignCommand(
+                  runner: recording,
+                  environment: const <String, String>{},
+                ),
+              ))
               .run(<String>[
                 'sign',
                 '--target',
@@ -1310,9 +1309,7 @@ sign:
       expect(codesign, containsAllInOrder(<String>['--sign', '-']));
       // E nao notariza, porque nao ha credencial nenhuma.
       expect(
-        recording.calls.any(
-          (List<String> call) => call.contains('notarytool'),
-        ),
+        recording.calls.any((List<String> call) => call.contains('notarytool')),
         isFalse,
       );
     });
@@ -1323,20 +1320,13 @@ sign:
       Directory(bundle).createSync();
 
       expect(
-        await (CommandRunner<int>('dovetail', 'test')
-              ..addCommand(
-                SignCommand(
-                  runner: recording,
-                  environment: const <String, String>{},
-                ),
-              ))
-            .run(<String>[
-              'sign',
-              '--target',
-              'macos',
-              '--bundle',
-              bundle,
-            ]),
+        await (CommandRunner<int>('dovetail', 'test')..addCommand(
+              SignCommand(
+                runner: recording,
+                environment: const <String, String>{},
+              ),
+            ))
+            .run(<String>['sign', '--target', 'macos', '--bundle', bundle]),
         0,
       );
       expect(

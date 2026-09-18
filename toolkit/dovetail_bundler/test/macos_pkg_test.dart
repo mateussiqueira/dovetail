@@ -85,7 +85,9 @@ void main() {
       expect(plist, contains('<string>com.example.demo.helper</string>'));
       expect(
         plist,
-        contains('<string>/Library/PrivilegedHelperTools/com.example.demo.helper</string>'),
+        contains(
+          '<string>/Library/PrivilegedHelperTools/com.example.demo.helper</string>',
+        ),
       );
       expect(plist, contains('<key>RunAtLoad</key>'));
       expect(plist, contains('<key>KeepAlive</key>'));
@@ -200,10 +202,7 @@ void main() {
       expect(binary, greaterThan(plist));
       expect(body, contains("pkgutil --forget 'com.example.demo'"));
       // O diretorio de helpers e compartilhado: so o binario deste produto sai.
-      expect(
-        body,
-        isNot(contains("rmdir '/Library/PrivilegedHelperTools'")),
-      );
+      expect(body, isNot(contains("rmdir '/Library/PrivilegedHelperTools'")));
       expect(
         body,
         contains(

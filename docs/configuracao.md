@@ -358,12 +358,17 @@ checked here: on it the binary is put in place by an installer outside the
 
 `system` means an installer running as root puts it in
 `/Library/LaunchDaemons`. It needs no Developer ID and serves the whole
-machine. The installer is the `.pkg` that `dovetail ship --channel internal`
-builds: a `postinstall` copies the helper out of the bundle into
-`/Library/PrivilegedHelperTools`, writes the property list with `root:wheel`
-and mode `0644`, and loads the daemon with `launchctl bootstrap` — after a
-`bootout`, so reinstalling over the top works. The same script writes the
-uninstaller, because a `.pkg` has no uninstall script of its own.
+machine. The installer is the `.pkg` inside the `.dmg` that `dovetail ship
+--channel internal` builds: a `postinstall` copies the helper out of the bundle
+into `/Library/PrivilegedHelperTools`, writes the property list with
+`root:wheel` and mode `0644`, and loads the daemon with `launchctl bootstrap` —
+after a `bootout`, so reinstalling over the top works. The same script writes
+the uninstaller, because a `.pkg` has no uninstall script of its own.
+
+The `.dmg` exists because it is what a person knows how to open, and the `.pkg`
+because it is the only macOS format that runs a `postinstall` as root — a
+product with a privileged component needs both, and this toolkit builds the
+pair instead of leaving the consumer to wrap one in the other.
 
 Because it is not the `.dmg` the release channel ships, declaring this route is
 asking for the internal channel: `dovetail ship` refuses a `route: system`
@@ -378,6 +383,21 @@ The **daemon's** entitlements, which are not the app's. Usually absent, and
 that is fine. What it must never inherit is the app's `app-sandbox`: a daemon
 in a sandbox reaches no socket, no network and no file outside its container,
 which is everything it exists to do.
+
+#### `instructions`
+
+Path to the text that travels inside the internal `.dmg`, beside the `.pkg`.
+It is the application's own text — the toolkit stages it and writes none of its
+own — and `@PKG@` in it is replaced with the real `.pkg` file name, so the
+instructions can name the file the person is about to run. Required when
+`route: system` and `ship --channel internal` builds the dmg.
+
+```yaml
+service:
+  macos:
+    route: system
+    instructions: packaging/macos/LEIA-ME.txt
+```
 
 ### `name`, `description`, `exec-start`
 
