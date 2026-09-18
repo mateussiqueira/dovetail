@@ -37,6 +37,17 @@ out="$(mktemp -d /tmp/dovetail-soak.XXXXXX)"
 green=0
 red=0
 
+# As corridas vermelhas ficam para serem lidas — é o que o cabeçalho promete —,
+# e todo o resto sai. O `rmdir` que isto substitui só rodava no fim: um Ctrl-C
+# no meio de um soak de dez nunca o alcançava, e um soak feito para rodar
+# repetido deixava um diretório para trás por interrupção. Um `trap ... EXIT`
+# roda também quando o script morre com SIGINT ou SIGTERM.
+keep=0
+cleanup() {
+  [ "$keep" -eq 1 ] || rm -rf "$out"
+}
+trap cleanup EXIT
+
 for i in $(seq 1 "$runs"); do
   log="$out/run-$i.log"
   if dart tool/verify.dart test >"$log" 2>&1; then
@@ -45,6 +56,7 @@ for i in $(seq 1 "$runs"); do
     rm -f "$log"
   else
     red=$((red + 1))
+    keep=1
     printf '  run %2d/%d  RED    %s\n' "$i" "$runs" "$log"
     grep -E "FAILED|LOAD FAILED|UNRESOLVED" "$log" | head -5 | sed 's/^/        /' || true
   fi
@@ -57,5 +69,3 @@ if [ "$red" -ne 0 ]; then
   echo "  $red red run(s) kept in $out"
   exit 1
 fi
-
-rmdir "$out" 2>/dev/null || true

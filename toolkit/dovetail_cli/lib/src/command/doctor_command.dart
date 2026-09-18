@@ -135,6 +135,7 @@ final class DoctorCommand extends Command<int> {
     for (final ProjectNote note in report.notes) {
       stdout.writeln('  ${note.line}');
     }
+    stdout.writeln('  ${report.verdict}');
     stdout.writeln();
 
     return report.shipCanRelease ? 0 : 2;

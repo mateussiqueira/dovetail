@@ -247,6 +247,78 @@ void main() {
     });
   });
 
+  group('a manifest that lies', () {
+    const String pub = '''
+untrusted comment: minisign public key E5ECCFCD331EB7E1
+RWThtx4zzc/s5YWbax/f/yvmHhsTCpUrIFG1UfS87M1/qY7xI46bl1IX
+''';
+    const String signatureAlpha = '''
+untrusted comment: signature from minisign secret key
+RUThtx4zzc/s5VdggSvo9vfwKeIVDZh/JZAR6ZxCwcN5Jp+bOrOpfApHoBYIYn/nZepZJDqttm8Utb+1N+ANXdggpMtqK0JfnwI=
+trusted comment: fixture
+DRsQ0abzxa+z9vfB+I/AuPea9Er7Rh95quNLEnDvA0mQTH4uKc7D/iqHq1/oK/2Xm9EQvNHV6PX6uqCYDrKlBA==
+''';
+    const String signatureBeta = '''
+untrusted comment: signature from minisign secret key
+RUThtx4zzc/s5SiA7qTTRtqg/BNR9oNB4g3SAbsVSbK+pw6X0ACMlbXaiwB0o9n9n87Gcm2ZtKcgc0cFFp+eaoNxz8x9GDcCrQQ=
+trusted comment: fixture
+dqjWEu8VN7vb4dsXYncNMdPhjgdf/clj9uM7lB5+zarDb0ak6/mzv2BckKEuOJTFtSHg+uBy3bi5GptrGO4+DA==
+''';
+    const String payloadAlphaBase64 = 'cGF5bG9hZC1BTFBIQS0wMTIzNDU2Nzg5';
+
+    UpdateFlow flowWith(ScriptedFetcher fetcher) => UpdateFlow(
+      fetcher: fetcher,
+      publicKey: pub,
+      platformKey: 'darwin-aarch64',
+    );
+
+    test('should accept an artefact its signature does cover', () async {
+      final ScriptedFetcher fetcher = ScriptedFetcher(<String, FetchedBody>{
+        primary: jsonBody(manifestFor('2.0.0', artefactUrl, signatureAlpha)),
+        artefactUrl: FetchedBody(
+          statusCode: 200,
+          bytes: base64.decode(payloadAlphaBase64),
+        ),
+      });
+      final UpdateFlow sut = flowWith(fetcher);
+      final UpdateCheck check = await sut.check(
+        endpoints: const <String>[primary],
+        installed: Version.parse('1.0.0'),
+      );
+
+      final VerifiedArtifact artefact = await sut.download(check.manifest!);
+
+      expect(artefact.length, base64.decode(payloadAlphaBase64).length);
+    });
+
+    test('should refuse a manifest whose signature was issued for another '
+        'artefact', () async {
+      final ScriptedFetcher fetcher = ScriptedFetcher(<String, FetchedBody>{
+        primary: jsonBody(manifestFor('2.0.0', artefactUrl, signatureBeta)),
+        artefactUrl: FetchedBody(
+          statusCode: 200,
+          bytes: base64.decode(payloadAlphaBase64),
+        ),
+      });
+      final UpdateFlow sut = flowWith(fetcher);
+      final UpdateCheck check = await sut.check(
+        endpoints: const <String>[primary],
+        installed: Version.parse('1.0.0'),
+      );
+
+      await expectLater(
+        sut.download(check.manifest!),
+        throwsA(
+          isA<UpdateFailure>().having(
+            (UpdateFailure failure) => failure.message,
+            'message',
+            contains('does not match its signature'),
+          ),
+        ),
+      );
+    });
+  });
+
   group('install on macOS', () {
     late Directory root;
     late Directory installed;

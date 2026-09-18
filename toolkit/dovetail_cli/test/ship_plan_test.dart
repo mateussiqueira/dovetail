@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:dovetail_cli/dovetail_cli.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 DovetailConfig configWith(String targets, {String extra = ''}) =>
@@ -17,6 +20,7 @@ ShipPlan planFor(
   bool build = true,
   String? windowsFormat = 'msi',
   Map<String, String>? environment,
+  String? root,
 }) => ShipPlan.of(
   config: configWith(targets, extra: extra),
   version: '4.2.0',
@@ -25,7 +29,19 @@ ShipPlan planFor(
   build: build,
   windowsFormat: windowsFormat,
   environment: environment,
+  root: root,
 );
+
+/// Um par minisign valido so para o parser aceitar; o id nao importa aqui.
+const String updateSection =
+    'update:\n  key: keys/update.key\n'
+    '  base-url: https://cdn.example.com/releases\n'
+    '  public-key: |\n    untrusted comment: minisign public key D18395BE8A6B994E\n    RWROmWuKvpWD0RErEh4kcn0sjuu4dQYX5MERE9dNGuImxQXHzNuRYLVP\n';
+
+const String windowsSigningSection =
+    'sign:\n  windows:\n'
+    '    certificate-env: MY_CERT\n'
+    '    timestamp-url: http://timestamp.example.com\n';
 
 const String _notarising = 'sign:\n  macos:\n    notarize: true\n';
 const Map<String, String> _releaseEnvironment = <String, String>{
@@ -727,6 +743,126 @@ void main() {
         reason:
             'a project that does not ship updates is not a project with a '
             'broken base-url',
+      );
+    });
+
+    test('a release whose secret key is not on disk should be refused before '
+        'the build, naming the path', () {
+      // O passo de release assina no FIM da esteira; sem a chave, o build
+      // inteiro e gasto para morrer na assinatura. O doctor passou a recusar o
+      // mesmo yaml; o plano tem de concordar.
+      final Directory root = Directory.systemTemp.createTempSync(
+        'dovetail_ship_key',
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+
+      final ShipPlan plan = planFor(
+        'darwin-aarch64',
+        extra: updateSection,
+        root: root.path,
+      );
+
+      expect(plan.refusals, hasLength(1));
+      expect(plan.refusals.single, contains('keys/update.key'));
+      expect(plan.refusals.single, contains('release step'));
+    });
+
+    test('an encrypted key with no password exported should be refused before '
+        'the build, naming the variable', () {
+      final Directory root = Directory.systemTemp.createTempSync(
+        'dovetail_ship_key',
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'keys', 'update.key'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('key placeholder, never a real header\n');
+
+      final ShipPlan plan = planFor(
+        'darwin-aarch64',
+        extra: updateSection,
+        root: root.path,
+        environment: const <String, String>{},
+      );
+
+      expect(plan.refusals, hasLength(1));
+      expect(plan.refusals.single, contains('DOVETAIL_UPDATE_KEY_PASSWORD'));
+    });
+
+    test('a key on disk and unencrypted should refuse nothing about the '
+        'update step', () {
+      final Directory root = Directory.systemTemp.createTempSync(
+        'dovetail_ship_key',
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'keys', 'update.key'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('key');
+
+      final ShipPlan plan = planFor(
+        'darwin-aarch64',
+        extra: '$updateSection  unencrypted: true\n',
+        root: root.path,
+        environment: const <String, String>{},
+      );
+
+      expect(plan.refusals, isEmpty);
+    });
+
+    test('a windows release with no certificate should be refused before the '
+        'build, and the signing steps should require a signature', () {
+      final ShipPlan plan = planFor(
+        'windows-x86_64',
+        host: 'windows',
+        extra: windowsSigningSection,
+        environment: const <String, String>{},
+      );
+
+      expect(plan.refusals, hasLength(1));
+      expect(plan.refusals.single, contains('MY_CERT'));
+      expect(
+        argumentsOf(plan, 'sign payload windows-x86_64'),
+        contains('--require-signature'),
+      );
+      expect(
+        argumentsOf(plan, 'sign windows-x86_64'),
+        contains('--require-signature'),
+        reason:
+            'sem a flag, o sign cairia no "sem credencial, fica sem assinar" '
+            'e um instalador sem assinatura chegaria a quem instala',
+      );
+    });
+
+    test('a windows release with the certificate and timestamp should refuse '
+        'nothing and still require the signature', () {
+      final ShipPlan plan = planFor(
+        'windows-x86_64',
+        host: 'windows',
+        extra: windowsSigningSection,
+        environment: const <String, String>{
+          'MY_CERT': 'C:/cert.pfx',
+          'WINDOWS_TIMESTAMP_URL': 'http://timestamp.example.com',
+        },
+      );
+
+      expect(plan.refusals, isEmpty);
+      expect(
+        argumentsOf(plan, 'sign windows-x86_64'),
+        contains('--require-signature'),
+      );
+    });
+
+    test('a windows project that declares no sign.windows should keep the old '
+        'behaviour: no refusal, no required signature', () {
+      final ShipPlan plan = planFor(
+        'windows-x86_64',
+        host: 'windows',
+        environment: const <String, String>{},
+      );
+
+      expect(plan.refusals, isEmpty);
+      expect(
+        argumentsOf(plan, 'sign windows-x86_64'),
+        isNot(contains('--require-signature')),
       );
     });
   });

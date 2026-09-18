@@ -27,7 +27,17 @@ ProjectReport reportFor({
   DovetailConfig? config,
   String? version = '4.2.0',
   String host = 'macos',
-}) => ProjectReport.of(config: config, version: version, host: host);
+  Map<String, String>? environment,
+  String? root,
+  ShipChannel channel = ShipChannel.release,
+}) => ProjectReport.of(
+  config: config,
+  version: version,
+  host: host,
+  environment: environment,
+  root: root,
+  channel: channel,
+);
 
 ProjectNote noteOn(ProjectReport report, String subject) =>
     report.notes.firstWhere((ProjectNote note) => note.subject == subject);
@@ -145,6 +155,107 @@ void main() {
       expect(report.shipCanRelease, false);
     });
 
+    const String updateReady =
+        'update:\n  key: keys/update.key\n'
+        '  base-url: https://cdn.example.com/r\n'
+        '  public-key: |\n    untrusted comment: minisign public key D18395BE8A6B994E\n    RWROmWuKvpWD0RErEh4kcn0sjuu4dQYX5MERE9dNGuImxQXHzNuRYLVP\n';
+
+    test('an update section whose secret key is not on disk should be missing, '
+        'naming the path: the release step would die after the build', () {
+      final Directory root = Directory.systemTemp.createTempSync(
+        'dovetail_update_key',
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+
+      final ProjectReport report = reportFor(
+        config: configWith(extra: updateReady),
+        root: root.path,
+      );
+
+      expect(noteOn(report, 'update').finding, ProjectFinding.missing);
+      expect(noteOn(report, 'update').detail, contains('keys/update.key'));
+      expect(noteOn(report, 'update').detail, contains('release step'));
+      expect(report.shipCanRelease, false);
+    });
+
+    test('a key present and unencrypted should be ready', () {
+      final Directory root = Directory.systemTemp.createTempSync(
+        'dovetail_update_key',
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'keys', 'update.key'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('key placeholder, never a real header\n');
+
+      final ProjectReport report = reportFor(
+        config: configWith(extra: '$updateReady  unencrypted: true\n'),
+        root: root.path,
+      );
+
+      expect(noteOn(report, 'update').finding, ProjectFinding.ready);
+    });
+
+    test('an encrypted key with no password exported should be missing, naming '
+        'the variable the release step refuses without', () {
+      final Directory root = Directory.systemTemp.createTempSync(
+        'dovetail_update_key',
+      );
+      addTearDown(() => root.deleteSync(recursive: true));
+      File(p.join(root.path, 'keys', 'update.key'))
+        ..createSync(recursive: true)
+        ..writeAsStringSync('key placeholder, never a real header\n');
+
+      final ProjectReport report = reportFor(
+        config: configWith(extra: updateReady),
+        root: root.path,
+        environment: const <String, String>{},
+      );
+
+      expect(noteOn(report, 'update').finding, ProjectFinding.missing);
+      expect(
+        noteOn(report, 'update').detail,
+        contains('DOVETAIL_UPDATE_KEY_PASSWORD'),
+      );
+      expect(report.shipCanRelease, false);
+    });
+
+    test(
+      'the same encrypted key with the password exported should be ready',
+      () {
+        final Directory root = Directory.systemTemp.createTempSync(
+          'dovetail_update_key',
+        );
+        addTearDown(() => root.deleteSync(recursive: true));
+        File(p.join(root.path, 'keys', 'update.key'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('key placeholder, never a real header\n');
+
+        final ProjectReport report = reportFor(
+          config: configWith(extra: updateReady),
+          root: root.path,
+          environment: const <String, String>{
+            'DOVETAIL_UPDATE_KEY_PASSWORD': 'hunter2',
+          },
+        );
+
+        expect(noteOn(report, 'update').finding, ProjectFinding.ready);
+      },
+    );
+
+    test('the internal channel with an update section should be missing, '
+        'because ship refuses the same combination', () {
+      // O ship recusa: um artefacto interno nao pode entrar no canal que quem
+      // ja instalou le. O doctor dizia `ok update` para o mesmo yaml.
+      final ProjectReport report = reportFor(
+        config: configWith(extra: updateReady),
+        channel: ShipChannel.internal,
+      );
+
+      expect(noteOn(report, 'update').finding, ProjectFinding.missing);
+      expect(noteOn(report, 'update').detail, contains('internal'));
+      expect(report.shipCanRelease, false);
+    });
+
     test('notarize: true with nothing exported should be missing, naming the '
         'variables, because ship refuses the same yaml', () {
       final ProjectReport report = ProjectReport.of(
@@ -158,6 +269,14 @@ void main() {
       expect(
         noteOn(report, 'signing').detail,
         contains('APPLE_SIGNING_IDENTITY'),
+      );
+      expect(
+        noteOn(report, 'signing').detail,
+        contains('APPLE_ID'),
+        reason:
+            'a nota tem de nomear os dois buracos de uma vez: nomear so a '
+            'identidade manda quem corrigiu re-rodar o doctor para descobrir '
+            'o grupo de notarizacao, e o ship ja nomeia os dois',
       );
       expect(report.shipCanRelease, false);
     });
@@ -229,6 +348,65 @@ void main() {
         noteOn(reportFor(config: config, host: 'windows'), 'signing').detail,
         'MY_CERT',
       );
+    });
+
+    const String windowsSigning =
+        'sign:\n  windows:\n'
+        '    certificate-env: MY_CERT\n'
+        '    timestamp-url: http://timestamp.example.com\n';
+
+    test('windows with no certificate exported should be missing on the '
+        'release channel, naming the variable', () {
+      // O installador sairia sem assinatura — o `sign` cai no caminho "sem
+      // credencial, fica sem assinar" e devolve 0 —, e o doctor dizia
+      // `ok signing MY_CERT` para um ambiente onde MY_CERT nem existia.
+      final ProjectReport report = reportFor(
+        config: configWith(extra: windowsSigning),
+        host: 'windows',
+        environment: const <String, String>{},
+      );
+
+      expect(noteOn(report, 'signing').finding, ProjectFinding.missing);
+      expect(noteOn(report, 'signing').detail, contains('MY_CERT'));
+      expect(noteOn(report, 'signing').detail, contains('unsigned'));
+      expect(report.shipCanRelease, false);
+    });
+
+    test('windows with the certificate and the declared timestamp should be '
+        'ready', () {
+      final ProjectReport report = reportFor(
+        config: configWith(extra: windowsSigning),
+        host: 'windows',
+        environment: const <String, String>{'MY_CERT': 'C:/cert.pfx'},
+      );
+
+      expect(noteOn(report, 'signing').finding, ProjectFinding.ready);
+    });
+
+    test('windows with a certificate but no timestamp server should be '
+        'missing: the signature would die with the certificate', () {
+      final ProjectReport report = reportFor(
+        config: configWith(
+          extra: 'sign:\n  windows:\n    certificate-env: MY_CERT\n',
+        ),
+        host: 'windows',
+        environment: const <String, String>{'MY_CERT': 'C:/cert.pfx'},
+      );
+
+      expect(noteOn(report, 'signing').finding, ProjectFinding.missing);
+      expect(noteOn(report, 'signing').detail, contains('timestamp'));
+    });
+
+    test('the internal channel should not demand a Windows certificate: it '
+        'signs nothing for the store', () {
+      final ProjectReport report = reportFor(
+        config: configWith(extra: windowsSigning),
+        host: 'windows',
+        environment: const <String, String>{},
+        channel: ShipChannel.internal,
+      );
+
+      expect(noteOn(report, 'signing').finding, ProjectFinding.ready);
     });
 
     test('linux needs no identity, and should not be told it lacks one', () {
@@ -317,6 +495,53 @@ void main() {
         noteOn(report, 'service (macos)').finding,
         ProjectFinding.notConfigured,
       );
+    });
+  });
+
+  group('the verdict, in one line', () {
+    test('should say it can release when nothing is missing', () {
+      final ProjectReport report = reportFor(config: configWith());
+
+      expect(report.shipCanRelease, true);
+      expect(report.verdict, startsWith('can release'));
+    });
+
+    test('should let off and warn through: only missing blocks', () {
+      final ProjectReport report = reportFor(config: configWith());
+
+      expect(
+        report.notes.any(
+          (ProjectNote note) => note.finding == ProjectFinding.notConfigured,
+        ),
+        true,
+        reason:
+            'sem service declarado a nota e off, e o ship nao recusa por '
+            'isso — o veredito nao pode discordar do exit code',
+      );
+      expect(report.verdict, startsWith('can release'));
+    });
+
+    test('should count the blockers and name them', () {
+      final ProjectReport report = reportFor(
+        config: configWith(
+          extra:
+              'update:\n'
+              '  key: keys/update.key\n'
+              '  base-url: https://updates.example/releases\n',
+        ),
+        environment: const <String, String>{},
+      );
+
+      expect(report.shipCanRelease, false);
+      expect(report.verdict, contains('cannot release'));
+      expect(report.verdict, contains('update'));
+    });
+
+    test('should use the singular for one blocker', () {
+      final ProjectReport report = reportFor(config: null);
+
+      expect(report.verdict, contains('1 blocker before the build'));
+      expect(report.verdict, contains('dovetail.yaml'));
     });
   });
 

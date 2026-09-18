@@ -188,7 +188,7 @@
           "skips": {}
         },
         "test/doctor_command_test.dart": {
-          "declared": 26,
+          "declared": 27,
           "skips": {}
         },
         "test/doctor_test.dart": {
@@ -254,7 +254,7 @@
           "skips": {}
         },
         "test/project_report_test.dart": {
-          "declared": 21,
+          "declared": 35,
           "skips": {}
         },
         "test/readme_covers_commands_test.dart": {
@@ -318,7 +318,7 @@
           "skips": {}
         },
         "test/ship_plan_test.dart": {
-          "declared": 44,
+          "declared": 50,
           "skips": {}
         },
         "test/sign_command_test.dart": {
@@ -624,7 +624,7 @@
           "skips": {}
         },
         "test/update_flow_test.dart": {
-          "declared": 14,
+          "declared": 16,
           "skips": {}
         },
         "test/windows_installer_test.dart": {
