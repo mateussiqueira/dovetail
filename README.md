@@ -13,36 +13,42 @@ and ship it on Windows, macOS and Linux.
 
 ## Where this actually stands
 
-This is open **because it is not finished**, and the list below is the
-invitation.
+**Beta.** Not because a version number moved, but because the thing finally
+happened: a real product shipped on this toolkit, went out to roughly a
+hundred people, and came back with praise instead of a bug list.
 
-What is proven on one machine: **1502 testes Dart declarados, 45 pulados** —
-the ten packages pass their own tests, the CLI builds, bundles, signs and
-verifies a release end to end against a local host with a private CA, and the
-updater refuses a manifest without a valid signature.
+That product is a commercial VPN client — Flutter on top of a Rust core, with a
+privileged daemon that has to install itself and survive a reboot. It is the
+hardest shape this toolkit claims to support, and the internal distribution
+channel carried it: `dovetail ship --channel internal` produced a `.pkg` that
+installs the declared daemon, wrapped in a `.dmg` a tester knows how to open,
+universal across Intel and Apple Silicon. Installed, ran, survived a restart,
+uninstalled without residue. That is what moved this out of alpha.
 
-That count is not decoration and not hand-maintained. `dart tool/verify.dart`
-compares this sentence against what the suites just reported and fails when
-they disagree, so a README that overstates the coverage cannot be committed.
-The skipped ones are declared, not silent: `tool/skip_baseline.json` names
-every one and why.
+What is proven, and measured rather than remembered:
+**1503 testes Dart declarados, 45 pulados**, plus the Rust crates. `dart tool/verify.dart`
+compares that sentence against what the suites just reported and fails when
+they disagree, so a README that overstates its own coverage cannot be
+committed. The skipped ones are named in `tool/skip_baseline.json`, with the
+reason.
 
-What is **not** proven:
+What is still **not** proven, and we would rather say it than have you find it:
 
-- **Nothing has run outside one macOS arm64 machine.** The workflow exists,
-  with legs for `macos-14`, `ubuntu-24.04` and `windows-2022`, and not one of
-  them has ever executed: the account that publishes this repository has no
-  GitHub Actions available. **In a fork it runs** — Actions is free on public
-  repositories. If you fork this and the matrix passes (or fails) on Windows
-  or Linux, that is the single most valuable thing this project can receive
-  right now.
-- **Nothing has been compiled with MSVC.** The Windows leg is code written
-  blind.
-- macOS signing was exercised with a self-signed certificate. A real Developer
-  ID and notarisation have never been through here.
+- **Almost everything ran on one macOS arm64 machine.** The CI workflow has
+  legs for `macos-14`, `ubuntu-24.04` and `windows-2022`, and none has ever
+  executed — the account publishing this has no Actions minutes. **In a fork it
+  runs**, because Actions is free on public repositories. If you fork this and
+  the matrix passes on Windows or Linux — or fails — that is still the single
+  most useful thing this project can receive.
+- **Nothing has been compiled with MSVC.** The Windows code typechecks for
+  `x86_64-pc-windows-msvc` and has never met a real Windows.
+- **The release channel has not met a real Developer ID.** Signing was
+  exercised with a self-signed certificate; notarisation has never been through
+  here. The internal channel, which needs neither, is the one with mileage.
 
-If something does not work on your machine, that is not a surprise — it is the
-missing information. Open an issue with your operating system and the output.
+If something breaks on your machine, that is not a surprise — it is the
+information we do not have. Open an issue with your operating system and the
+output.
 
 ## The packages
 
@@ -56,6 +62,9 @@ missing information. Open an issue with your operating system and the output.
 | [`dovetail_updater`](https://pub.dev/packages/dovetail_updater) | verifies a minisign-signed manifest and updates |
 | [`dovetail_platform_channel`](https://pub.dev/packages/dovetail_platform_channel) | single instance and window integration |
 | [`dovetail_privileged_helper`](https://pub.dev/packages/dovetail_privileged_helper) | the root daemon, service or unit a sandboxed app cannot be |
+| `dovetail_privileged_channel` | the wire to that daemon: socket or pipe, and who is allowed to speak |
+| `dovetail_privileged_daemon` | the daemon's own skeleton: install, accept, validate, log |
+| `dovetail_http_client` | a typed HTTP client, and the OS keychain the token lives in |
 | [`dovetail_shortcut_channel`](https://pub.dev/packages/dovetail_shortcut_channel) | global shortcut, with or without window focus |
 | [`dovetail_process_runner`](https://pub.dev/packages/dovetail_process_runner) | external process with a timeout and a typed outcome |
 | [`dovetail_form_validation`](https://pub.dev/packages/dovetail_form_validation) | form validation that does not depend on a widget |
@@ -70,8 +79,8 @@ check existed.
 | package | tests | what they prove |
 | --- | --- | --- |
 | `toolkit/dovetail` | 7 Dart | the umbrella re-exports the runtime, and a test proves the surface does not drift |
-| `toolkit/dovetail_cli` | 566 Dart | the pipeline, end to end, against a local host with a private CA |
-| `toolkit/dovetail_bundler` | 319 Dart | every artefact format, read back by its own header |
+| `toolkit/dovetail_cli` | 565 Dart | the pipeline, end to end, against a local host with a private CA |
+| `toolkit/dovetail_bundler` | 321 Dart | every artefact format, read back by its own header |
 | `toolkit/dovetail_updater` | 172 Dart | a manifest without a valid signature is refused |
 | `toolkit/dovetail_platform_channel` | 201 Dart | window, tray, single instance, deep links, appearance |
 | `toolkit/dovetail_signer` | 94 Dart | signing refuses what it cannot prove |
@@ -80,6 +89,9 @@ check existed.
 | `toolkit/dovetail_form_validation` | 29 Dart | validation with no widget in sight |
 | `toolkit/dovetail_process_runner` | 23 Dart | timeout and typed outcome |
 | `toolkit/dovetail_rust_core` | 13 Dart | the bridge surface |
+| `toolkit/dovetail_http_client` | 24 Rust | typed calls, safe routes, and the keychain round trip |
+| `toolkit/dovetail_privileged_channel` | 21 Rust | the handshake, the framing, and who may speak |
+| `toolkit/dovetail_privileged_daemon` | 10 Rust | the service lifecycle on three platforms |
 
 ## Getting started
 
@@ -129,6 +141,28 @@ The whole pipeline is one binary. Nothing it does needs its own source.
 | `dovetail keygen` | creates the minisign key pair for the update channel |
 | `dovetail manifest` | writes and signs the manifest the app will read |
 | `dovetail ship` | the whole pipeline, from the config |
+
+### Two channels, and the one with mileage
+
+`dovetail ship` has two: `release`, which wants a Developer ID and produces
+something a stranger can install, and `internal`, which wants nothing and
+produces something your team can install this afternoon.
+
+The internal channel exists because every project needs to hand a build to
+testers long before it has a signing identity, and the usual answer — "just
+build it and pass the folder around" — falls apart the moment the app has a
+privileged component. So `--channel internal` keeps the debug symbols, signs
+ad-hoc, refuses to write an updater manifest (an internal artefact must never
+reach the channel your released users watch), and picks the installer format
+that can actually install what the project declared.
+
+On macOS that means a `.pkg`, because it is the only format there that runs a
+postinstall as root — and the `.pkg` travels inside a `.dmg`, because that is
+what a person knows how to open. Familiar on the outside, correct on the
+inside.
+
+This is the path that carried a real product to a hundred testers. It is the
+most exercised thing in the repository.
 | `dovetail release` | publishes the version and moves the channel |
 | `dovetail probe` | verifies a published manifest the way the app would |
 | `dovetail update` | applies an update, the way the app would |

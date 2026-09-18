@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.1.2 — 2026-09-18
+
+O plist do daemon passa a sair com `StandardOutPath` e `StandardErrorPath`
+apontando para `/var/log/<label>.log`. Sem as duas chaves o `launchd` manda
+stdout e stderr para lugar nenhum: um daemon que não conecta não deixa nada
+para ler na máquina de quem usa, e o defeito é indiagnosticável em campo.
+
+O arquivo fica direto em `/var/log`, sem subdiretório — a rota `bundled` não tem
+`postinstall` para criar um, e o `launchd` só cria o arquivo quando o diretório
+pai já existe. Os dois geradores seguem a mesma convenção e o mesmo caminho:
+`LaunchDaemon.render()`, para a rota `system`, e `DaemonEmbedder.plistFor()`,
+para a `bundled`.
+
+---
+
 ## 0.1.1 — 2026-09-09
 
 Nada no código mudou. A 0.1.0 foi publicada com o README em português e com

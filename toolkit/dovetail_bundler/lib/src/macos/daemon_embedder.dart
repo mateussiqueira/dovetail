@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dovetail_bundler/src/bundle_failure.dart';
+import 'package:dovetail_bundler/src/macos/launch_daemon.dart';
 import 'package:dovetail_bundler/src/xml_text.dart';
 import 'package:path/path.dart' as p;
 
@@ -69,6 +70,10 @@ ${args.toString().trimRight()}
     <true/>
     <key>ProcessType</key>
     <string>Interactive</string>
+    <key>StandardOutPath</key>
+    <string>${XmlText.content(LaunchDaemon.logPathFor(label))}</string>
+    <key>StandardErrorPath</key>
+    <string>${XmlText.content(LaunchDaemon.logPathFor(label))}</string>
 </dict>
 </plist>
 ''';

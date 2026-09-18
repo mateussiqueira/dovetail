@@ -152,10 +152,10 @@ mod testes {
 
     #[test]
     fn o_app_pode_trazer_o_proprio_codigo() {
-        let e = ErrorBody::new(ErrorCode::new("WIREGUARD_FAILURE"), "o motor falhou");
+        let e = ErrorBody::new(ErrorCode::new("ENGINE_FAILURE"), "o motor falhou");
         assert_eq!(
             serde_json::to_string(&e).unwrap(),
-            r#"{"code":"WIREGUARD_FAILURE","message":"o motor falhou","retryable":false}"#
+            r#"{"code":"ENGINE_FAILURE","message":"o motor falhou","retryable":false}"#
         );
     }
 
