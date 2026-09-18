@@ -41,6 +41,7 @@ export 'package:dovetail_cli/src/dovetail_version.dart';
 export 'package:dovetail_cli/src/inspect/artifact_inspection.dart';
 export 'package:dovetail_cli/src/inspect/artifact_inspector.dart';
 export 'package:dovetail_cli/src/probe/manifest_probe.dart';
+export 'package:dovetail_cli/src/ship/ship_channel.dart';
 export 'package:dovetail_cli/src/ship/ship_plan.dart';
 export 'package:dovetail_cli/src/ship/upgrade_code.dart';
 export 'package:dovetail_cli/src/ship/ship_step.dart';

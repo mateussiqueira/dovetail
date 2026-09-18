@@ -18,6 +18,7 @@ import 'package:dovetail_cli/src/dovetail_version.dart';
 import 'package:dovetail_cli/src/sdk/sdk_channel.dart';
 import 'package:dovetail_cli/src/sdk/sdk_locator.dart';
 import 'package:dovetail_cli/src/sdk/version_order.dart';
+import 'package:dovetail_cli/src/ship/ship_channel.dart';
 
 const List<String> knownTargets = <String>['windows', 'macos', 'linux'];
 
@@ -44,6 +45,15 @@ final class DoctorCommand extends Command<int> {
         help:
             'also reports whether cargo can build for this target; x86_64 '
             'covers every Intel and AMD desktop',
+      )
+      ..addOption(
+        'channel',
+        allowed: ShipChannel.names,
+        defaultsTo: 'release',
+        help:
+            'answers for this distribution channel — release (the default) or '
+            'internal, the same question ship --channel asks before it spends '
+            'the build',
       )
       ..addFlag(
         'check-updates',
@@ -118,6 +128,7 @@ final class DoctorCommand extends Command<int> {
       // O caminho que o `service.macos.binary` declara e relativo a RAIZ do
       // projeto — a do yaml, nao a do cwd, que pode ser uma subpasta qualquer.
       root: file == null ? null : ConfigLocator.rootFor(file),
+      channel: ShipChannel.parse(argResults?.option('channel') ?? 'release'),
     );
 
     stdout.writeln('project');

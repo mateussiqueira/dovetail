@@ -58,6 +58,51 @@ actually running against a real app: `app-dir` pointed at the directory above
 the `.app`, the signature came after the dmg, and the predicted name was not
 the name the bundler wrote.
 
+### `--channel internal`: the build for whoever tests
+
+The pipeline above is the **release** channel, and it stays the default — the
+same steps, the same artefacts, the same manifest. There is a second channel
+for the build that has to reach the team before the project has a Developer ID:
+
+```bash
+dovetail ship --channel internal
+```
+
+It is four things, all derived from the config and none of them specific to an
+app:
+
+- a **debug** build (`--no-release`), because symbols and logging are what a
+  tester reports on;
+- **ad-hoc** signing on macOS — `sign --ad-hoc`, the identity `-` — with no
+  Developer ID and no notarisation;
+- the installer that can install the **declared privileged component**: the
+  `.pkg` on macOS when the daemon takes `route: system`, and the `.deb`/`.rpm`
+  on Linux, whose postinst already installs the unit;
+- **no updater manifest.** An internal artefact must not appear in the update
+  channel installed clients read, so `ship` **refuses** an internal build whose
+  config has an `update:` section, instead of trusting whoever runs the
+  command.
+
+It fails honest, before the build: a `service.macos` on `route: system` is
+refused on the release channel (a dmg runs no script, so the daemon never
+installs), and `route: bundled` is refused on the internal one (SMAppService
+registers a daemon only with a valid signature and the app's Team ID, and
+ad-hoc has neither). The refusal names the channel that does work.
+`dovetail doctor --channel internal` answers the same question before anyone
+spends a build.
+
+The macOS `.pkg` runs a `postinstall` as root: it copies the helper out of the
+bundle into `/Library/PrivilegedHelperTools`, writes the property list under
+`/Library/LaunchDaemons` with `root:wheel` and mode `0644`, and loads it with
+`launchctl bootstrap` (`bootout` first, so reinstalling over the top is
+idempotent). Because macOS has no uninstall script for a package, the
+`postinstall` also writes the uninstaller to
+`/Library/Application Support/<identifier>/uninstall`; it boots the daemon out,
+removes the plist and the binary, forgets the receipt with `pkgutil --forget`,
+and deletes itself. The package is unsigned — signing one takes a Developer ID
+Installer and `productsign`, another identity — so `ship` prints the line that
+installs it honestly: `sudo installer -pkg <file> -target /`.
+
 ## Installing
 
 ```bash

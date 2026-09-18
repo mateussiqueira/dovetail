@@ -1276,6 +1276,76 @@ sign:
       );
     });
   });
+  group('the ad-hoc identity of the internal channel', () {
+    test('--ad-hoc signs with `-` even with nothing exported', () async {
+      final _Recording recording = _Recording();
+      final String bundle = p.join(root.path, 'Example.app');
+      Directory(bundle).createSync();
+
+      final int? outcome =
+          await (CommandRunner<int>('dovetail', 'test')
+                ..addCommand(
+                  SignCommand(
+                    runner: recording,
+                    environment: const <String, String>{},
+                  ),
+                ))
+              .run(<String>[
+                'sign',
+                '--target',
+                'macos',
+                '--bundle',
+                bundle,
+                '--ad-hoc',
+              ]);
+
+      expect(
+        outcome,
+        0,
+        reason: 'sem identidade exportada, o ad-hoc e o que faz assinar',
+      );
+      final List<String> codesign = recording.calls.firstWhere(
+        (List<String> call) => call.first == 'codesign',
+      );
+      expect(codesign, containsAllInOrder(<String>['--sign', '-']));
+      // E nao notariza, porque nao ha credencial nenhuma.
+      expect(
+        recording.calls.any(
+          (List<String> call) => call.contains('notarytool'),
+        ),
+        isFalse,
+      );
+    });
+
+    test('without --ad-hoc the same empty environment skips', () async {
+      final _Recording recording = _Recording();
+      final String bundle = p.join(root.path, 'Example.app');
+      Directory(bundle).createSync();
+
+      expect(
+        await (CommandRunner<int>('dovetail', 'test')
+              ..addCommand(
+                SignCommand(
+                  runner: recording,
+                  environment: const <String, String>{},
+                ),
+              ))
+            .run(<String>[
+              'sign',
+              '--target',
+              'macos',
+              '--bundle',
+              bundle,
+            ]),
+        0,
+      );
+      expect(
+        recording.calls.any((List<String> call) => call.first == 'codesign'),
+        isFalse,
+        reason: 'sem identidade e sem --ad-hoc, o build fica sem assinar',
+      );
+    });
+  });
 }
 
 final class _Recording implements ProcessRunner {
