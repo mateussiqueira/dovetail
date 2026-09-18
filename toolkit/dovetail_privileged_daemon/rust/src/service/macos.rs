@@ -226,7 +226,7 @@ mod testes {
             windows_name: "TestHelper",
             windows_display: "Test Helper",
             windows_description: "Test daemon.",
-            macos_label: "io.vcodes.vpnDesktop.helper",
+            macos_label: "com.example.testapp.helper",
             linux_unit: "test-helper.service",
         };
         const VERSION: &'static str = "0.0.0";
@@ -247,8 +247,8 @@ mod testes {
 
     #[test]
     fn o_plist_aponta_para_o_binario_e_pede_o_modo_servico() {
-        let texto = plist_para::<TestApp>(Path::new("/usr/local/libexec/myidvpn-helper"));
-        assert!(texto.contains("<string>/usr/local/libexec/myidvpn-helper</string>"));
+        let texto = plist_para::<TestApp>(Path::new("/usr/local/libexec/testapp-helper"));
+        assert!(texto.contains("<string>/usr/local/libexec/testapp-helper</string>"));
         assert!(texto.contains("<string>--service</string>"));
         assert!(texto.contains(TestApp::IDENTITY.macos_label));
     }

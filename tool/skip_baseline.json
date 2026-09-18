@@ -27,7 +27,7 @@
           "skips": {}
         },
         "test/daemon_embedder_test.dart": {
-          "declared": 9,
+          "declared": 10,
           "skips": {}
         },
         "test/deb_directory_test.dart": {
@@ -63,7 +63,7 @@
           }
         },
         "test/macos_pkg_test.dart": {
-          "declared": 13,
+          "declared": 14,
           "skips": {}
         },
         "test/minimum_system_version_test.dart": {
@@ -254,7 +254,7 @@
           "skips": {}
         },
         "test/project_report_test.dart": {
-          "declared": 35,
+          "declared": 34,
           "skips": {}
         },
         "test/readme_covers_commands_test.dart": {
