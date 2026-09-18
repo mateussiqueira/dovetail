@@ -518,6 +518,47 @@ void main() {
     );
   });
 
+  group('the verdict it prints', () {
+    test(
+      'a project that cannot release should say so, and exit 2',
+      () {
+        File(
+          p.join(root.path, 'pubspec.yaml'),
+        ).writeAsStringSync('name: demo\nversion: 1.0.0\n');
+        File(p.join(root.path, ConfigLocator.fileName)).writeAsStringSync(
+          'identifier: com.example.demo\n'
+          'name: Demo\n'
+          'manufacturer: Example Ltda\n'
+          'targets: [darwin-aarch64]\n'
+          'update:\n'
+          '  key: keys/update.key\n'
+          '  base-url: https://updates.example/releases\n'
+          'sign:\n'
+          '  macos:\n'
+          '    notarize: true\n',
+        );
+
+        final ProcessResult ran = CliKernel.run(
+          <String>['doctor'],
+          workingDirectory: root.path,
+          environment: <String, String>{'DOVETAIL_HOME': root.path},
+        );
+        final String out = ran.stdout as String;
+
+        expect(
+          out,
+          contains('cannot release'),
+          reason:
+              'a pergunta "este projeto consegue fazer release?" tem de estar '
+              'escrita — somar as notas e trabalho do doctor, nao do leitor',
+        );
+        expect(out, contains('signing'));
+        expect(ran.exitCode, 2);
+      },
+      timeout: const Timeout(Duration(minutes: 3)),
+    );
+  });
+
   group('--check-updates', () {
     test('no SDK installed should name the channel latest', () {
       expect(

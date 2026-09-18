@@ -174,9 +174,16 @@ project
   missing  update  the signing key keys/missing.key is not on disk (...), and the release step signs the artefacts with it at the end of the run — ...
   ok       signing  DOVETAIL_MACOS_IDENTITY, not notarised
   off      service  no privileged component is declared, on any platform
+  cannot release: 1 blocker before the build (update)
 $ echo $?
 2
 ```
+
+A última linha é a resposta à pergunta que a seção existe para responder —
+*este projeto consegue fazer release?* —, para ninguém somar as notas à mão nem
+pagar o build para descobrir. Não é uma segunda regra: conta os mesmos
+`missing` que decidem o exit code, então o veredito e o `$?` não podem
+discordar. `off` e `warn` não bloqueiam; só `missing` bloqueia.
 
 `doctor` e `ship` nunca podem discordar sobre o que pode sair; cada conferência
 nova num é espelhada no outro, e um teste fixa as duas. `doctor --channel

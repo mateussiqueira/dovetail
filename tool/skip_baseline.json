@@ -188,7 +188,7 @@
           "skips": {}
         },
         "test/doctor_command_test.dart": {
-          "declared": 26,
+          "declared": 27,
           "skips": {}
         },
         "test/doctor_test.dart": {
@@ -254,7 +254,7 @@
           "skips": {}
         },
         "test/project_report_test.dart": {
-          "declared": 30,
+          "declared": 35,
           "skips": {}
         },
         "test/readme_covers_commands_test.dart": {

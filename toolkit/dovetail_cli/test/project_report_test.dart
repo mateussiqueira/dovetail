@@ -39,8 +39,6 @@ ProjectReport reportFor({
   channel: channel,
 );
 
-
-
 ProjectNote noteOn(ProjectReport report, String subject) =>
     report.notes.firstWhere((ProjectNote note) => note.subject == subject);
 
@@ -221,25 +219,28 @@ void main() {
       expect(report.shipCanRelease, false);
     });
 
-    test('the same encrypted key with the password exported should be ready', () {
-      final Directory root = Directory.systemTemp.createTempSync(
-        'dovetail_update_key',
-      );
-      addTearDown(() => root.deleteSync(recursive: true));
-      File(p.join(root.path, 'keys', 'update.key'))
-        ..createSync(recursive: true)
-        ..writeAsStringSync('key placeholder, never a real header\n');
+    test(
+      'the same encrypted key with the password exported should be ready',
+      () {
+        final Directory root = Directory.systemTemp.createTempSync(
+          'dovetail_update_key',
+        );
+        addTearDown(() => root.deleteSync(recursive: true));
+        File(p.join(root.path, 'keys', 'update.key'))
+          ..createSync(recursive: true)
+          ..writeAsStringSync('key placeholder, never a real header\n');
 
-      final ProjectReport report = reportFor(
-        config: configWith(extra: updateReady),
-        root: root.path,
-        environment: const <String, String>{
-          'DOVETAIL_UPDATE_KEY_PASSWORD': 'hunter2',
-        },
-      );
+        final ProjectReport report = reportFor(
+          config: configWith(extra: updateReady),
+          root: root.path,
+          environment: const <String, String>{
+            'DOVETAIL_UPDATE_KEY_PASSWORD': 'hunter2',
+          },
+        );
 
-      expect(noteOn(report, 'update').finding, ProjectFinding.ready);
-    });
+        expect(noteOn(report, 'update').finding, ProjectFinding.ready);
+      },
+    );
 
     test('the internal channel with an update section should be missing, '
         'because ship refuses the same combination', () {
@@ -268,6 +269,14 @@ void main() {
       expect(
         noteOn(report, 'signing').detail,
         contains('APPLE_SIGNING_IDENTITY'),
+      );
+      expect(
+        noteOn(report, 'signing').detail,
+        contains('APPLE_ID'),
+        reason:
+            'a nota tem de nomear os dois buracos de uma vez: nomear so a '
+            'identidade manda quem corrigiu re-rodar o doctor para descobrir '
+            'o grupo de notarizacao, e o ship ja nomeia os dois',
       );
       expect(report.shipCanRelease, false);
     });
@@ -486,6 +495,53 @@ void main() {
         noteOn(report, 'service (macos)').finding,
         ProjectFinding.notConfigured,
       );
+    });
+  });
+
+  group('the verdict, in one line', () {
+    test('should say it can release when nothing is missing', () {
+      final ProjectReport report = reportFor(config: configWith());
+
+      expect(report.shipCanRelease, true);
+      expect(report.verdict, startsWith('can release'));
+    });
+
+    test('should let off and warn through: only missing blocks', () {
+      final ProjectReport report = reportFor(config: configWith());
+
+      expect(
+        report.notes.any(
+          (ProjectNote note) => note.finding == ProjectFinding.notConfigured,
+        ),
+        true,
+        reason:
+            'sem service declarado a nota e off, e o ship nao recusa por '
+            'isso — o veredito nao pode discordar do exit code',
+      );
+      expect(report.verdict, startsWith('can release'));
+    });
+
+    test('should count the blockers and name them', () {
+      final ProjectReport report = reportFor(
+        config: configWith(
+          extra:
+              'update:\n'
+              '  key: keys/update.key\n'
+              '  base-url: https://updates.example/releases\n',
+        ),
+        environment: const <String, String>{},
+      );
+
+      expect(report.shipCanRelease, false);
+      expect(report.verdict, contains('cannot release'));
+      expect(report.verdict, contains('update'));
+    });
+
+    test('should use the singular for one blocker', () {
+      final ProjectReport report = reportFor(config: null);
+
+      expect(report.verdict, contains('1 blocker before the build'));
+      expect(report.verdict, contains('dovetail.yaml'));
     });
   });
 

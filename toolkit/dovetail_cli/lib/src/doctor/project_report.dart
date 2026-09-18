@@ -42,6 +42,24 @@ final class ProjectReport {
   bool get shipCanRelease =>
       notes.every((ProjectNote note) => note.finding != ProjectFinding.missing);
 
+  /// A resposta, numa linha, a "este projeto consegue fazer release?", para o
+  /// `doctor` dizer antes de alguem pagar o build. Nao e uma segunda regra:
+  /// usa o mesmo `missing` do `shipCanRelease`, senao o veredito e o codigo de
+  /// saida poderiam discordar.
+  String get verdict {
+    if (shipCanRelease) {
+      return 'can release: nothing blocks the build on this host for this '
+          'channel';
+    }
+    final List<String> blockers = <String>[
+      for (final ProjectNote note in notes)
+        if (note.finding == ProjectFinding.missing) note.subject,
+    ];
+    final String plural = blockers.length == 1 ? 'blocker' : 'blockers';
+    return 'cannot release: ${blockers.length} $plural before the build '
+        '(${blockers.join(', ')})';
+  }
+
   static ProjectReport of({
     required DovetailConfig? config,
     required String? version,
@@ -308,27 +326,39 @@ final class ProjectReport {
     return null;
   }
 
+  /// Todo o que falta para notarizar, junto, e nulo quando nada falta.
+  ///
+  /// A primeira versao devolvia so o primeiro buraco: quem exportasse a
+  /// identidade re-rodava o doctor para so entao descobrir o grupo de
+  /// notarizacao, enquanto o `ship` nomeava os dois de uma vez. Os dois
+  /// discordavam sobre o que pode sair, e o leitor pagava a diferenca em
+  /// rodadas.
   static String? _notarisationGap(
     MacosSigningConfig macos,
     Map<String, String> environment,
   ) {
     bool isSet(String? value) => value != null && value.trim().isNotEmpty;
+    final List<String> gaps = <String>[];
     if (!isSet(environment['APPLE_SIGNING_IDENTITY']) &&
         !isSet(environment[macos.identityEnv])) {
-      return 'notarize: true, and neither ${macos.identityEnv} nor '
-          'APPLE_SIGNING_IDENTITY is exported — ship refuses at the sign step';
+      gaps.add(
+        'notarize: true, and neither ${macos.identityEnv} nor '
+        'APPLE_SIGNING_IDENTITY is exported — ship refuses at the sign step',
+      );
     }
     try {
       if (NotarytoolArguments.forWhicheverIsConfigured(environment) == null) {
-        return 'notarize: true, and no notarisation credential group is '
-            'complete (APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID, or '
-            'APPLE_API_KEY_ID + APPLE_API_ISSUER + APPLE_API_KEY_PATH) — ship '
-            'refuses at the dmg step';
+        gaps.add(
+          'notarize: true, and no notarisation credential group is complete '
+          '(APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID, or APPLE_API_KEY_ID + '
+          'APPLE_API_ISSUER + APPLE_API_KEY_PATH) — ship refuses at the dmg '
+          'step',
+        );
       }
     } on SigningFailure catch (failure) {
-      return failure.message;
+      gaps.add(failure.message);
     }
-    return null;
+    return gaps.isEmpty ? null : gaps.join('; ');
   }
 
   /// Uma linha por plataforma, porque a resposta e por plataforma.

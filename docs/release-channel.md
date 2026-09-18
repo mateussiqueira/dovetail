@@ -173,9 +173,16 @@ project
   missing  update  the signing key keys/missing.key is not on disk (...), and the release step signs the artefacts with it at the end of the run — ...
   ok       signing  DOVETAIL_MACOS_IDENTITY, not notarised
   off      service  no privileged component is declared, on any platform
+  cannot release: 1 blocker before the build (update)
 $ echo $?
 2
 ```
+
+The last line is the answer to the question the section exists for — *can this
+project release?* — so nobody has to add the notes up by hand, and nobody pays
+the build to find out. It is not a second rule: it counts the same `missing`
+that decides the exit code, so the verdict and `$?` cannot disagree. `off` and
+`warn` do not block; only `missing` does.
 
 `doctor` and `ship` must never disagree about what can ship; each new check in
 one is mirrored in the other, and a test pins both. `doctor --channel internal`
