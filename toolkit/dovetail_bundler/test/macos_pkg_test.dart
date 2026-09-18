@@ -96,6 +96,16 @@ void main() {
       expect(plist, isNot(contains('BundleProgram')));
     });
 
+    test('captures stdout and stderr at a path the daemon can be read at', () {
+      final String plist = _daemon().render();
+      expect(plist, contains('<key>StandardOutPath</key>'));
+      expect(plist, contains('<key>StandardErrorPath</key>'));
+      expect(
+        plist,
+        contains('<string>/var/log/com.example.demo.helper.log</string>'),
+      );
+    });
+
     test('omits KeepAlive when it is false, and refuses neither', () {
       expect(
         LaunchDaemon(

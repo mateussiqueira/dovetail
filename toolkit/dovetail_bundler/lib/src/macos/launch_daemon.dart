@@ -119,6 +119,18 @@ final class LaunchDaemon {
   String get installedPropertyListPath =>
       '$launchDaemonsDirectory/$label.plist';
 
+  /// Onde o launchd recolhe o que o daemon escreve em stdout e stderr.
+  ///
+  /// Um arquivo direto em `/var/log`, sem subdiretorio: o `launchd` so cria o
+  /// arquivo quando o diretorio pai ja existe, e `/var/log` existe em toda
+  /// maquina. Um subdiretorio exigiria um `mkdir` no `postinstall`, que a rota
+  /// `bundled` nao tem. Os dois caminhos apontam para o mesmo arquivo: o
+  /// daemon loga por `tracing` no stderr, o stdout nao e usado, e um lugar unico
+  /// e o que se abre quando ele nao conecta.
+  static String logPathFor(String label) => '/var/log/$label.log';
+
+  String get logPath => logPathFor(label);
+
   String render() => <String>[
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" '
@@ -140,6 +152,10 @@ final class LaunchDaemon {
     // um tunel estrangulado perde handshake.
     '\t<key>ProcessType</key>',
     '\t<string>Interactive</string>',
+    '\t<key>StandardOutPath</key>',
+    '\t<string>${XmlText.content(logPath)}</string>',
+    '\t<key>StandardErrorPath</key>',
+    '\t<string>${XmlText.content(logPath)}</string>',
     '</dict>',
     '</plist>',
     '',

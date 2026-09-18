@@ -46,7 +46,34 @@ void main() {
 
       expect(plist, contains('Contents/MacOS/demo-helper'));
       expect(plist, isNot(contains('/Users/')));
-      expect(plist, isNot(contains('<string>/')));
+      expect(
+        plist,
+        contains(
+          '<key>BundleProgram</key>\n'
+          '    <string>Contents/MacOS/demo-helper</string>',
+        ),
+      );
+      expect(
+        plist,
+        contains('<string>/var/log/com.example.demo.helper.log</string>'),
+      );
+    });
+
+    test('should capture stdout and stderr at a path that needs no setup', () {
+      // Um daemon que nao conecta nao deixa nada para ler se o launchd joga os
+      // dois fluxos fora. `/var/log` existe em toda maquina: a rota `bundled`
+      // nao tem postinstall para criar subdiretorio nenhum.
+      final String plist = DaemonEmbedder.plistFor(
+        label: 'com.example.demo.helper',
+        program: 'demo-helper',
+      );
+
+      expect(plist, contains('<key>StandardOutPath</key>'));
+      expect(plist, contains('<key>StandardErrorPath</key>'));
+      expect(
+        plist,
+        contains('<string>/var/log/com.example.demo.helper.log</string>'),
+      );
     });
 
     test('should carry the arguments the daemon is launched with', () {
