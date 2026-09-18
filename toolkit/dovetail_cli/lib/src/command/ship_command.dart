@@ -5,6 +5,7 @@ import 'package:dovetail_cli/src/command/doctor_command.dart';
 import 'package:dovetail_cli/src/config/config_locator.dart';
 import 'package:dovetail_cli/src/config/dovetail_config.dart';
 import 'package:dovetail_cli/src/config/pubspec_version.dart';
+import 'package:dovetail_cli/src/ship/ship_channel.dart';
 import 'package:dovetail_cli/src/ship/ship_plan.dart';
 import 'package:dovetail_cli/src/ship/ship_step.dart';
 
@@ -24,6 +25,16 @@ final class ShipCommand extends Command<int> {
         allowed: <String>['nsis', 'msi'],
         defaultsTo: 'msi',
         help: 'msi builds on any host; nsis needs the ansi stub off Windows',
+      )
+      ..addOption(
+        'channel',
+        allowed: ShipChannel.names,
+        defaultsTo: 'release',
+        help:
+            'release is what ship has always done — a signed, notarised '
+            'artefact and an updater manifest. internal is a debug build for '
+            'testers: ad-hoc signing, the installer that can install the '
+            'declared privileged component, and no manifest at all',
       );
   }
 
@@ -62,6 +73,7 @@ final class ShipCommand extends Command<int> {
       build: argResults?.flag('build') ?? true,
       windowsFormat: argResults?.option('windows-format'),
       environment: Platform.environment,
+      channel: ShipChannel.parse(argResults?.option('channel') ?? 'release'),
     );
 
     for (final ShipStep step in plan.steps) {
@@ -89,6 +101,17 @@ final class ShipCommand extends Command<int> {
         'because the build is the slow half.',
       );
       return 1;
+    }
+
+    // O que vale para o plano inteiro e nao impede nenhum passo — hoje, o
+    // arquivo que o canal interno produz e como instala-lo. Depois das
+    // recusas: um plano que nao vai rodar nao instrui ninguem a instalar o
+    // arquivo que ele nao produziria.
+    for (final String notice in plan.notices) {
+      stdout.writeln(notice);
+    }
+    if (plan.notices.isNotEmpty) {
+      stdout.writeln();
     }
 
     if (argResults?.flag('dry-run') ?? false) {

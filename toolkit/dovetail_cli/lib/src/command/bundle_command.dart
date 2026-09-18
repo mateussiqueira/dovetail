@@ -4,6 +4,8 @@ import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_cli/src/config/config_locator.dart';
+import 'package:dovetail_cli/src/config/darwin_service_route.dart';
+import 'package:dovetail_cli/src/config/macos_service_config.dart';
 import 'package:dovetail_cli/src/config/service_config.dart';
 import 'package:dovetail_cli/src/command/doctor_command.dart';
 import 'package:dovetail_cli/src/command/required_option.dart';
@@ -113,11 +115,14 @@ final class BundleCommand extends Command<int> {
       ..addOption('upgrade-code', help: 'required by --windows-format msi')
       ..addOption(
         'macos-format',
-        allowed: <String>['dmg', 'tar'],
+        allowed: <String>['dmg', 'tar', 'pkg'],
         defaultsTo: 'dmg',
         help:
-            'dmg for the download page; tar for the updater — the .app.tar.gz '
-            'that installed clients extract and swap in place',
+            'dmg for the download page of an app with no privileged piece; '
+            'pkg when the app declares service.macos on route: system, because '
+            'it is the only macOS format that runs a postinstall as root; tar '
+            'for the updater — the .app.tar.gz that installed clients extract '
+            'and swap in place',
       )
       ..addOption('wix', defaultsTo: 'wix')
       ..addMultiOption(
@@ -197,17 +202,76 @@ final class BundleCommand extends Command<int> {
     }
   }
 
-  Future<String> _macos(BundleSpec spec, ArgResults args) =>
-      switch (args.option('macos-format')) {
-        'tar' => AppArchiveBundler(
-          runner: const SystemProcessRunner(),
-          requiredArchitectures: _architectures(args),
-        ).bundle(spec),
-        _ => DmgBundler(
-          runner: const SystemProcessRunner(),
-          requiredArchitectures: _architectures(args),
-        ).bundle(spec),
-      };
+  Future<String> _macos(BundleSpec spec, ArgResults args) async {
+    // `from`, e nao o cwd: `Directory.current` pertence ao PROCESSO, e o
+    // `dart test` roda cada suite como isolate de um processo so — uma suite
+    // que o move muda o que todas as outras resolvem. Mesma razao do Linux.
+    final MacosServiceConfig? service = ConfigLocator.load(
+      from: args.option('root'),
+    )?.service?.macos;
+
+    if (service != null) {
+      stdout.writeln('service  ${service.label}  (${service.route.name})');
+    }
+
+    final String format = args.option('macos-format')!;
+
+    if (format == 'dmg' &&
+        service?.route == DarwinServiceRoute.system) {
+      // Um dmg monta uma imagem e o usuario arrasta o `.app`: ele nao roda
+      // script nenhum, entao nao ha plist, nao ha binario em
+      // `/Library/PrivilegedHelperTools`, e nao ha daemon. O que sai nao e
+      // produto degradado — e um app que instala e nao conecta.
+      throw UsageException(
+        'this project declares a macOS daemon on route: system '
+        '(${service!.label}), and a dmg cannot install it.',
+        'A dmg is an image the user mounts to drag the .app out; it runs no '
+            'script, so the daemon never leaves the bundle. The .pkg is the '
+            'only macOS format with a postinstall that runs as root, and it '
+            'is what puts the daemon in /Library and loads it with launchctl.'
+            '\n\nBuild --macos-format pkg instead. If this product really has '
+            'no privileged daemon, remove the macos block from dovetail.yaml.'
+            '\n\n$usage',
+      );
+    }
+
+    // So a rota `system` contribui com script: nela o binario viaja no bundle
+    // e o postinstall o copia para fora. Na `bundled` o daemon e registrado
+    // de dentro do proprio app pelo `SMAppService`, e um pkg sem postinstall
+    // so instala o `.app` — que e exatamente o que a rota quer.
+    final LaunchDaemon? daemon =
+        service == null || service.route != DarwinServiceRoute.system
+        ? null
+        : LaunchDaemon(
+            label: service.label,
+            program: service.program,
+            arguments: service.arguments,
+          );
+    final MacosServiceScripts? scripts = daemon == null
+        ? null
+        : MacosServiceScripts(
+            daemon: daemon,
+            identifier: spec.identifier,
+            applicationPath: PkgBundler.installLocationFor(spec),
+          );
+
+    return switch (format) {
+      'tar' => AppArchiveBundler(
+        runner: const SystemProcessRunner(),
+        requiredArchitectures: _architectures(args),
+      ).bundle(spec),
+      'pkg' => PkgBundler(
+        runner: const SystemProcessRunner(),
+        requiredArchitectures: _architectures(args),
+        daemon: daemon,
+        scripts: scripts,
+      ).bundle(spec),
+      _ => DmgBundler(
+        runner: const SystemProcessRunner(),
+        requiredArchitectures: _architectures(args),
+      ).bundle(spec),
+    };
+  }
 
   Set<TargetArch> _architectures(ArgResults args) =>
       args.multiOption('arch').map(TargetArch.parse).toSet();

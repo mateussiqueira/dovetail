@@ -358,8 +358,19 @@ checked here: on it the binary is put in place by an installer outside the
 
 `system` means an installer running as root puts it in
 `/Library/LaunchDaemons`. It needs no Developer ID and serves the whole
-machine, and it needs a package format this tool does not build today —
-declaring it says the installation happens outside the `.dmg`.
+machine. The installer is the `.pkg` that `dovetail ship --channel internal`
+builds: a `postinstall` copies the helper out of the bundle into
+`/Library/PrivilegedHelperTools`, writes the property list with `root:wheel`
+and mode `0644`, and loads the daemon with `launchctl bootstrap` — after a
+`bootout`, so reinstalling over the top works. The same script writes the
+uninstaller, because a `.pkg` has no uninstall script of its own.
+
+Because it is not the `.dmg` the release channel ships, declaring this route is
+asking for the internal channel: `dovetail ship` refuses a `route: system`
+project (a dmg runs no script, so nothing would install the daemon), and
+`dovetail ship --channel internal` refuses `route: bundled` (ad-hoc signing has
+no Team ID, so `SMAppService` would not register it). `dovetail doctor
+--channel internal` answers the same question before a build is spent.
 
 #### `entitlements`
 

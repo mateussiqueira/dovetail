@@ -110,11 +110,18 @@ final class BuildCommand extends Command<int> {
     return 0;
   }
 
-  /// Poe o daemon dentro do `.app`, quando o projeto declara um embarcado.
+  /// Poe o daemon dentro do `.app`, quando o projeto declara um.
   ///
   /// Aqui, e nao no `bundle`: o `.app` tem de estar completo ANTES de ser
   /// assinado, e o dmg so embrulha o que ja existe. Um daemon que entrasse
   /// depois da assinatura invalidaria o bundle inteiro.
+  ///
+  /// As duas rotas embarcam o binario, por razoes diferentes. Na `bundled` ele
+  /// e o daemon que o `SMAppService` registra de dentro do proprio bundle, e o
+  /// plist embutido e o que ele procura. Na `system` o binario viaja no bundle
+  /// porque e de la que o `postinstall` do `.pkg` o COPIA para `/Library`; o
+  /// plist que vale no sistema e escrito pelo postinstall, entao o embutido
+  /// nao entra.
   void _embedDaemon(
     DovetailConfig? config, {
     required String target,
@@ -122,9 +129,7 @@ final class BuildCommand extends Command<int> {
     required String output,
   }) {
     final MacosServiceConfig? daemon = config?.service?.macos;
-    if (target != 'macos' ||
-        daemon == null ||
-        daemon.route != DarwinServiceRoute.bundled) {
+    if (target != 'macos' || daemon == null) {
       return;
     }
 
@@ -136,6 +141,7 @@ final class BuildCommand extends Command<int> {
       program: daemon.program,
       label: daemon.label,
       arguments: daemon.arguments,
+      writePropertyList: daemon.route == DarwinServiceRoute.bundled,
     );
     stdout.writeln('daemon   ${daemon.plistFileName}');
   }

@@ -1,13 +1,15 @@
 import 'dart:io';
 
 import 'package:dovetail_signer/dovetail_signer.dart';
+import 'package:dovetail_cli/src/config/darwin_service_route.dart';
 import 'package:dovetail_cli/src/config/dovetail_config.dart';
 import 'package:dovetail_cli/src/config/macos_service_config.dart';
 import 'package:dovetail_cli/src/config/macos_signing_config.dart';
 import 'package:dovetail_cli/src/config/service_config.dart';
+import 'package:dovetail_cli/src/ship/ship_channel.dart';
 import 'package:path/path.dart' as p;
 
-enum ProjectFinding { ready, missing, notConfigured }
+enum ProjectFinding { ready, missing, warning, notConfigured }
 
 final class ProjectNote {
   const ProjectNote({
@@ -24,6 +26,10 @@ final class ProjectNote {
     ProjectFinding.ready => 'ok       $subject  $detail',
     ProjectFinding.notConfigured => 'off      $subject  $detail',
     ProjectFinding.missing => 'missing  $subject  $detail',
+    // Nem `ok` nem `missing`: o projeto esta coerente, e o canal escolhido nao
+    // consegue instalar o que ele declara. Quem le precisa da razao, nao de um
+    // veredito — e o `ship` recusa pelo mesmo motivo, entao os dois concordam.
+    ProjectFinding.warning => 'warn     $subject  $detail',
   };
 }
 
@@ -42,9 +48,14 @@ final class ProjectReport {
     Map<String, String>? environment,
 
     /// A raiz contra a qual `service.macos.binary` resolve. O `doctor` passa o
-    /// diretório do `dovetail.yaml`; nulo cai no cwd, como o relatório do app
-    /// já faz quando não há arquivo, para o resultado continuar decidível.
+    /// diretorio do `dovetail.yaml`; nulo cai no cwd, como o relatorio do app
+    /// ja faz quando nao ha arquivo, para o resultado continuar decidivel.
     String? root,
+
+    /// O canal que o `doctor` esta perguntando. `release` e o padrao, para o
+    /// relatorio continuar respondendo o que sempre respondeu; `internal`
+    /// responde a mesma pergunta que o `ship --channel internal` vai fazer.
+    ShipChannel channel = ShipChannel.release,
   }) {
     if (config == null) {
       return const ProjectReport(<ProjectNote>[
@@ -82,7 +93,7 @@ final class ProjectReport {
       _targetsNote(config, host),
       _updateNote(config),
       _signingNote(config, host, environment),
-      ..._serviceNotes(config, root),
+      ..._serviceNotes(config, root, channel),
     ]);
   }
 
@@ -223,7 +234,11 @@ final class ProjectReport {
   /// caminho declarado em `service.macos.binary` e conferido no disco — a
   /// mesma pergunta que a secao `spm` faz ao `.xcframework`, e pelo mesmo
   /// motivo: quem esqueceu o passo so descobria no build.
-  static List<ProjectNote> _serviceNotes(DovetailConfig config, String? root) {
+  static List<ProjectNote> _serviceNotes(
+    DovetailConfig config,
+    String? root,
+    ShipChannel channel,
+  ) {
     final ServiceConfig? service = config.service;
     if (service == null) {
       return const <ProjectNote>[
@@ -255,7 +270,7 @@ final class ProjectReport {
           detail: 'no daemon travels in the bundle',
         )
       else
-        _macosServiceNote(service.macos!, root),
+        _macosServiceNote(service.macos!, root, channel),
     ];
   }
 
@@ -269,6 +284,7 @@ final class ProjectReport {
   static ProjectNote _macosServiceNote(
     MacosServiceConfig daemon,
     String? root,
+    ShipChannel channel,
   ) {
     final String declared = daemon.binary;
     final File binary = File(
@@ -285,10 +301,39 @@ final class ProjectReport {
             'daemon before ship',
       );
     }
+
+    // A pergunta e a do canal: o formato que ESTE canal empacota consegue
+    // instalar o daemon que a configuracao declara? A resposta depende da
+    // rota, e o `ship` recusa pelo mesmo motivo — se o doctor dissesse `ok`
+    // aqui, os dois discordariam sobre o que pode sair.
+    final bool installs = switch ((channel, daemon.route)) {
+      (ShipChannel.release, DarwinServiceRoute.bundled) => true,
+      (ShipChannel.internal, DarwinServiceRoute.system) => true,
+      _ => false,
+    };
+    if (installs) {
+      return ProjectNote(
+        subject: 'service (macos)',
+        finding: ProjectFinding.ready,
+        detail:
+            '${daemon.plistFileName}  (${daemon.route.name}; '
+            '${channel.wire} installs it)',
+      );
+    }
+
+    // `warn`, e nao `missing`: o projeto esta coerente, o outro canal o
+    // entrega, e um `missing` aqui derrubaria um job de CI que esta correto.
+    // O que falta e so o canal certo — e ele vai nomeado.
     return ProjectNote(
       subject: 'service (macos)',
-      finding: ProjectFinding.ready,
-      detail: '${daemon.plistFileName}  (${daemon.route.name})',
+      finding: ProjectFinding.warning,
+      detail: channel == ShipChannel.release
+          ? 'route: system, and the release channel ships a .dmg, which runs '
+                'no script — the daemon never installs. Use --channel internal, '
+                'whose .pkg installs it'
+          : 'route: bundled, and the internal channel signs ad-hoc — '
+                'SMAppService refuses a daemon without a valid Team ID. Use '
+                '--channel release with a Developer ID, or route: system',
     );
   }
 

@@ -42,6 +42,15 @@ final class SignCommand extends Command<int> {
       ..addOption('out-dir', defaultsTo: '.')
       ..addFlag('require-signature', negatable: false)
       ..addFlag('notarize', negatable: false)
+      ..addFlag(
+        'ad-hoc',
+        negatable: false,
+        help:
+            'macOS: sign with the ad-hoc identity (`-`) — the internal '
+            'channel. No Developer ID, no notarisation, and no Team ID. It is '
+            'not enough for service.macos route: bundled, which SMAppService '
+            'registers only with a valid signature and a matching Team ID',
+      )
       ..addOption('osslsigncode', defaultsTo: 'osslsigncode')
       ..addOption(
         'certificate',
@@ -110,8 +119,18 @@ final class SignCommand extends Command<int> {
     final ({DovetailConfig? config, String root}) project = projectContext(
       from: _root,
     );
+    // O canal interno assina ad-hoc: identidade `-`, sem Developer ID e sem
+    // notarizacao. Injetada aqui — e nao num caminho proprio — para a politica
+    // de assinatura ver o que sempre ve, uma identidade presente, e nao
+    // precisar conhecer canal nenhum. Uma identidade exportada no ambiente e
+    // substituida: `--ad-hoc` e a afirmacao de que NAO ha Developer ID.
     final Map<String, String> environment = withIdentityFromConfig(
-      processEnvironment,
+      args.flag('ad-hoc')
+          ? <String, String>{
+              ...processEnvironment,
+              'APPLE_SIGNING_IDENTITY': '-',
+            }
+          : processEnvironment,
       project.config,
     );
 
@@ -645,13 +664,15 @@ final class SignCommand extends Command<int> {
   /// and was documented; nothing read it, so every daemon shipped so far was
   /// signed as if it were the app.
   ///
-  /// Only the bundled route contributes. On the other one the component is
-  /// installed from outside the `.app`, so there is no nested binary here to
-  /// carry entitlements for.
+  /// Only an embedded daemon contributes. As duas rotas embarcam o binario: a
+  /// `bundled` porque o `SMAppService` o procura no bundle, e a `system` porque
+  /// e de dentro do bundle que o `postinstall` do `.pkg` o copia para
+  /// `/Library`. Nas duas ele e codigo aninhado no selo do aplicativo, e nas
+  /// duas ele nunca pode herdar o `app-sandbox`.
   ///
-  /// A flag for the same path wins over the declaration, and silently: the
-  /// person typing the flag is looking at this signature now, and the yaml was
-  /// written months ago.
+  /// A flag para o mesmo caminho vence a declaracao, e em silencio: quem
+  /// digita a flag esta olhando para esta assinatura agora, e o yaml foi
+  /// escrito meses atras.
   Map<String, String> _nestedEntitlements(
     ArgResults args, {
     required DovetailConfig? config,
@@ -682,9 +703,7 @@ final class SignCommand extends Command<int> {
     }
 
     final MacosServiceConfig? service = config?.service?.macos;
-    if (service == null ||
-        service.route != DarwinServiceRoute.bundled ||
-        service.entitlements == null) {
+    if (service == null || service.entitlements == null) {
       return byPath;
     }
     final String relative = DaemonEmbedder.programPathFor(service.program);

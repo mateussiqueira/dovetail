@@ -110,6 +110,7 @@ ${args.toString().trimRight()}
     required String program,
     required String label,
     List<String> arguments = const <String>[],
+    bool writePropertyList = true,
   }) {
     // Antes de qualquer cópia: um nome recusado não pode deixar metade de um
     // daemon para trás no bundle.
@@ -134,6 +135,17 @@ ${args.toString().trimRight()}
     Directory(p.dirname(destination)).createSync(recursive: true);
     source.copySync(destination);
     _makeExecutable(destination);
+
+    // `writePropertyList` e falso na rota `system`: o binario viaja no bundle
+    // porque e de dentro dele que o postinstall do `.pkg` o copia para
+    // `/Library`, mas o plist que vale la e escrito pelo proprio postinstall,
+    // com o caminho absoluto ja instalado. O plist EMBUTIDO e da rota
+    // `bundled`, que o `SMAppService` procura dentro do app — escreve-lo aqui
+    // deixaria no bundle um arquivo que ninguem le, apontando para um
+    // `BundleProgram` que nao e o que o daemon do sistema usa.
+    if (!writePropertyList) {
+      return;
+    }
 
     final File plist = File(
       p.join(

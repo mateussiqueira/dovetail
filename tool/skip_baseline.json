@@ -113,6 +113,10 @@
         "test/wixl_test.dart": {
           "declared": 15,
           "skips": {}
+        },
+        "test/macos_pkg_test.dart": {
+          "declared": 13,
+          "skips": {}
         }
       }
     },
@@ -306,7 +310,7 @@
           "skips": {}
         },
         "test/sign_command_test.dart": {
-          "declared": 48,
+          "declared": 50,
           "skips": {}
         },
         "test/sign_windows_test.dart": {
@@ -335,6 +339,14 @@
         },
         "test/template_renderer_test.dart": {
           "declared": 3,
+          "skips": {}
+        },
+        "test/ship_channel_test.dart": {
+          "declared": 8,
+          "skips": {}
+        },
+        "test/doctor_channel_test.dart": {
+          "declared": 5,
           "skips": {}
         }
       }
