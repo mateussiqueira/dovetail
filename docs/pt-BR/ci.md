@@ -63,7 +63,10 @@ fatos que o `SMAppService` precisa: o property list onde ele procura, o
 --deep --strict` no `.app`, e o daemon assinado com os entitlements DELE e
 sem nenhum `app-sandbox` do aplicativo — o defeito que o `ddb337c` fechou.
 Ele **não** é parte do portão: constrói um app Flutter do zero, que é
-exatamente o custo que o portão recusa pagar a cada push. E não prova
+exatamente o custo que o portão recusa pagar a cada push. Ele **é** o último
+passo do `tool/release.sh`, então nenhuma versão sai sem o bundle em que o
+daemon cai ser provado — e um canário em `tool/ci` que release nenhum roda
+reprova o `release_canaries_test.dart` do `toolkit/dovetail_cli`. E não prova
 registro — com a identidade ad-hoc os dois lados reportam
 `TeamIdentifier=not set`, então a recusa por divergência de Team ID roda e
 não pode disparar, e o registro real no `SMAppService` continua esperando um
