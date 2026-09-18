@@ -38,6 +38,24 @@ final class ScriptedFetcher implements ArtifactFetcher {
   }
 }
 
+final class MidStreamFetcher implements ArtifactFetcher {
+  MidStreamFetcher({required this.manifestUrl, required this.manifest});
+
+  final String manifestUrl;
+  final String manifest;
+  final List<Uri> requested = <Uri>[];
+
+  @override
+  Future<FetchedBody> fetch(Uri url, {DownloadProgress? onProgress}) async {
+    requested.add(url);
+    if (url.toString() == manifestUrl) {
+      return jsonBody(manifest);
+    }
+    onProgress?.call(11, 38);
+    throw const UpdateFailure('the download stopped after 11 of 38 bytes.');
+  }
+}
+
 FetchedBody jsonBody(String body) =>
     FetchedBody(statusCode: 200, bytes: Uint8List.fromList(utf8.encode(body)));
 
@@ -317,6 +335,89 @@ dqjWEu8VN7vb4dsXYncNMdPhjgdf/clj9uM7lB5+zarDb0ak6/mzv2BckKEuOJTFtSHg+uBy3bi5Gptr
         ),
       );
     });
+  });
+
+  group('a download that dies and a version that was never published', () {
+    test('should refuse a download that dies mid stream', () async {
+      final MidStreamFetcher fetcher = MidStreamFetcher(
+        manifestUrl: primary,
+        manifest: manifestFor('2.0.0', artefactUrl, _signature),
+      );
+      final UpdateFlow sut = UpdateFlow(
+        fetcher: fetcher,
+        publicKey: _publicKey,
+        platformKey: 'darwin-aarch64',
+      );
+      final UpdateCheck check = await sut.check(
+        endpoints: const <String>[primary],
+        installed: Version.parse('1.0.0'),
+      );
+
+      await expectLater(
+        sut.download(check.manifest!),
+        throwsA(
+          isA<UpdateFailure>().having(
+            (UpdateFailure failure) => failure.message,
+            'message',
+            contains('11 of 38 bytes'),
+          ),
+        ),
+      );
+      expect(fetcher.requested.last.toString(), artefactUrl);
+    });
+
+    test('should refuse a manifest that announces a version the host never '
+        'published', () async {
+      final ScriptedFetcher fetcher = ScriptedFetcher(<String, FetchedBody>{
+        primary: jsonBody(manifestFor('2.0.0', artefactUrl, _signature)),
+        artefactUrl: FetchedBody(statusCode: 404, bytes: Uint8List(0)),
+      });
+      final UpdateFlow sut = flowWith(fetcher);
+      final UpdateCheck check = await sut.check(
+        endpoints: const <String>[primary],
+        installed: Version.parse('1.0.0'),
+      );
+
+      await expectLater(
+        sut.download(check.manifest!),
+        throwsA(
+          isA<UpdateFailure>().having(
+            (UpdateFailure failure) => failure.message,
+            'message',
+            contains('404'),
+          ),
+        ),
+      );
+    });
+
+    test(
+      'should refuse a manifest that carries no release for this platform',
+      () async {
+        final ScriptedFetcher fetcher = ScriptedFetcher(<String, FetchedBody>{
+          primary: jsonBody(
+            jsonEncode(<String, Object?>{
+              'version': '2.0.0',
+              'platforms': <String, Object?>{
+                'windows-x86_64': <String, Object?>{
+                  'url': artefactUrl,
+                  'signature': _signature,
+                },
+              },
+            }),
+          ),
+        });
+        final UpdateFlow sut = flowWith(fetcher);
+        final UpdateCheck check = await sut.check(
+          endpoints: const <String>[primary],
+          installed: Version.parse('1.0.0'),
+        );
+
+        await expectLater(
+          sut.download(check.manifest!),
+          throwsA(isA<UpdateFailure>()),
+        );
+      },
+    );
   });
 
   group('install on macOS', () {
