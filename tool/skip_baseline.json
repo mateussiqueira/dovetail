@@ -332,6 +332,10 @@
         "test/upgrade_command_test.dart": {
           "declared": 6,
           "skips": {}
+        },
+        "test/template_renderer_test.dart": {
+          "declared": 3,
+          "skips": {}
         }
       }
     },
