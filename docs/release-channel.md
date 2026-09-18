@@ -137,6 +137,43 @@ Concretely, with no Developer ID:
   `ship` necessary rather than decorative: on its own, a release would go green
   on an unsigned artefact.
 
+### What would run, with the credential
+
+None of this was exercised here: this machine has no Developer ID identity
+(`security find-identity -v -p codesigning` returns one `Apple Development`
+identity, which is not a Developer ID) and no `APPLE_*` group is exported. What
+follows is the exact command the signer runs, and what it produces, so the
+missing piece has a name instead of a workaround.
+
+`Notarizer` (`toolkit/dovetail_signer/lib/src/macos/notarizer.dart`) runs, for
+the flat `.dmg`:
+
+```
+xcrun notarytool submit <file>.dmg --output-format json --wait <credentials>
+xcrun stapler staple -v <file>.dmg
+```
+
+and, for the `.app` inside, first archives it with `ditto`, so the ticket can be
+stapled to the bundle:
+
+```
+ditto -c -k --keepParent --sequesterRsrc <bundle>.app <archive>.zip
+xcrun notarytool submit <archive>.zip --output-format json --wait <credentials>
+xcrun stapler staple -v <bundle>.app
+```
+
+`<credentials>` is one of the two groups: `--apple-id <id> --team-id <team>
+--password <app-specific>` or `--key <path> --key-id <id> --issuer <issuer>`.
+With `--wait` the service answers `{"status":"Accepted"}` or another status, and
+any status other than `Accepted` is a `SigningFailure` whose remedy is
+`xcrun notarytool log <submission-id>`.
+
+What it produces: a notarisation ticket **stapled into the artefact**, so a
+machine that has never seen the build — and is offline — passes Gatekeeper on
+first launch. The proof still missing is `spctl -a -t open --context
+context:primary-signature <file>.dmg` on a clean machine, and it needs the real
+Developer ID, not a stand-in.
+
 ## What the updater does, and what it refuses
 
 The updater is the consumer of everything `release` produces. Its path is
@@ -182,12 +219,22 @@ Only https carries an update.
 FAILED darwin-universal  the signature field decodes — it is not base64. ...
 ```
 
-The corrupted-download half and the lying-manifest half are each pinned by a
-test now, not only by the probe — `dovetail_updater/test/update_flow_test.dart`:
-`should refuse an artefact whose bytes were altered` (a byte flipped in the
-served payload), and the `a manifest that lies` group, which pairs an authentic
-signature with an artefact it does not cover and asserts `does not match its
-signature`, against a control where the same signature does cover the artefact.
+Five failure shapes are pinned by tests now, not only by the probe —
+`dovetail_updater/test/update_flow_test.dart`:
+
+- the served bytes were altered — `should refuse an artefact whose bytes were
+  altered` (one byte flipped); the signature no longer covers them;
+- the manifest lies — the `a manifest that lies` group: an authentic signature
+  paired with an artefact it does not cover is refused (`does not match its
+  signature`), against a control where the same signature does cover it;
+- the download dies mid stream — `should refuse a download that dies mid
+  stream`: the stream reports 11 of 38 bytes and then fails, and `download`
+  propagates the `UpdateFailure`; nothing is verified;
+- the manifest announces a version the host never published — the artefact url
+  answers `404`, and `download` refuses with the status;
+- the manifest carries no release for this platform — `releaseFor` throws
+  before the body is even fetched.
+
 The fuzzers mutate the manifest and the signature themselves.
 
 In every failure the installer never runs. The failure type is `UpdateFailure`

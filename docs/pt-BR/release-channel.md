@@ -139,6 +139,43 @@ Concretamente, sem Developer ID:
   `ship` necessária em vez de decorativa: sozinho, um release sairia verde
   sobre um artefato sem assinatura.
 
+### O que rodaria, com a credencial
+
+Nada disso foi exercitado aqui: esta máquina não tem identidade Developer ID
+(`security find-identity -v -p codesigning` devolve uma identidade
+`Apple Development`, que não é Developer ID) e nenhum grupo `APPLE_*` está
+exportado. O que segue é o comando exato que o assinador roda, e o que ele
+produz, para a peça que falta ter nome em vez de contorno.
+
+O `Notarizer` (`toolkit/dovetail_signer/lib/src/macos/notarizer.dart`) roda, para
+o `.dmg` plano:
+
+```
+xcrun notarytool submit <arquivo>.dmg --output-format json --wait <credenciais>
+xcrun stapler staple -v <arquivo>.dmg
+```
+
+e, para o `.app` dentro, primeiro arquiva com `ditto`, para o ticket poder ser
+grampeado no bundle:
+
+```
+ditto -c -k --keepParent --sequesterRsrc <bundle>.app <arquivo>.zip
+xcrun notarytool submit <arquivo>.zip --output-format json --wait <credenciais>
+xcrun stapler staple -v <bundle>.app
+```
+
+`<credenciais>` é um dos dois grupos: `--apple-id <id> --team-id <time>
+--password <senha-de-app>` ou `--key <caminho> --key-id <id> --issuer <issuer>`.
+Com `--wait`, o serviço responde `{"status":"Accepted"}` ou outro status, e
+qualquer status diferente de `Accepted` é um `SigningFailure` cujo remédio é
+`xcrun notarytool log <submission-id>`.
+
+O que produz: um ticket de notarização **grampeado no artefato**, para uma
+máquina que nunca viu o build — e offline — passar pelo Gatekeeper na primeira
+abertura. A prova que continua faltando é `spctl -a -t open --context
+context:primary-signature <arquivo>.dmg` numa máquina limpa, e ela precisa do
+Developer ID real, não de um substituto.
+
 ## O que o updater faz, e o que ele recusa
 
 O updater é o consumidor de tudo o que o `release` produz. O caminho dele é
@@ -183,13 +220,23 @@ Only https carries an update.
 FAILED darwin-universal  the signature field decodes — it is not base64. ...
 ```
 
-As duas metades — download corrompido e manifesto mentiroso — agora estão
-fixadas por teste, não só pela sonda, em
-`dovetail_updater/test/update_flow_test.dart`: `should refuse an artefact whose
-bytes were altered` (um byte trocado no corpo servido) e o grupo `a manifest
-that lies`, que casa uma assinatura autêntica com um artefato que ela não cobre
-e exige `does not match its signature`, contra um controle em que a mesma
-assinatura cobre o artefato. Os fuzzers mutam o manifesto e a assinatura.
+Cinco formas de falha agora estão fixadas por teste, não só pela sonda, em
+`dovetail_updater/test/update_flow_test.dart`:
+
+- os bytes servidos foram alterados — `should refuse an artefact whose bytes
+  were altered` (um byte trocado); a assinatura não cobre mais;
+- o manifesto mente — o grupo `a manifest that lies`: uma assinatura autêntica
+  casada com um artefato que ela não cobre é recusada (`does not match its
+  signature`), contra um controle em que a mesma assinatura cobre;
+- o download morre no meio — `should refuse a download that dies mid stream`: o
+  fluxo reporta 11 de 38 bytes e então falha, e o `download` propaga o
+  `UpdateFailure`; nada é verificado;
+- o manifesto anuncia uma versão que o host nunca publicou — a url do artefato
+  responde `404`, e o `download` recusa com o status;
+- o manifesto não traz release para esta plataforma — o `releaseFor` lança
+  antes de o corpo sequer ser buscado.
+
+Os fuzzers mutam o manifesto e a assinatura.
 
 Em toda falha o instalador nunca roda. O tipo da falha é `UpdateFailure`
 (mensagem + remédio) ou `DowngradeRefused`; nada chega ao disco.
