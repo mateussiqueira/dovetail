@@ -100,7 +100,7 @@ mod testes {
                 method: "peercred".into(),
                 subject: "uid=0".into(),
             },
-            reject: Some(ErrorBody::new(ErrorCode::PeerRejected, "recusado")),
+            reject: Some(ErrorBody::new(ErrorCode::peer_rejected(), "recusado")),
         };
         let v: serde_json::Value = serde_json::to_value(&sh).unwrap();
         assert_eq!(v["accepted"], false);
