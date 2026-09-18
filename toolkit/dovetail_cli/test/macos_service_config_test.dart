@@ -40,6 +40,16 @@ void main() {
       );
     });
 
+    test('should carry the instructions path when declared', () {
+      expect(_parse(_macos).service!.macos!.instructions, isNull);
+      expect(
+        _parse(
+          '$_macos    route: system\n    instructions: packaging/LEIA-ME.txt\n',
+        ).service!.macos!.instructions,
+        'packaging/LEIA-ME.txt',
+      );
+    });
+
     test('should refuse a route nobody implements', () {
       expect(
         () => _parse('$_macos    route: pkg\n'),

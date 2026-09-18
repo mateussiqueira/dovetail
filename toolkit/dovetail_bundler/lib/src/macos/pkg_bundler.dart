@@ -129,10 +129,7 @@ final class PkgBundler {
     );
 
     Directory(spec.outputDirectory).createSync(recursive: true);
-    final String destination = p.join(
-      spec.outputDirectory,
-      fileNameFor(spec),
-    );
+    final String destination = p.join(spec.outputDirectory, fileNameFor(spec));
 
     // O temporario guarda o pkg de componente e o diretorio de scripts: o
     // pkgbuild escreve o componente, o productbuild o embrulha, e so o segundo

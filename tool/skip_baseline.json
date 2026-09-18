@@ -62,6 +62,10 @@
             "MachO against lipo, on real binaries should agree with lipo on every Mach-O inside the real app": "build vpn_desktop for macOS first"
           }
         },
+        "test/macos_pkg_test.dart": {
+          "declared": 13,
+          "skips": {}
+        },
         "test/minimum_system_version_test.dart": {
           "declared": 12,
           "skips": {
@@ -90,6 +94,10 @@
           "declared": 9,
           "skips": {}
         },
+        "test/pkg_dmg_bundler_test.dart": {
+          "declared": 5,
+          "skips": {}
+        },
         "test/shlib_deps_test.dart": {
           "declared": 10,
           "skips": {}
@@ -112,10 +120,6 @@
         },
         "test/wixl_test.dart": {
           "declared": 15,
-          "skips": {}
-        },
-        "test/macos_pkg_test.dart": {
-          "declared": 13,
           "skips": {}
         }
       }
@@ -179,6 +183,10 @@
           "declared": 5,
           "skips": {}
         },
+        "test/doctor_channel_test.dart": {
+          "declared": 5,
+          "skips": {}
+        },
         "test/doctor_command_test.dart": {
           "declared": 26,
           "skips": {}
@@ -220,7 +228,7 @@
           "skips": {}
         },
         "test/macos_service_config_test.dart": {
-          "declared": 10,
+          "declared": 11,
           "skips": {}
         },
         "test/manifest_command_test.dart": {
@@ -301,6 +309,10 @@
           "declared": 13,
           "skips": {}
         },
+        "test/ship_channel_test.dart": {
+          "declared": 9,
+          "skips": {}
+        },
         "test/ship_command_test.dart": {
           "declared": 4,
           "skips": {}
@@ -315,6 +327,10 @@
         },
         "test/sign_windows_test.dart": {
           "declared": 7,
+          "skips": {}
+        },
+        "test/template_renderer_test.dart": {
+          "declared": 3,
           "skips": {}
         },
         "test/tool_identity_test.dart": {
@@ -335,18 +351,6 @@
         },
         "test/upgrade_command_test.dart": {
           "declared": 6,
-          "skips": {}
-        },
-        "test/template_renderer_test.dart": {
-          "declared": 3,
-          "skips": {}
-        },
-        "test/ship_channel_test.dart": {
-          "declared": 8,
-          "skips": {}
-        },
-        "test/doctor_channel_test.dart": {
-          "declared": 5,
           "skips": {}
         }
       }

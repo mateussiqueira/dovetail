@@ -96,7 +96,7 @@ final class ShipPlan {
     // o interno tambem e um dmg.
     final String macosDownloadFormat =
         internal && macosService?.route == DarwinServiceRoute.system
-        ? 'pkg'
+        ? 'pkg-dmg'
         : 'dmg';
 
     // The release step below names the artefacts and lets the url be
@@ -232,7 +232,8 @@ final class ShipPlan {
           // doc promete. O `.app` e notarizado ANTES de virar dmg, para o
           // ticket ficar grampeado nele tambem: quem arrasta o app da imagem
           // para /Applications abre um app com ticket, mesmo offline.
-          if (host == 'macos' && !internal &&
+          if (host == 'macos' &&
+              !internal &&
               (config.macos?.notarize ?? false)) ...<String>[
             '--require-signature',
             '--notarize',
@@ -333,14 +334,15 @@ final class ShipPlan {
         // segundo: o .app ja foi assinado, e o pacote que o carrega nao e
         // assinavel pelas ferramentas daqui. O canal interno para no bundle:
         // nao ha manifesto, entao nao ha archive nem release.
-        'macos' => internal
-            ? <ShipStep>[signing, bundling]
-            : <ShipStep>[
-                signing,
-                bundling,
-                if (macosDownloadFormat == 'dmg') signingContainer,
-                archiving,
-              ],
+        'macos' =>
+          internal
+              ? <ShipStep>[signing, bundling]
+              : <ShipStep>[
+                  signing,
+                  bundling,
+                  if (macosDownloadFormat == 'dmg') signingContainer,
+                  archiving,
+                ],
         'windows' => <ShipStep>[signingPayload, bundling, signing],
         _ => <ShipStep>[bundling, signing],
       });
@@ -384,6 +386,16 @@ final class ShipPlan {
           'build, whose installer loads the daemon with launchctl instead.',
         );
       }
+      if (internal &&
+          macosService.route == DarwinServiceRoute.system &&
+          !_isSet(macosService.instructions)) {
+        refusals.add(
+          'service.macos.route is system, and the internal dmg ships the .pkg '
+          'with the text a person reads beside it, and service.macos.'
+          'instructions is not declared. Declare it in dovetail.yaml: the text '
+          'is the application own, and the dmg is the toolkit own.',
+        );
+      }
     }
 
     if (!internal &&
@@ -408,12 +420,13 @@ final class ShipPlan {
     // So num plano que nao recusa: um plano que nao vai rodar nao instrui
     // ninguem a instalar.
     if (host == 'macos' &&
-        macosDownloadFormat == 'pkg' &&
+        macosDownloadFormat == 'pkg-dmg' &&
         refusals.isEmpty) {
       notices.add(
-        'unsigned pkg: install it with '
-        '`sudo installer -pkg ${downloads.values.first} -target /` — Finder '
-        'refuses a package with no Developer ID Installer signature.',
+        'the dmg wraps the unsigned pkg and the instructions: open '
+        '${downloads.values.first} and run the pkg inside it — or from a '
+        'shell, `sudo installer -pkg <the pkg inside the image> -target /`. '
+        'Finder refuses a package with no Developer ID Installer signature.',
       );
     }
 
@@ -535,10 +548,8 @@ final class ShipPlan {
     ],
   ];
 
-  static String builtBundleFor(String binary, {bool release = true}) => p.join(
-    FlutterBuild.outputOf('macos', release: release),
-    '$binary.app',
-  );
+  static String builtBundleFor(String binary, {bool release = true}) =>
+      p.join(FlutterBuild.outputOf('macos', release: release), '$binary.app');
 
   static String bundlerArch(String wireArch) =>
       wireArch == 'aarch64' ? 'arm64' : wireArch;
@@ -584,6 +595,10 @@ final class ShipPlan {
         requiredArchitectures: arches.map(TargetArch.parse).toSet(),
       ).fileNameFor(spec),
       'macos' when macosFormat == 'pkg' => PkgBundler(
+        runner: const SystemProcessRunner(),
+        requiredArchitectures: arches.map(TargetArch.parse).toSet(),
+      ).fileNameFor(spec),
+      'macos' when macosFormat == 'pkg-dmg' => PkgDmgBundler(
         runner: const SystemProcessRunner(),
         requiredArchitectures: arches.map(TargetArch.parse).toSet(),
       ).fileNameFor(spec),

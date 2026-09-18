@@ -29,20 +29,32 @@ ShipPlan planFor(
   channel: channel,
 );
 
-const String _systemRoute = 'service:\n'
+const String _systemRoute =
+    'service:\n'
+    '  macos:\n'
+    '    label: com.example.demo.helper\n'
+    '    program: demo-helper\n'
+    '    binary: target/release/demo-helper\n'
+    '    route: system\n'
+    '    instructions: packaging/LEIA-ME.txt\n';
+
+const String _systemRouteWithoutInstructions =
+    'service:\n'
     '  macos:\n'
     '    label: com.example.demo.helper\n'
     '    program: demo-helper\n'
     '    binary: target/release/demo-helper\n'
     '    route: system\n';
 
-const String _bundledRoute = 'service:\n'
+const String _bundledRoute =
+    'service:\n'
     '  macos:\n'
     '    label: com.example.demo.helper\n'
     '    program: demo-helper\n'
     '    binary: target/release/demo-helper\n';
 
-const String _update = 'update:\n'
+const String _update =
+    'update:\n'
     '  key: keys/update.key\n'
     '  base-url: https://example.com/releases\n';
 
@@ -87,10 +99,11 @@ void main() {
         'sign darwin-aarch64',
         'bundle darwin-aarch64',
       ]);
-      expect(
-        argumentsOf(plan, 'build macos'),
-        <String>['--target', 'macos', '--no-release'],
-      );
+      expect(argumentsOf(plan, 'build macos'), <String>[
+        '--target',
+        'macos',
+        '--no-release',
+      ]);
       // O app que o sign assina e o do diretorio Debug, o mesmo que o bundle
       // empacota — senao os dois passos apontariam para builds diferentes.
       expect(
@@ -106,7 +119,7 @@ void main() {
       expect(plan.downloads['darwin-aarch64'], endsWith('.dmg'));
     });
 
-    test('a system-route daemon is installed by the pkg', () {
+    test('a system-route daemon is installed by the pkg inside the dmg', () {
       final ShipPlan plan = planFor(
         'darwin-aarch64',
         extra: _systemRoute,
@@ -115,26 +128,37 @@ void main() {
       expect(plan.refusals, isEmpty);
       expect(
         argumentsOf(plan, 'bundle darwin-aarch64'),
-        containsAllInOrder(<String>['--macos-format', 'pkg']),
+        containsAllInOrder(<String>['--macos-format', 'pkg-dmg']),
       );
-      expect(plan.downloads['darwin-aarch64'], endsWith('.pkg'));
+      expect(plan.downloads['darwin-aarch64'], endsWith('.dmg'));
       expect(plan.artifacts, isEmpty);
       // A linha honesta: sem Developer ID Installer, o Finder recusa o pkg.
       expect(plan.notices, hasLength(1));
       expect(plan.notices.single, contains('sudo installer -pkg'));
-      expect(plan.notices.single, contains('.pkg'));
+      expect(plan.notices.single, contains('.dmg'));
     });
 
-    test('a bundled-route daemon is refused, because ad-hoc has no Team ID',
-        () {
+    test('a system-route daemon with no instructions is refused', () {
       final ShipPlan plan = planFor(
         'darwin-aarch64',
-        extra: _bundledRoute,
+        extra: _systemRouteWithoutInstructions,
         channel: ShipChannel.internal,
       );
-      expect(plan.refusals.single, contains('ad-hoc'));
-      expect(plan.refusals.single, contains('SMAppService'));
+      expect(plan.refusals.single, contains('instructions'));
     });
+
+    test(
+      'a bundled-route daemon is refused, because ad-hoc has no Team ID',
+      () {
+        final ShipPlan plan = planFor(
+          'darwin-aarch64',
+          extra: _bundledRoute,
+          channel: ShipChannel.internal,
+        );
+        expect(plan.refusals.single, contains('ad-hoc'));
+        expect(plan.refusals.single, contains('SMAppService'));
+      },
+    );
 
     test('an update section is refused instead of trusted', () {
       final ShipPlan plan = planFor(
@@ -152,22 +176,25 @@ void main() {
         host: 'linux',
         channel: ShipChannel.internal,
       );
-      expect(
-        argumentsOf(plan, 'build linux'),
-        <String>['--target', 'linux', '--no-release'],
-      );
+      expect(argumentsOf(plan, 'build linux'), <String>[
+        '--target',
+        'linux',
+        '--no-release',
+      ]);
       expect(plan.artifacts, isEmpty);
       expect(plan.downloads['linux-x86_64'], endsWith('.deb'));
     });
   });
 
   group('the channel answers honestly about the declared service', () {
-    test('release refuses a system-route daemon, because a dmg installs none',
-        () {
-      final ShipPlan plan = planFor('darwin-aarch64', extra: _systemRoute);
-      expect(plan.refusals.single, contains('.dmg'));
-      expect(plan.refusals.single, contains('--channel internal'));
-    });
+    test(
+      'release refuses a system-route daemon, because a dmg installs none',
+      () {
+        final ShipPlan plan = planFor('darwin-aarch64', extra: _systemRoute);
+        expect(plan.refusals.single, contains('.dmg'));
+        expect(plan.refusals.single, contains('--channel internal'));
+      },
+    );
 
     test('release still ships a dmg for a bundled-route daemon', () {
       final ShipPlan plan = planFor('darwin-aarch64', extra: _bundledRoute);

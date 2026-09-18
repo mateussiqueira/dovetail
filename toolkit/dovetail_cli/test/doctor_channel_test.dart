@@ -12,14 +12,16 @@ targets: [darwin-aarch64]
 $extra
 ''');
 
-const String _systemRoute = 'service:\n'
+const String _systemRoute =
+    'service:\n'
     '  macos:\n'
     '    label: com.example.demo.helper\n'
     '    program: demo-helper\n'
     '    binary: target/release/demo-helper\n'
     '    route: system\n';
 
-const String _bundledRoute = 'service:\n'
+const String _bundledRoute =
+    'service:\n'
     '  macos:\n'
     '    label: com.example.demo.helper\n'
     '    program: demo-helper\n'

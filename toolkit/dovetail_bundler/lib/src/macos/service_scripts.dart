@@ -28,8 +28,7 @@ final class MacosServiceScripts {
             'are both derived from it.',
       );
     }
-    if (!applicationPath.startsWith('/') ||
-        !applicationPath.endsWith('.app')) {
+    if (!applicationPath.startsWith('/') || !applicationPath.endsWith('.app')) {
       throw BundleFailure(
         'the application path "$applicationPath" is not an absolute .app '
         'path.',

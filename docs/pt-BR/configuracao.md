@@ -357,9 +357,18 @@ lugar por um instalador fora do `.app`, e não há daemon embarcado cujo Team ID
 tenha de casar.
 
 `system` significa que um instalador rodando como root o coloca em
-`/Library/LaunchDaemons`. Não exige Developer ID e serve a máquina inteira, e
-exige um formato de pacote que esta ferramenta não constrói hoje — declará-la é
-dizer que a instalação acontece fora do `.dmg`.
+`/Library/LaunchDaemons`. Não exige Developer ID e serve a máquina inteira. O
+instalador é o `.pkg` dentro do `.dmg` que `dovetail ship --channel internal`
+constrói: um `postinstall` copia o helper para fora do bundle, em
+`/Library/PrivilegedHelperTools`, escreve o property list com `root:wheel` e
+modo `0644`, e carrega o daemon com `launchctl bootstrap` — depois de um
+`bootout`, para reinstalar por cima funcionar. O mesmo script escreve o
+desinstalador, porque um `.pkg` não tem script de desinstalação próprio.
+
+O `.dmg` existe porque é o que a pessoa sabe abrir, e o `.pkg` porque é o único
+formato do macOS que roda um `postinstall` como root — um produto com
+componente privilegiado precisa dos dois, e este toolkit constrói o par em vez
+de deixar o consumidor embrulhar um no outro.
 
 #### `entitlements`
 
@@ -367,6 +376,21 @@ Os entitlements do **daemon**, que não são os do aplicativo. Normalmente
 ausentes, e está certo. O que ele nunca pode herdar é o `app-sandbox` do
 aplicativo: um daemon em sandbox não alcança socket, rede nem arquivo fora do
 contêiner dele, que é tudo o que ele existe para fazer.
+
+#### `instructions`
+
+Caminho do texto que viaja dentro do `.dmg` interno, ao lado do `.pkg`. É o
+texto do próprio aplicativo — o toolkit o coloca na imagem e não escreve nenhum
+— e `@PKG@` nele é substituído pelo nome real do arquivo `.pkg`, para as
+instruções poderem nomear o arquivo que a pessoa está prestes a rodar.
+Obrigatória quando `route: system` e `ship --channel internal` constrói o dmg.
+
+```yaml
+service:
+  macos:
+    route: system
+    instructions: packaging/macos/LEIA-ME.txt
+```
 
 ### `name`, `description`, `exec-start`
 

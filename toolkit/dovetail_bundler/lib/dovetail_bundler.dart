@@ -23,6 +23,7 @@ export 'package:dovetail_bundler/src/macos/launch_daemon.dart';
 export 'package:dovetail_bundler/src/macos/mach_o.dart';
 export 'package:dovetail_bundler/src/macos/minimum_system_version.dart';
 export 'package:dovetail_bundler/src/macos/pkg_bundler.dart';
+export 'package:dovetail_bundler/src/macos/pkg_dmg_bundler.dart';
 export 'package:dovetail_bundler/src/macos/service_scripts.dart';
 export 'package:dovetail_bundler/src/macos/universal_binary.dart';
 export 'package:dovetail_bundler/src/macos/universal_bundle.dart';

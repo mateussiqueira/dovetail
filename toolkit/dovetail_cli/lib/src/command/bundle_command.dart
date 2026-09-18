@@ -115,14 +115,15 @@ final class BundleCommand extends Command<int> {
       ..addOption('upgrade-code', help: 'required by --windows-format msi')
       ..addOption(
         'macos-format',
-        allowed: <String>['dmg', 'tar', 'pkg'],
+        allowed: <String>['dmg', 'tar', 'pkg', 'pkg-dmg'],
         defaultsTo: 'dmg',
         help:
             'dmg for the download page of an app with no privileged piece; '
             'pkg when the app declares service.macos on route: system, because '
-            'it is the only macOS format that runs a postinstall as root; tar '
-            'for the updater — the .app.tar.gz that installed clients extract '
-            'and swap in place',
+            'it is the only macOS format that runs a postinstall as root; '
+            'pkg-dmg wraps that pkg in the dmg a person opens, with the '
+            'instructions text the config declares; tar for the updater — the '
+            '.app.tar.gz that installed clients extract and swap in place',
       )
       ..addOption('wix', defaultsTo: 'wix')
       ..addMultiOption(
@@ -216,15 +217,14 @@ final class BundleCommand extends Command<int> {
 
     final String format = args.option('macos-format')!;
 
-    if (format == 'dmg' &&
-        service?.route == DarwinServiceRoute.system) {
+    if (format == 'dmg' && service?.route == DarwinServiceRoute.system) {
       // Um dmg monta uma imagem e o usuario arrasta o `.app`: ele nao roda
       // script nenhum, entao nao ha plist, nao ha binario em
       // `/Library/PrivilegedHelperTools`, e nao ha daemon. O que sai nao e
       // produto degradado — e um app que instala e nao conecta.
       throw UsageException(
         'this project declares a macOS daemon on route: system '
-        '(${service!.label}), and a dmg cannot install it.',
+            '(${service!.label}), and a dmg cannot install it.',
         'A dmg is an image the user mounts to drag the .app out; it runs no '
             'script, so the daemon never leaves the bundle. The .pkg is the '
             'only macOS format with a postinstall that runs as root, and it '
@@ -262,6 +262,13 @@ final class BundleCommand extends Command<int> {
       ).bundle(spec),
       'pkg' => PkgBundler(
         runner: const SystemProcessRunner(),
+        requiredArchitectures: _architectures(args),
+        daemon: daemon,
+        scripts: scripts,
+      ).bundle(spec),
+      'pkg-dmg' => PkgDmgBundler(
+        runner: const SystemProcessRunner(),
+        instructions: service?.instructions,
         requiredArchitectures: _architectures(args),
         daemon: daemon,
         scripts: scripts,

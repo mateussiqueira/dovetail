@@ -19,12 +19,16 @@ final class DmgBundler {
   final String hdiutil;
   final Set<TargetArch> requiredArchitectures;
 
-  List<String> argumentsFor(BundleSpec spec, String destination) => <String>[
+  List<String> argumentsFor(
+    BundleSpec spec,
+    String destination, {
+    String? source,
+  }) => <String>[
     'create',
     '-volname',
     spec.productName,
     '-srcfolder',
-    spec.appDirectory,
+    source ?? spec.appDirectory,
     '-ov',
     '-format',
     'UDZO',
@@ -105,6 +109,32 @@ final class DmgBundler {
       );
     }
 
+    return destination;
+  }
+
+  Future<String> bundleFrom({
+    required BundleSpec spec,
+    required String source,
+    required String destination,
+  }) async {
+    Directory(spec.outputDirectory).createSync(recursive: true);
+    final ProcessOutcome outcome = await runner.run(
+      hdiutil,
+      argumentsFor(spec, destination, source: source),
+    );
+    if (!outcome.succeeded) {
+      throw BundleFailure(
+        'hdiutil failed with exit code ${outcome.exitCode}.',
+        remedy: outcome.stderr.trim().isEmpty
+            ? outcome.stdout.trim()
+            : outcome.stderr.trim(),
+      );
+    }
+    if (!File(destination).existsSync()) {
+      throw BundleFailure(
+        'hdiutil reported success but $destination is not there.',
+      );
+    }
     return destination;
   }
 }

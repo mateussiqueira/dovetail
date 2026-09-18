@@ -111,7 +111,8 @@ final class LaunchDaemon {
 
   /// O caminho do binario dentro do bundle, relativo a raiz dele — a mesma
   /// pasta em que o `DaemonEmbedder` o poe.
-  static String programPathInBundle(String program) => 'Contents/MacOS/$program';
+  static String programPathInBundle(String program) =>
+      'Contents/MacOS/$program';
 
   String get installedExecutablePath => '$installedDirectory/$label';
 
