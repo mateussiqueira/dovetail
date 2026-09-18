@@ -74,6 +74,10 @@ final class ShipCommand extends Command<int> {
       windowsFormat: argResults?.option('windows-format'),
       environment: Platform.environment,
       channel: ShipChannel.parse(argResults?.option('channel') ?? 'release'),
+      // A raiz contra a qual `update.key` resolve — a mesma que o `release`
+      // usa. Sem ela o plano nao consegue dizer se a chave secreta esta no
+      // disco, e a recusa so chegaria no ultimo passo, depois do build.
+      root: root,
     );
 
     for (final ShipStep step in plan.steps) {

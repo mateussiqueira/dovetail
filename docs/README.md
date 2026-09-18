@@ -21,6 +21,7 @@ answers — and a test refuses when one of them is not listed here.
 | what comes after the five phases, by area (toolkit, CLI, DX) | [roadmap.md](roadmap.md) |
 | the path to **production**: milestones, acceptance criteria, and what is blocked outside the code | [roadmap-producao.md](roadmap-producao.md) |
 | run the **whole** pipeline with no production key, host or Developer ID, using stand-ins that honour the same contract | [release-simulado.md](release-simulado.md) |
+| hand an artefact to a **real end user**: what the release channel requires, what `ship` and `doctor` refuse before a build, and what the updater does when a download is corrupted or a manifest lies | [release-channel.md](release-channel.md) |
 | contribute, and what helps most at this point | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) |
 
 ## The pipeline

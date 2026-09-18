@@ -254,7 +254,7 @@
           "skips": {}
         },
         "test/project_report_test.dart": {
-          "declared": 21,
+          "declared": 30,
           "skips": {}
         },
         "test/readme_covers_commands_test.dart": {
@@ -318,7 +318,7 @@
           "skips": {}
         },
         "test/ship_plan_test.dart": {
-          "declared": 44,
+          "declared": 50,
           "skips": {}
         },
         "test/sign_command_test.dart": {

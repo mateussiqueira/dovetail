@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_signer/dovetail_signer.dart';
 import 'package:dovetail_cli/src/build/flutter_build.dart';
@@ -6,6 +8,8 @@ import 'package:dovetail_cli/src/config/macos_service_config.dart';
 import 'package:dovetail_cli/src/config/macos_signing_config.dart';
 import 'package:dovetail_cli/src/config/config_failure.dart';
 import 'package:dovetail_cli/src/config/dovetail_config.dart';
+import 'package:dovetail_cli/src/config/update_config.dart';
+import 'package:dovetail_cli/src/config/windows_signing_config.dart';
 import 'package:dovetail_cli/src/ship/ship_channel.dart';
 import 'package:dovetail_cli/src/ship/ship_step.dart';
 import 'package:dovetail_cli/src/ship/upgrade_code.dart';
@@ -64,6 +68,12 @@ final class ShipPlan {
     String? windowsFormat,
     Map<String, String>? environment,
     ShipChannel channel = ShipChannel.release,
+
+    /// A raiz do projeto, contra a qual `update.key` resolve — o mesmo que o
+    /// `release` usa. Nulo nos testes puros do plano, e ai a existencia da
+    /// chave nao e conferida: sem raiz nao ha caminho a resolver, e inventar
+    /// um seria pior do que nao perguntar.
+    String? root,
   }) {
     final bool internal = channel.isInternal;
 
@@ -219,6 +229,8 @@ final class ShipPlan {
             builtBundleFor(binary, release: releaseBuild),
           ] else ...<String>['--file', artifact],
           if (host == 'linux') ...<String>['--out-dir', outputDirectory],
+          if (host == 'windows' && !internal && config.windows != null)
+            '--require-signature',
           if (host == 'macos' &&
               config.macos?.entitlements != null) ...<String>[
             '--entitlements',
@@ -274,6 +286,14 @@ final class ShipPlan {
           host,
           '--directory',
           FlutterBuild.outputOf(host, release: releaseBuild),
+          // O canal de release assina para quem instala. Sem o certificado, o
+          // `sign` cairia no caminho "sem credencial, fica sem assinar" e
+          // devolveria 0 — um instalador sem assinatura passa pelo SmartScreen
+          // e deposita executaveis sem assinatura no disco de quem instalou. A
+          // recusa antes do build nomeia o que falta; a flag e a segunda
+          // linha de defesa, para o sign nunca sair verde sem assinar.
+          if (host == 'windows' && !internal && config.windows != null)
+            '--require-signature',
         ],
       );
 
@@ -414,6 +434,30 @@ final class ShipPlan {
       refusals.addAll(_notarisationRefusals(config.macos!, environment));
     }
 
+    // O canal de release assina no Windows; o projecto declara sign.windows,
+    // entao o certificado tem de estar no ambiente. Sem ele o `sign` cai no
+    // caminho "sem credencial, fica sem assinar" e devolve 0 — um instalador
+    // sem assinatura passa pelo SmartScreen e deposita executaveis sem
+    // assinatura no disco de quem instalou. O doctor recusa o mesmo yaml; o
+    // plano tem de concordar, e antes do build.
+    if (!internal &&
+        host == 'windows' &&
+        config.windows != null &&
+        environment != null) {
+      final String? gap = _windowsSigningGap(config.windows!, environment);
+      if (gap != null) {
+        refusals.add('$gap — the sign step would skip after the build.');
+      }
+    }
+
+    // A chave secreta do updater e o passo de release, o ULTIMO. Sem ela no
+    // disco, ou sem a senha, a esteira gasta o build inteiro para morrer na
+    // assinatura. O doctor passou a recusar o mesmo yaml; aqui a recusa chega
+    // antes de o build comecar.
+    if (!internal && config.update != null) {
+      refusals.addAll(_updateKeyRefusals(config.update!, root, environment));
+    }
+
     // Uma linha, e a de sempre: o que o testador faz com o arquivo que vai
     // receber. Assinar um pkg exige um Developer ID Installer, que o canal
     // interno nunca usa — dizer isso e mais honesto do que fingir Gatekeeper.
@@ -494,6 +538,74 @@ final class ShipPlan {
       refusals.add(
         '${failure.message}${failure.remedy == null ? '' : ' ${failure.remedy}'}',
       );
+    }
+    return refusals;
+  }
+
+  /// O que falta para o canal de release assinar no Windows, ou nulo quando
+  /// tudo esta no lugar. O `ProjectReport` do doctor espelha a mesma pergunta
+  /// na nota `signing`: os dois tem de concordar sobre o que pode sair.
+  static String? _windowsSigningGap(
+    WindowsSigningConfig windows,
+    Map<String, String> environment,
+  ) {
+    final bool hasCertificate =
+        _isSet(environment[windows.certificateEnv]) ||
+        _isSet(environment['WINDOWS_CERTIFICATE_FILE']) ||
+        _isSet(environment['WINDOWS_CERTIFICATE_THUMBPRINT']);
+    if (!hasCertificate) {
+      return 'the release channel signs the installer and its payload, and '
+          'neither ${windows.certificateEnv} nor WINDOWS_CERTIFICATE_FILE nor '
+          'WINDOWS_CERTIFICATE_THUMBPRINT is set';
+    }
+    final bool hasTimestamp =
+        _isSet(environment['WINDOWS_TIMESTAMP_URL']) ||
+        _isSet(windows.timestampUrl);
+    if (!hasTimestamp) {
+      return 'the certificate is set, and no timestamp server is: '
+          'sign.windows.timestamp-url is not declared and '
+          'WINDOWS_TIMESTAMP_URL is not exported, so the signature dies when '
+          'the certificate expires';
+    }
+    return null;
+  }
+
+  /// O release assina cada artefacto no ULTIMO passo, com `update.key`. A
+  /// chave tem de estar no disco — e a senha, quando a chave tem uma — ou a
+  /// esteira constroi tudo para morrer na assinatura. Nulo [root] ou nulo
+  /// [environment] pula a conferencia respectiva: sem eles nao ha o que
+  /// resolver, e inventar um caminho seria pior do que nao perguntar.
+  static List<String> _updateKeyRefusals(
+    UpdateConfig update,
+    String? root,
+    Map<String, String>? environment,
+  ) {
+    final List<String> refusals = <String>[];
+    if (root != null) {
+      final String keyPath = p.isAbsolute(update.keyPath)
+          ? update.keyPath
+          : p.join(root, update.keyPath);
+      if (!File(keyPath).existsSync()) {
+        refusals.add(
+          'the update signing key ${update.keyPath} is not at $keyPath, and '
+          'the release step signs the artefacts with it at the END of the run. '
+          'Everything before it — the build, the signature, the dmg — would be '
+          'spent and then thrown away. It is the key every installed client '
+          'already trusts; keep it on the release machine',
+        );
+      }
+    }
+    if (!update.unencrypted && environment != null) {
+      final String variable = update.passwordEnv;
+      final String? password = environment[variable];
+      if (password == null || password.trim().isEmpty) {
+        refusals.add(
+          '$variable is not set, and update.unencrypted is not true: the '
+          'release step refuses without the key password at the end of the '
+          'run. Export it, or set update.unencrypted: true if the key has no '
+          'password',
+        );
+      }
     }
     return refusals;
   }

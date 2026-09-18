@@ -6,6 +6,7 @@ import 'package:dovetail_cli/src/config/dovetail_config.dart';
 import 'package:dovetail_cli/src/config/macos_service_config.dart';
 import 'package:dovetail_cli/src/config/macos_signing_config.dart';
 import 'package:dovetail_cli/src/config/service_config.dart';
+import 'package:dovetail_cli/src/config/windows_signing_config.dart';
 import 'package:dovetail_cli/src/ship/ship_channel.dart';
 import 'package:path/path.dart' as p;
 
@@ -91,8 +92,8 @@ final class ProjectReport {
           detail: '$version  (from pubspec)',
         ),
       _targetsNote(config, host),
-      _updateNote(config),
-      _signingNote(config, host, environment),
+      _updateNote(config, root, environment, channel),
+      _signingNote(config, host, environment, channel),
       ..._serviceNotes(config, root, channel),
     ]);
   }
@@ -117,12 +118,31 @@ final class ProjectReport {
     );
   }
 
-  static ProjectNote _updateNote(DovetailConfig config) {
+  static ProjectNote _updateNote(
+    DovetailConfig config,
+    String? root,
+    Map<String, String>? environment,
+    ShipChannel channel,
+  ) {
     if (config.update == null) {
       return const ProjectNote(
         subject: 'update',
         finding: ProjectFinding.notConfigured,
         detail: 'no manifest is written, so installed clients learn nothing',
+      );
+    }
+    // O canal interno nao escreve manifesto nenhum: o `ship` recusa a
+    // combinacao em vez de ignora-la. O `doctor` dizia `ok update` para o
+    // mesmo yaml no mesmo canal, e os dois discordavam sobre o que pode sair.
+    if (channel.isInternal) {
+      return const ProjectNote(
+        subject: 'update',
+        finding: ProjectFinding.missing,
+        detail:
+            'the internal channel writes no manifest, and dovetail.yaml '
+            'declares an update section — ship refuses the combination. An '
+            'internal artefact must not reach the channel installed clients '
+            'read. Drop update: for an internal build, or ask --channel release',
       );
     }
     if (config.update!.baseUrl == null) {
@@ -146,6 +166,45 @@ final class ProjectReport {
             '(dovetail keygen prints the line)',
       );
     }
+    // O passo de release assina no ULTIMO passo, com a chave secreta. Sem ela
+    // no disco, a esteira gasta o build inteiro — flutter build, codesign,
+    // hdiutil — para morrer na assinatura. A pergunta "este projeto consegue
+    // fazer release?" so tem resposta com a chave em maos, entao ela e
+    // conferida agora, e nao depois do build.
+    if (root != null) {
+      final String keyPath = p.isAbsolute(config.update!.keyPath)
+          ? config.update!.keyPath
+          : p.join(root, config.update!.keyPath);
+      if (!File(keyPath).existsSync()) {
+        return ProjectNote(
+          subject: 'update',
+          finding: ProjectFinding.missing,
+          detail:
+              'the signing key ${config.update!.keyPath} is not on disk '
+              '($keyPath), and the release step signs the artefacts with it at '
+              'the end of the run — everything before it would be built and '
+              'then thrown away. It is the key every installed client already '
+              'trusts; keep it on the release machine',
+        );
+      }
+    }
+    // Uma chave com senha e um release que recusa sem a variavel — de novo no
+    // fim da esteira. `unencrypted: true` e a declaracao explicita de que nao
+    // ha senha; sem ela, a variavel tem de existir.
+    if (!config.update!.unencrypted && environment != null) {
+      final String variable = config.update!.passwordEnv;
+      final String? password = environment[variable];
+      if (password == null || password.trim().isEmpty) {
+        return ProjectNote(
+          subject: 'update',
+          finding: ProjectFinding.missing,
+          detail:
+              '$variable is not set, and update.unencrypted is not true, so '
+              'the release step refuses at the end of the run. Export the key '
+              'password, or set update.unencrypted: true if the key has none',
+        );
+      }
+    }
     return ProjectNote(
       subject: 'update',
       finding: ProjectFinding.ready,
@@ -157,6 +216,7 @@ final class ProjectReport {
     DovetailConfig config,
     String host,
     Map<String, String>? environment,
+    ShipChannel channel,
   ) => switch (host) {
     'macos' when config.macos == null => const ProjectNote(
       subject: 'signing',
@@ -187,6 +247,21 @@ final class ProjectReport {
       finding: ProjectFinding.notConfigured,
       detail: 'no sign.windows, so the installer ships unsigned',
     ),
+    // O projecto declarou assinatura Windows: o canal de release exige o
+    // certificado. Sem ele o `sign` cai no caminho "sem credencial, fica sem
+    // assinar" e devolve 0 — um instalador sem assinatura passa pelo
+    // SmartScreen e deposita executaveis sem assinatura no disco de quem
+    // instalou. O doctor imprimia `ok signing <o nome da variavel>` com a
+    // variavel por exportar; agora nomeia o que falta.
+    'windows'
+        when !channel.isInternal &&
+            environment != null &&
+            _windowsSigningGap(config.windows!, environment) != null =>
+      ProjectNote(
+        subject: 'signing',
+        finding: ProjectFinding.missing,
+        detail: _windowsSigningGap(config.windows!, environment)!,
+      ),
     'windows' => ProjectNote(
       subject: 'signing',
       finding: ProjectFinding.ready,
@@ -198,6 +273,40 @@ final class ProjectReport {
       detail: 'linux ships checksums, which need no identity',
     ),
   };
+
+  /// O que falta para o canal de release assinar no Windows, ou nulo quando
+  /// tudo esta no lugar. O `ShipPlan` espelha esta mesma pergunta nas recusas:
+  /// os dois tem de concordar sobre o que pode sair, senao um deles mente.
+  static String? _windowsSigningGap(
+    WindowsSigningConfig windows,
+    Map<String, String> environment,
+  ) {
+    bool isSet(String? value) => value != null && value.trim().isNotEmpty;
+    // O nome declarado em sign.windows.certificate-env e os dois nomes
+    // canonicos que o signer conhece (o certificado nativo, por impressao
+    // digital, e o par PEM/PKCS#12 do osslsigncode).
+    final bool hasCertificate =
+        isSet(environment[windows.certificateEnv]) ||
+        isSet(environment['WINDOWS_CERTIFICATE_FILE']) ||
+        isSet(environment['WINDOWS_CERTIFICATE_THUMBPRINT']);
+    if (!hasCertificate) {
+      return 'the release channel signs the installer and its payload, and '
+          'neither ${windows.certificateEnv} nor WINDOWS_CERTIFICATE_FILE nor '
+          'WINDOWS_CERTIFICATE_THUMBPRINT is set — the artefact would ship '
+          'unsigned. Export the certificate, or use --channel internal for an '
+          'unsigned tester build';
+    }
+    final bool hasTimestamp =
+        isSet(environment['WINDOWS_TIMESTAMP_URL']) ||
+        isSet(windows.timestampUrl);
+    if (!hasTimestamp) {
+      return 'the certificate is set, and no timestamp server is: '
+          'sign.windows.timestamp-url is not declared and '
+          'WINDOWS_TIMESTAMP_URL is not exported, so the signature dies when '
+          'the certificate expires. Declare the timestamp-url';
+    }
+    return null;
+  }
 
   static String? _notarisationGap(
     MacosSigningConfig macos,
