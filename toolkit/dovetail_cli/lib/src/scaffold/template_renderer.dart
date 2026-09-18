@@ -28,7 +28,10 @@ final class TemplateRenderer {
   ) {
     to.createSync(recursive: true);
     for (final FileSystemEntity entity in from.listSync()) {
-      final String renderedBase = _render(p.basename(entity.path), values);
+      final String renderedBase = _renderedName(
+        p.basename(entity.path),
+        values,
+      );
       final String targetPath = p.join(to.path, renderedBase);
       if (entity is Directory) {
         _walk(entity, Directory(targetPath), values, written);
@@ -71,6 +74,29 @@ final class TemplateRenderer {
       return;
     }
     Process.runSync('chmod', <String>['+x', targetPath]);
+  }
+
+  /// O sufixo que marca um arquivo do template que nao pode se chamar pelo
+  /// nome final enquanto mora no repositorio.
+  ///
+  /// O caso e o `Cargo.toml` dos templates: ele carrega `{{name}}` no `name` e
+  /// `{{core_crate_name}}` como chave de dependencia, e um `Cargo.toml` com
+  /// esses placeholders nao e TOML valido. O cargo varre TODO manifesto do
+  /// repositorio ao resolver uma dependencia por git — `workspace.exclude` nao
+  /// impede a varredura —, entao esses dois arquivos apareciam como erro de
+  /// parse no consumidor, apontando para um arquivo que ele nunca pediu:
+  ///
+  ///     error: invalid character `{` in package name: `{{name}}_core`
+  ///
+  /// Renomea-los tira-os do alcance da varredura; o `.template` some aqui, e o
+  /// projeto gerado recebe o `Cargo.toml` de verdade.
+  static const String templateSuffix = '.template';
+
+  static String _renderedName(String basename, Map<String, String> values) {
+    final String rendered = _render(basename, values);
+    return rendered.endsWith(templateSuffix)
+        ? rendered.substring(0, rendered.length - templateSuffix.length)
+        : rendered;
   }
 
   static String _render(String source, Map<String, String> values) {
