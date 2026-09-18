@@ -16,7 +16,7 @@ and ship it on Windows, macOS and Linux.
 This is open **because it is not finished**, and the list below is the
 invitation.
 
-What is proven on one machine: **1504 testes Dart declarados, 45 pulados** —
+What is proven on one machine: **1514 testes Dart declarados, 45 pulados** —
 the ten packages pass their own tests, the CLI builds, bundles, signs and
 verifies a release end to end against a local host with a private CA, and the
 updater refuses a manifest without a valid signature.
@@ -80,6 +80,7 @@ check existed.
 | `toolkit/dovetail_form_validation` | 29 Dart | validation with no widget in sight |
 | `toolkit/dovetail_process_runner` | 23 Dart | timeout and typed outcome |
 | `toolkit/dovetail_rust_core` | 13 Dart | the bridge surface |
+| `toolkit/dovetail_screenshots` | 10 Dart | the capture mechanism, bounded frames, loaded icon fonts |
 
 ## Getting started
 

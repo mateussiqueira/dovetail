@@ -50,6 +50,7 @@ const List<(String, String)> _packages = <(String, String)>[
   ('toolkit/dovetail_shortcut_channel', 'flutter'),
   ('toolkit/dovetail', 'flutter'),
   ('toolkit/dovetail_rust_core', 'flutter'),
+  ('toolkit/dovetail_screenshots', 'flutter'),
 ];
 
 /// Os pacotes que este alvo deve tocar.

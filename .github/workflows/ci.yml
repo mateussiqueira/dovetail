@@ -34,6 +34,7 @@ jobs:
           - dovetail_platform_channel
           - dovetail_process_runner
           - dovetail_rust_core
+          - dovetail_screenshots
           - dovetail_shortcut_channel
           - dovetail_signer
           - dovetail_updater
