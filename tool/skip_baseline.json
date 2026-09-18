@@ -624,7 +624,7 @@
           "skips": {}
         },
         "test/update_flow_test.dart": {
-          "declared": 14,
+          "declared": 16,
           "skips": {}
         },
         "test/windows_installer_test.dart": {

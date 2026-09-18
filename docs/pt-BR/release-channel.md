@@ -74,6 +74,34 @@ $ echo $?
 1
 ```
 
+Rodado contra um projeto que declara as três condições mais afiadas ao mesmo
+tempo — um daemon em `service.macos.route: system`, `sign.macos.notarize: true`
+e um `update:` cuja chave secreta não está no disco —, o mesmo comando imprime
+cinco recusas, nesta ordem, e não roda nada:
+
+```
+$ dovetail ship
+→ build macos
+→ sign darwin-universal
+→ bundle darwin-universal
+→ sign dmg darwin-universal
+→ archive darwin-universal
+→ release 1.0.0
+
+ship: service.macos.route is system, and the release channel ships a .dmg: a dmg mounts an image and the user drags the .app out, so it runs no script and the daemon "com.example.demo.helper" never installs. Use --channel internal, whose .pkg runs the postinstall that puts the daemon in /Library and boots it, or move the daemon to route: bundled for a release from the .dmg.
+ship: sign.macos.notarize is true, and neither DOVETAIL_MACOS_IDENTITY nor APPLE_SIGNING_IDENTITY is exported — the sign step would refuse after the build. Export the Developer ID identity, or set notarize: false for a local, unsigned build.
+ship: sign.macos.notarize is true, and no notarisation credential group is complete: APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID, or APPLE_API_KEY_ID + APPLE_API_ISSUER + APPLE_API_KEY_PATH. The dmg step would refuse after the build.
+ship: the update signing key keys/release.key is not at <root>/keys/release.key, and the release step signs the artefacts with it at the END of the run. Everything before it — the build, the signature, the dmg — would be spent and then thrown away. It is the key every installed client already trusts; keep it on the release machine
+ship: DOVETAIL_UPDATE_KEY_PASSWORD is not set, and update.unencrypted is not true: the release step refuses without the key password at the end of the run. Export it, or set update.unencrypted: true if the key has no password
+Nothing ran. These are checked from the config, before the build, because the build is the slow half.
+$ echo $?
+1
+```
+
+Cinco, e cada uma nomeia o valor que falta. Nenhuma identidade é inventada,
+nenhum marcador é cunhado, e o build não começa. O `ship --dry-run` imprime as
+mesmas cinco e o mesmo exit code: um dry-run verde seria a mentira.
+
 Isso já valia para a notarização. Mais três conferências entraram para que a
 pergunta "este projeto consegue fazer release?" seja respondida honestamente, e
 para que o mesmo veredito venha do `ship` e do `doctor`:
@@ -155,6 +183,14 @@ Only https carries an update.
 FAILED darwin-universal  the signature field decodes — it is not base64. ...
 ```
 
+As duas metades — download corrompido e manifesto mentiroso — agora estão
+fixadas por teste, não só pela sonda, em
+`dovetail_updater/test/update_flow_test.dart`: `should refuse an artefact whose
+bytes were altered` (um byte trocado no corpo servido) e o grupo `a manifest
+that lies`, que casa uma assinatura autêntica com um artefato que ela não cobre
+e exige `does not match its signature`, contra um controle em que a mesma
+assinatura cobre o artefato. Os fuzzers mutam o manifesto e a assinatura.
+
 Em toda falha o instalador nunca roda. O tipo da falha é `UpdateFailure`
 (mensagem + remédio) ou `DowngradeRefused`; nada chega ao disco.
 
@@ -179,6 +215,28 @@ $ echo $?
 2
 ```
 
+A mesma pergunta num projeto que também declara `service.macos.route: system` e
+`notarize: true` soma três, e o veredito as nomeia:
+
+```
+$ dovetail doctor --channel release
+project
+  ok       identifier  com.example.demo
+  ok       name  Demo by Demo Inc
+  ok       version  1.0.0  (from pubspec)
+  ok       targets  darwin-aarch64, darwin-x86_64 on this host of 2
+  missing  update  the signing key keys/release.key is not on disk (<root>/keys/release.key), and the release step signs the artefacts with it at the end of the run — everything before it would be built and then thrown away. It is the key every installed client already trusts; keep it on the release machine
+  missing  signing  notarize: true, and neither DOVETAIL_MACOS_IDENTITY nor APPLE_SIGNING_IDENTITY is exported — ship refuses at the sign step; notarize: true, and no notarisation credential group is complete (APPLE_ID + APPLE_PASSWORD + APPLE_TEAM_ID, or APPLE_API_KEY_ID + APPLE_API_ISSUER + APPLE_API_KEY_PATH) — ship refuses at the dmg step
+  ok       service (linux)  demo-helper.service
+  missing  service (macos)  target/universal/demo-helper is not on disk, and the bundle embeds it — build the daemon before ship
+  cannot release: 3 blockers before the build (update, signing, service (macos))
+$ echo $?
+2
+```
+
+`3`, e os três são os que o `ship` recusaria. `off` e `warn` não bloqueiam; só
+`missing` bloqueia, então o veredito e o `$?` não podem discordar.
+
 A última linha é a resposta à pergunta que a seção existe para responder —
 *este projeto consegue fazer release?* —, para ninguém somar as notas à mão nem
 pagar o build para descobrir. Não é uma segunda regra: conta os mesmos
@@ -200,7 +258,7 @@ Rodado nesta máquina:
   Release já construído num produto, então não roda neste repositório, que só
   carrega o toolkit.
 - `dart test` em `toolkit/dovetail_cli` (548 passaram, 11 pulados) e em
-  `toolkit/dovetail_updater` (167 passaram).
+  `toolkit/dovetail_updater` (168 passaram, 1 pulado).
 - O transcript do `probe` acima.
 
 O que ela **não** prova, e só a conta real prova:
