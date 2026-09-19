@@ -26,7 +26,7 @@ universal across Intel and Apple Silicon. Installed, ran, survived a restart,
 uninstalled without residue. That is what moved this out of alpha.
 
 What is proven, and measured rather than remembered:
-**1503 testes Dart declarados, 45 pulados**, plus the Rust crates. `dart tool/verify.dart`
+**1513 testes Dart declarados, 45 pulados**, plus the Rust crates. `dart tool/verify.dart`
 compares that sentence against what the suites just reported and fails when
 they disagree, so a README that overstates its own coverage cannot be
 committed. The skipped ones are named in `tool/skip_baseline.json`, with the
@@ -89,6 +89,7 @@ check existed.
 | `toolkit/dovetail_form_validation` | 29 Dart | validation with no widget in sight |
 | `toolkit/dovetail_process_runner` | 23 Dart | timeout and typed outcome |
 | `toolkit/dovetail_rust_core` | 13 Dart | the bridge surface |
+| `toolkit/dovetail_screenshots` | 10 Dart | the capture mechanism, bounded frames, loaded icon fonts |
 | `toolkit/dovetail_http_client` | 24 Rust | typed calls, safe routes, and the keychain round trip |
 | `toolkit/dovetail_privileged_channel` | 21 Rust | the handshake, the framing, and who may speak |
 | `toolkit/dovetail_privileged_daemon` | 10 Rust | the service lifecycle on three platforms |

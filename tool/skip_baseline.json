@@ -483,6 +483,26 @@
         }
       }
     },
+    "toolkit/dovetail_screenshots": {
+      "suites": {
+        "test/capture_test.dart": {
+          "declared": 2,
+          "skips": {}
+        },
+        "test/file_name_test.dart": {
+          "declared": 3,
+          "skips": {}
+        },
+        "test/font_loading_test.dart": {
+          "declared": 2,
+          "skips": {}
+        },
+        "test/harness_register_test.dart": {
+          "declared": 3,
+          "skips": {}
+        }
+      }
+    },
     "toolkit/dovetail_shortcut_channel": {
       "suites": {
         "test/native_shortcut_surface_test.dart": {

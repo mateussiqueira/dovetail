@@ -26,7 +26,7 @@ universal entre Intel e Apple Silicon. Instalou, rodou, sobreviveu a reinício,
 desinstalou sem sobra. Foi isso que tirou o projeto do alfa.
 
 O que está provado, e medido em vez de lembrado:
-**1503 testes Dart declarados, 45 pulados**, mais as crates Rust. O
+**1513 testes Dart declarados, 45 pulados**, mais as crates Rust. O
 `dart tool/verify.dart` compara essa frase com o que as suítes acabaram de
 reportar e falha quando discordam — então um README que exagera a própria
 cobertura não consegue ser commitado. Os pulados estão nomeados em
@@ -67,6 +67,7 @@ Abra uma issue com o seu sistema operacional e a saída.
 | `dovetail_shortcut_channel` | atalho global, com ou sem foco de janela |
 | `dovetail_process_runner` | processo externo com timeout e desfecho tipado |
 | `dovetail_form_validation` | validação de formulário sem depender de widget |
+| `dovetail_screenshots` | o harness que fotografa as telas do app, com as fontes carregadas |
 
 ## Começar
 
