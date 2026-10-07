@@ -8,11 +8,20 @@ pub struct ApiErrorPayload {
     pub status_code: Option<u16>,
     pub code: Option<String>,
     pub active_connections: Option<u32>,
+    pub raw: Option<String>,
 }
 
 impl ApiErrorPayload {
     pub fn best_message(&self) -> Option<String> {
         self.message.clone().or_else(|| self.error.clone())
+    }
+
+    pub fn field(&self, name: &str) -> Option<Value> {
+        let body: Value = serde_json::from_str(self.raw.as_deref()?).ok()?;
+        let nested = body.get("message").filter(|m| m.is_object());
+        body.get(name)
+            .or_else(|| nested.and_then(|m| m.get(name)))
+            .cloned()
     }
 
     pub fn from_value(value: &Value) -> Self {
@@ -26,6 +35,7 @@ impl ApiErrorPayload {
             code: text(value.get("code")).or_else(|| text(nested.and_then(|m| m.get("code")))),
             active_connections: number(value.get("activeConnections"))
                 .or_else(|| number(nested.and_then(|m| m.get("activeConnections")))),
+            raw: Some(value.to_string()),
         }
     }
 }
@@ -42,13 +52,11 @@ impl<'de> Deserialize<'de> for ApiErrorPayload {
 fn message_of(field: Option<&Value>) -> Option<String> {
     match field {
         Some(Value::String(text)) => Some(text.clone()),
-        Some(Value::Object(object)) => object
-            .get("message")
-            .and_then(|inner| match inner {
-                Value::String(text) => Some(text.clone()),
-                Value::Array(items) => join(items),
-                _ => None,
-            }),
+        Some(Value::Object(object)) => object.get("message").and_then(|inner| match inner {
+            Value::String(text) => Some(text.clone()),
+            Value::Array(items) => join(items),
+            _ => None,
+        }),
         Some(Value::Array(items)) => join(items),
         _ => None,
     }
@@ -68,7 +76,9 @@ fn text(field: Option<&Value>) -> Option<String> {
 }
 
 fn number<T: TryFrom<u64>>(field: Option<&Value>) -> Option<T> {
-    field.and_then(Value::as_u64).and_then(|n| T::try_from(n).ok())
+    field
+        .and_then(Value::as_u64)
+        .and_then(|n| T::try_from(n).ok())
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -260,8 +270,44 @@ mod testes {
     #[test]
     fn corpo_sem_nenhum_campo_conhecido_nao_derruba_a_desserializacao() {
         let p = payload(r#"{"algo":"outro"}"#);
-        assert_eq!(p, ApiErrorPayload::default());
+        assert_eq!(
+            p,
+            ApiErrorPayload {
+                raw: Some(r#"{"algo":"outro"}"#.to_string()),
+                ..ApiErrorPayload::default()
+            }
+        );
         assert_eq!(p.best_message(), None);
+    }
+
+    #[test]
+    fn o_campo_que_o_cliente_nao_conhece_fica_no_corpo() {
+        let p = payload(
+            r#"{"code":"ACCOUNT_SUSPENDED","suspension":{"reason":"chargeback","days":7}}"#,
+        );
+        assert_eq!(p.code.as_deref(), Some("ACCOUNT_SUSPENDED"));
+        assert_eq!(
+            p.field("suspension"),
+            Some(serde_json::json!({"reason":"chargeback","days":7}))
+        );
+        assert_eq!(p.field("ausente"), None);
+    }
+
+    #[test]
+    fn o_campo_aninhado_em_message_tambem_e_achado_e_o_do_topo_vence() {
+        let aninhado = payload(r#"{"message":{"message":"x","suspension":{"days":3}}}"#);
+        assert_eq!(
+            aninhado.field("suspension"),
+            Some(serde_json::json!({"days":3}))
+        );
+
+        let os_dois = payload(r#"{"extra":1,"message":{"extra":2}}"#);
+        assert_eq!(os_dois.field("extra"), Some(serde_json::json!(1)));
+    }
+
+    #[test]
+    fn sem_corpo_bruto_nenhum_campo_e_achado() {
+        assert_eq!(ApiErrorPayload::default().field("suspension"), None);
     }
 
     #[test]
