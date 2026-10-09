@@ -23,6 +23,24 @@ where
     Framed::new(stream, codec)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SendError {
+    pub size: usize,
+    pub limit: usize,
+}
+
+impl std::fmt::Display for SendError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "frame de {} bytes excede o teto de {} bytes",
+            self.size, self.limit
+        )
+    }
+}
+
+impl std::error::Error for SendError {}
+
 pub async fn send_frame<Req, Resp, S>(
     framed: &mut Framer<S>,
     frame: &Frame<Req, Resp>,
@@ -33,6 +51,13 @@ where
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let bytes = serde_json::to_vec(frame)?;
+    if bytes.len() > MAX_FRAME_BYTES {
+        return Err(SendError {
+            size: bytes.len(),
+            limit: MAX_FRAME_BYTES,
+        }
+        .into());
+    }
     framed.send(Bytes::from(bytes)).await?;
     Ok(())
 }
@@ -109,6 +134,27 @@ mod testes {
     #[derive(Debug, Serialize, serde::Deserialize, PartialEq)]
     struct Res {
         m: u8,
+    }
+
+    #[derive(Debug, Serialize, serde::Deserialize, PartialEq)]
+    struct Grande {
+        enchimento: String,
+    }
+
+    fn frame_de_n_bytes(total: usize) -> Frame<Grande, Res> {
+        let vazio: Frame<Grande, Res> = Frame::Request(Request {
+            id: 1,
+            cmd: Grande {
+                enchimento: String::new(),
+            },
+        });
+        let overhead = serde_json::to_vec(&vazio).unwrap().len();
+        Frame::Request(Request {
+            id: 1,
+            cmd: Grande {
+                enchimento: "x".repeat(total - overhead),
+            },
+        })
     }
 
     #[tokio::test]
@@ -218,5 +264,68 @@ mod testes {
         let nenhum: Option<Frame<Cmd, Res>> = recv_frame(&mut lado_a).await?;
         assert!(nenhum.is_none());
         Ok(())
+    }
+
+    #[tokio::test]
+    async fn frame_exatamente_no_teto_e_enviado() {
+        let (a, b) = duplex(256 * 1024);
+        let mut lado_a = framer(a);
+        let mut lado_b = framer(b);
+
+        let frame = frame_de_n_bytes(MAX_FRAME_BYTES);
+        assert_eq!(serde_json::to_vec(&frame).unwrap().len(), MAX_FRAME_BYTES);
+
+        send_frame(&mut lado_a, &frame).await.unwrap();
+
+        let recebido: Frame<Grande, Res> = recv_frame(&mut lado_b).await.unwrap().unwrap();
+        match recebido {
+            Frame::Request(r) => assert_eq!(r.id, 1),
+            outro => panic!("frame errado: {outro:?}"),
+        }
+    }
+
+    #[tokio::test]
+    async fn um_byte_acima_do_teto_e_recusado_e_nada_chega_mesmo_sem_o_teto_do_codec() {
+        let (a, b) = duplex(256 * 1024);
+        let mut lado_a = Framed::new(a, LengthDelimitedCodec::new());
+        let mut lado_b = Framed::new(b, LengthDelimitedCodec::new());
+
+        let frame = frame_de_n_bytes(MAX_FRAME_BYTES + 1);
+        assert!(serde_json::to_vec(&frame).unwrap().len() > MAX_FRAME_BYTES);
+
+        let err = send_frame(&mut lado_a, &frame).await.unwrap_err();
+        let erro = err
+            .downcast_ref::<SendError>()
+            .expect("a recusa tem de vir da conferência do send_frame");
+        assert_eq!(erro.size, MAX_FRAME_BYTES + 1);
+
+        drop(lado_a);
+        let nenhum: Option<Frame<Grande, Res>> = recv_frame(&mut lado_b).await.unwrap();
+        assert!(nenhum.is_none(), "nada deve chegar ao outro lado");
+    }
+
+    #[tokio::test]
+    async fn o_erro_de_envio_diz_o_tamanho_e_o_teto() {
+        let (a, _b) = duplex(64 * 1024);
+        let mut lado_a = framer(a);
+
+        let frame = frame_de_n_bytes(MAX_FRAME_BYTES + 1);
+        let tamanho = serde_json::to_vec(&frame).unwrap().len();
+
+        let err = send_frame(&mut lado_a, &frame).await.unwrap_err();
+        let erro = err
+            .downcast_ref::<SendError>()
+            .expect("a recusa tem de vir da conferência do send_frame");
+        assert_eq!(erro.size, tamanho);
+        assert_eq!(erro.limit, MAX_FRAME_BYTES);
+        let msg = err.to_string();
+        assert!(
+            msg.contains(&tamanho.to_string()),
+            "erro deve dizer o tamanho: {msg}"
+        );
+        assert!(
+            msg.contains(&MAX_FRAME_BYTES.to_string()),
+            "erro deve dizer o teto: {msg}"
+        );
     }
 }
