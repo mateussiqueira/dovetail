@@ -1,10 +1,13 @@
+use std::fmt;
+use std::io;
+
 use anyhow::Result;
 use futures::{SinkExt, StreamExt};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio_util::bytes::Bytes;
-use tokio_util::codec::{Framed, LengthDelimitedCodec};
+use tokio_util::codec::{Framed, LengthDelimitedCodec, LengthDelimitedCodecError};
 
 use crate::handshake::Frame;
 use crate::limits::MAX_FRAME_BYTES;
@@ -34,15 +37,59 @@ where
     Ok(())
 }
 
-pub async fn recv_frame<Req, Resp, S>(framed: &mut Framer<S>) -> Result<Option<Frame<Req, Resp>>>
+#[derive(Debug)]
+pub enum RecvError {
+    TooLarge,
+    Malformed(serde_json::Error),
+    Io(io::Error),
+}
+
+impl RecvError {
+    fn from_codec(e: io::Error) -> Self {
+        match e
+            .get_ref()
+            .and_then(|c| c.downcast_ref::<LengthDelimitedCodecError>())
+        {
+            Some(_) => RecvError::TooLarge,
+            None => RecvError::Io(e),
+        }
+    }
+}
+
+impl fmt::Display for RecvError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            RecvError::TooLarge => write!(f, "frame acima do teto de {} bytes", MAX_FRAME_BYTES),
+            RecvError::Malformed(_) => write!(f, "json malformado dentro do frame"),
+            RecvError::Io(_) => write!(f, "erro de io no canal"),
+        }
+    }
+}
+
+impl std::error::Error for RecvError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            RecvError::TooLarge => None,
+            RecvError::Malformed(e) => Some(e),
+            RecvError::Io(e) => Some(e),
+        }
+    }
+}
+
+pub async fn recv_frame<Req, Resp, S>(
+    framed: &mut Framer<S>,
+) -> std::result::Result<Option<Frame<Req, Resp>>, RecvError>
 where
     Req: DeserializeOwned,
     Resp: DeserializeOwned,
     S: AsyncRead + AsyncWrite + Unpin,
 {
     match framed.next().await {
-        Some(Ok(bytes)) => Ok(Some(serde_json::from_slice(bytes.as_ref())?)),
-        Some(Err(e)) => Err(e.into()),
+        Some(Ok(bytes)) => match serde_json::from_slice(bytes.as_ref()) {
+            Ok(frame) => Ok(Some(frame)),
+            Err(e) => Err(RecvError::Malformed(e)),
+        },
+        Some(Err(e)) => Err(RecvError::from_codec(e)),
         None => Ok(None),
     }
 }
@@ -126,7 +173,50 @@ mod testes {
             .await
             .unwrap();
         a.write_all(&grande).await.unwrap();
-        let r: Result<Option<Frame<Cmd, Res>>> = recv_frame(&mut lado_b).await;
-        assert!(r.is_err(), "frame acima do teto tem de ser recusado");
+        let r: Result<Option<Frame<Cmd, Res>>, RecvError> = recv_frame(&mut lado_b).await;
+        assert!(
+            matches!(r, Err(RecvError::TooLarge)),
+            "frame acima do teto devolve TooLarge, veio {r:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn json_quebrado_devolve_malformed() {
+        let (mut a, b) = duplex(1024);
+        let mut lado_b = framer(b);
+        let quebrado: &[u8] = b"{ isso nao e json";
+        a.write_all(&(quebrado.len() as u32).to_be_bytes())
+            .await
+            .unwrap();
+        a.write_all(quebrado).await.unwrap();
+        let r: Result<Option<Frame<Cmd, Res>>, RecvError> = recv_frame(&mut lado_b).await;
+        assert!(
+            matches!(r, Err(RecvError::Malformed(_))),
+            "json quebrado devolve Malformed, veio {r:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn frame_cortado_no_meio_devolve_io() {
+        let (mut a, b) = duplex(1024);
+        let mut lado_b = framer(b);
+        a.write_all(&100u32.to_be_bytes()).await.unwrap();
+        a.write_all(&[b'{'; 10]).await.unwrap();
+        drop(a);
+        let r: Result<Option<Frame<Cmd, Res>>, RecvError> = recv_frame(&mut lado_b).await;
+        assert!(
+            matches!(r, Err(RecvError::Io(_))),
+            "frame cortado no meio devolve Io, veio {r:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn consumidor_com_anyhow_continua_compilando() -> anyhow::Result<()> {
+        let (a, b) = duplex(1024);
+        let mut lado_a = framer(a);
+        drop(b);
+        let nenhum: Option<Frame<Cmd, Res>> = recv_frame(&mut lado_a).await?;
+        assert!(nenhum.is_none());
+        Ok(())
     }
 }
