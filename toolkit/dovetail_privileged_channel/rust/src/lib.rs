@@ -2,6 +2,9 @@ mod endpoint;
 mod envelope;
 mod framing;
 mod handshake;
+mod handshake_client;
+#[cfg(test)]
+mod handshake_client_tests;
 mod handshake_error;
 mod handshake_server;
 #[cfg(test)]
@@ -14,6 +17,7 @@ pub use endpoint::Endpoint;
 pub use envelope::{ErrorBody, ErrorCode, Request, RespPayload, Response};
 pub use framing::{framer, recv_frame, send_frame, Framer, RecvError, SendError};
 pub use handshake::{Frame, Hello, PeerCheck, ServerHello};
+pub use handshake_client::{client_handshake, ClientConfig, ClientHandshakeResult};
 pub use handshake_error::HandshakeError;
 pub use handshake_server::{server_handshake, ServerConfig, ServerHandshakeResult};
 pub use limits::{
