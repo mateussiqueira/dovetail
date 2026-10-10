@@ -5,9 +5,9 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::time::timeout;
 
 use dovetail_privileged_channel::{
-    framer, recv_frame, send_frame, ErrorBody, ErrorCode, Frame, Framer, Hello, PeerCheck, Request,
-    RespPayload, Response, ServerHello, HANDSHAKE_TIMEOUT_MS, IDLE_TIMEOUT_MS, PROTOCOL_MAJOR,
-    PROTOCOL_MINOR,
+    framer, recv_frame, send_frame, ErrorBody, ErrorCode, Frame, Framer, Hello, PeerCheck,
+    RecvError, Request, RespPayload, Response, ServerHello, HANDSHAKE_TIMEOUT_MS, IDLE_TIMEOUT_MS,
+    PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
 
 use crate::DaemonApp;
@@ -19,7 +19,7 @@ where
 {
     let mut framed = framer(stream);
 
-    let hello = match read_hello::<A, S>(&mut framed).await {
+    let hello = match read_hello::<A::Command, A::Reply, S>(&mut framed).await {
         Ok(h) => h,
         Err(reject) => {
             let sh = ServerHello {
@@ -131,14 +131,15 @@ where
     Ok(())
 }
 
-async fn read_hello<A, S>(framed: &mut Framer<S>) -> Result<Hello, ErrorBody>
+async fn read_hello<C, R, S>(framed: &mut Framer<S>) -> Result<Hello, ErrorBody>
 where
-    A: DaemonApp,
+    C: serde::de::DeserializeOwned,
+    R: serde::de::DeserializeOwned,
     S: AsyncRead + AsyncWrite + Unpin + Send,
 {
     let next = timeout(
         Duration::from_millis(HANDSHAKE_TIMEOUT_MS),
-        recv_frame::<A::Command, A::Reply, S>(framed),
+        recv_frame::<C, R, S>(framed),
     )
     .await;
     let frame = match next {
@@ -154,10 +155,22 @@ where
                 "conexao fechada antes do handshake",
             ))
         }
-        Ok(Err(_)) => {
+        Ok(Err(RecvError::TooLarge)) => {
             return Err(ErrorBody::new(
                 ErrorCode::frame_too_large(),
-                "frame de handshake invalido ou grande demais",
+                "frame de handshake acima do teto",
+            ))
+        }
+        Ok(Err(RecvError::Malformed(_))) => {
+            return Err(ErrorBody::new(
+                ErrorCode::malformed_frame(),
+                "frame de handshake malformado",
+            ))
+        }
+        Ok(Err(RecvError::Io(_))) => {
+            return Err(ErrorBody::new(
+                ErrorCode::handshake_required(),
+                "conexao interrompida antes do handshake",
             ))
         }
         Ok(Ok(Some(frame))) => frame,
@@ -184,4 +197,43 @@ fn fresh_nonce() -> [u8; 16] {
     let mut n = [0u8; 16];
     n[..16].copy_from_slice(&nanos.to_le_bytes());
     n
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::io::{duplex, AsyncWriteExt};
+
+    async fn rejeicao_de(bytes: &[u8]) -> ErrorBody {
+        let (mut cliente, servidor) = duplex(256 * 1024);
+        let mut framed = framer(servidor);
+        cliente.write_all(bytes).await.unwrap();
+        drop(cliente);
+        read_hello::<(), (), _>(&mut framed).await.unwrap_err()
+    }
+
+    fn com_cabecalho(corpo: &[u8], tamanho: u32) -> Vec<u8> {
+        let mut v = tamanho.to_be_bytes().to_vec();
+        v.extend_from_slice(corpo);
+        v
+    }
+
+    #[tokio::test]
+    async fn hello_acima_do_teto_e_recusado_com_frame_too_large() {
+        let r = rejeicao_de(&com_cabecalho(&[], u32::MAX)).await;
+        assert_eq!(r.code, ErrorCode::frame_too_large());
+    }
+
+    #[tokio::test]
+    async fn hello_com_json_quebrado_e_recusado_com_malformed_frame() {
+        let corpo = b"{ isso nao e json";
+        let r = rejeicao_de(&com_cabecalho(corpo, corpo.len() as u32)).await;
+        assert_eq!(r.code, ErrorCode::malformed_frame());
+    }
+
+    #[tokio::test]
+    async fn hello_cortado_no_meio_pede_handshake() {
+        let r = rejeicao_de(&com_cabecalho(b"{\"x\"", 100)).await;
+        assert_eq!(r.code, ErrorCode::handshake_required());
+    }
 }
