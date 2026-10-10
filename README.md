@@ -91,7 +91,7 @@ check existed.
 | `toolkit/dovetail_rust_core` | 13 Dart | the bridge surface |
 | `toolkit/dovetail_screenshots` | 10 Dart | the capture mechanism, bounded frames, loaded icon fonts |
 | `toolkit/dovetail_http_client` | 32 Rust | typed calls, safe routes, and the keychain round trip |
-| `toolkit/dovetail_privileged_channel` | 32 Rust | the handshake, the framing, and who may speak |
+| `toolkit/dovetail_privileged_channel` | 38 Rust | the handshake, the framing, and who may speak |
 | `toolkit/dovetail_privileged_daemon` | 13 Rust | the service lifecycle on three platforms |
 
 ## Getting started
