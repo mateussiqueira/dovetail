@@ -25,9 +25,15 @@ own, so the consumer gets it without knowing the fix exists.
 
 ## Installation
 
+Not on pub.dev: reach it by git dependency, from this repository.
+
 ```yaml
 dev_dependencies:
-  dovetail_screenshots: ^0.1.0
+  dovetail_screenshots:
+    git:
+      url: https://github.com/mateussiqueira/dovetail
+      path: toolkit/dovetail_screenshots
+      ref: v0.1.11
 ```
 
 ## Usage
