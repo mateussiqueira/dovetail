@@ -10,7 +10,8 @@ nenhum. Pré-requisito: Flutter com o target desktop do seu sistema.
 > pub.dev, então a rota normal é declarar a dependência e pronto. O que este
 > guia descreve — `install.sh` e `self-install` — é o canal de binário
 > assinado, e o `<host>` dele **ainda não existe**: o mecanismo é testado, o
-> servidor é que falta. Ver **Existe de onde baixar** em [roadmap.md](roadmap.md).
+> servidor é que falta. Ver **Marco 6 — Existe de onde baixar** em
+> [roadmap-producao.md](roadmap-producao.md).
 
 ## 0. A rota normal
 
@@ -21,11 +22,13 @@ dependencies:
   dovetail: ^0.1.0
 ```
 
-E a esteira como comando:
+E a esteira como comando. O pacote não declara executável, então o pub o roda
+pelo nome em vez de pôr um `dovetail` no `PATH`; e o que está no pub.dev é a
+0.1.1, de 2026-09-09, mais antiga que o `ship --channel internal`:
 
 ```bash
 dart pub global activate dovetail_cli
-dovetail --help
+dart pub global run dovetail_cli:dovetail --help
 ```
 
 O resto deste documento é a rota do canal assinado, que entrega um binário AOT
