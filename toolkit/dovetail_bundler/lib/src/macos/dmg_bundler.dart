@@ -25,6 +25,8 @@ final class DmgBundler {
     String? source,
   }) => <String>[
     'create',
+    '-fs',
+    'HFS+',
     '-volname',
     spec.productName,
     '-srcfolder',

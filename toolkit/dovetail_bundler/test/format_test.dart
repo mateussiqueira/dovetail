@@ -185,18 +185,31 @@ void main() {
   });
 
   group('the dmg', () {
-    test('hdiutil should get the volume name and the source folder', () {
+    test('hdiutil should get the filesystem, volume and source folder', () {
       const DmgBundler sut = DmgBundler(runner: _NoopRunner());
       final BundleSpec spec = specFor('/tmp/Example.app');
 
       final List<String> arguments = sut.argumentsFor(spec, '/tmp/out.dmg');
 
-      expect(arguments, containsAllInOrder(<String>['-volname', 'Example']));
       expect(
         arguments,
-        containsAllInOrder(<String>['-srcfolder', '/tmp/Example.app']),
+        <String>[
+          'create',
+          '-fs',
+          'HFS+',
+          '-volname',
+          'Example',
+          '-srcfolder',
+          '/tmp/Example.app',
+          '-ov',
+          '-format',
+          'UDZO',
+          '/tmp/out.dmg',
+        ],
+        reason:
+            'without -fs, hdiutil on macOS 26.1 picks APFS and can '
+            'size the image too small for the folder',
       );
-      expect(arguments, containsAllInOrder(<String>['-format', 'UDZO']));
     });
 
     test(
