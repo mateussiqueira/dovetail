@@ -64,8 +64,13 @@ Then let the CLI read the project:
 
 ```bash
 dart pub global activate dovetail_cli
-dovetail init
+dart pub global run dovetail_cli:dovetail init
 ```
+
+The package declares no executable, so on this route every `dovetail <command>`
+below runs as `dart pub global run dovetail_cli:dovetail <command>`; the
+self-contained binary, which answers to `dovetail`, is in the
+[`dovetail_cli` README](toolkit/dovetail_cli/README.md).
 
 `init` reads the project and writes `dovetail.yaml` — identifier, name,
 targets, update key.

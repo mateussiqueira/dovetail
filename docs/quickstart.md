@@ -11,8 +11,8 @@ system's desktop target.
 > pub.dev, so the normal route is to declare the dependency and be done. What
 > this guide describes — `install.sh` and `self-install` — is the signed
 > binary channel, and its `<host>` **does not exist yet**: the mechanism is
-> tested, the server is what is missing. See **Somewhere to download from** in
-> [roadmap.md](roadmap.md).
+> tested, the server is what is missing. See **Milestone 6 — There is somewhere
+> to download from** in [roadmap-producao.md](roadmap-producao.md).
 
 ## 0. The normal route
 
@@ -23,11 +23,13 @@ dependencies:
   dovetail: ^0.1.0
 ```
 
-And the pipeline as a command:
+And the pipeline as a command. The package declares no executable, so pub runs
+it by name rather than putting a `dovetail` on the `PATH`; and what pub.dev
+carries is 0.1.1, from 2026-09-09, older than `ship --channel internal`:
 
 ```bash
 dart pub global activate dovetail_cli
-dovetail --help
+dart pub global run dovetail_cli:dovetail --help
 ```
 
 The rest of this document is the signed-channel route, which gives you a
