@@ -1,14 +1,13 @@
+use crate::exit_codes;
+use crate::DaemonApp;
 use std::ffi::OsStr;
 use std::time::{Duration, Instant};
 use windows_service::service::{
-    Service, ServiceAccess, ServiceAction, ServiceActionType,
-    ServiceDependency, ServiceErrorControl, ServiceFailureActions,
-    ServiceFailureResetPeriod, ServiceInfo, ServiceStartType, ServiceState,
-    ServiceType,
+    Service, ServiceAccess, ServiceAction, ServiceActionType, ServiceDependency,
+    ServiceErrorControl, ServiceFailureActions, ServiceFailureResetPeriod, ServiceInfo,
+    ServiceStartType, ServiceState, ServiceType,
 };
 use windows_service::service_manager::{ServiceManager, ServiceManagerAccess};
-use crate::exit_codes;
-use crate::DaemonApp;
 
 const ERROR_ACCESS_DENIED: i32 = 5;
 const ERROR_SERVICE_DOES_NOT_EXIST: i32 = 1060;
@@ -187,7 +186,10 @@ fn caminho_do_sc() -> std::path::PathBuf {
     raiz.join("System32").join("sc.exe")
 }
 
-pub(super) fn iniciar_e_aguardar(service: &Service, codigo_acesso_negado: i32) -> Result<(), FalhaSetup> {
+pub(super) fn iniciar_e_aguardar(
+    service: &Service,
+    codigo_acesso_negado: i32,
+) -> Result<(), FalhaSetup> {
     let sem_args: [&OsStr; 0] = [];
     match service.start(&sem_args) {
         Ok(()) => tracing::info!("StartService aceito"),

@@ -1,10 +1,8 @@
-use std::time::{Duration, Instant};
-use windows_service::service::{
-    ServiceAccess, ServiceState,
-};
-use windows_service::service_manager::{ServiceManager, ServiceManagerAccess};
 use crate::exit_codes;
 use crate::DaemonApp;
+use std::time::{Duration, Instant};
+use windows_service::service::{ServiceAccess, ServiceState};
+use windows_service::service_manager::{ServiceManager, ServiceManagerAccess};
 
 const ERROR_ACCESS_DENIED: i32 = 5;
 const ERROR_SERVICE_DOES_NOT_EXIST: i32 = 1060;
