@@ -611,8 +611,8 @@ template (`tool/sdk/templates/app`), not a loose `lib/main.dart`:
 
 ```
 demo/
-├── lib/               clean architecture (the Manguinho refinement the mobile
-│   ├── data/            team uses): data → domain → infra → presentation
+├── lib/               clean architecture (the layout the mobile team
+│   ├── data/            uses): data → domain → infra → presentation
 │   ├── domain/          → main, with presenters as interface + impl
 │   ├── infra/           change_notifier_*, DI and routes through weave_di
 │   ├── main/

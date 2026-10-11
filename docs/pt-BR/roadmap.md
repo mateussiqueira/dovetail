@@ -42,7 +42,7 @@ e saem deste arquivo — o que fica aqui é o que veio depois delas.
 |---|---|---|
 | `dovetail upgrade` — re-aponta o `pubspec_overrides.yaml` do app para o SDK instalado | ✅ feito | fecha o ciclo de versão que o `doctor` só reporta |
 | `dovetail new` fecha o `flutter create` via `--no-create` | ✅ feito | hoje o build falha até o usuário rodar `flutter create --platforms=... .` à mão |
-| `dovetail new` gera a estrutura clean-arch do padrão mobile (refinamento do Manguinho: lib/data, lib/domain, lib/infra, lib/main, lib/presentation, lib/shared) | ✅ feito | template do SDK `tool/sdk/templates/app`; provado: `new` + pub get + analyze + 6 testes + suite flutter verde no gerado |
+| `dovetail new` gera a estrutura clean-arch do padrão mobile: lib/data, lib/domain, lib/infra, lib/main, lib/presentation, lib/shared | ✅ feito | template do SDK `tool/sdk/templates/app`; provado: `new` + pub get + analyze + 6 testes + suite flutter verde no gerado |
 | `dovetail new` embute os checks de conformidade do mobile adaptados ao desktop | ✅ feito | as duas suites embarcam: a flutter do mobile (22 checks) e a rust do desktop (6 checks); provado verde no gerado, com prova negativa (comentário sujo reprova) |
 | `dovetail new` gera o núcleo Rust + o bridge FFI (o `core/` e o `core_bridge/` completos) | ✅ feito | bridge reusa o template do `bridge init`; provado: codegen + cargo check no core e no bridge + portão de cobertura com paridade core↔repasse |
 | `doctor` como fonte única do host — consolidar as seções do consumidor num só relatório | descartado | o `doctor` sem `--target` já é o relatório único (project + sdk + app + spm juntas), e o exit code é o veredito para scripts — uma quinta seção de resumo duplicaria as quatro |
