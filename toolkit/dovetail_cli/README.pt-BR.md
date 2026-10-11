@@ -553,8 +553,8 @@ do SDK (`tool/sdk/templates/app`), e não um `lib/main.dart` solto:
 
 ```
 demo/
-├── lib/               clean-arch (o refinamento do Manguinho que o time
-│   ├── data/            mobile usa): data → domain → infra → presentation
+├── lib/               clean-arch (o layout que o time mobile
+│   ├── data/            usa): data → domain → infra → presentation
 │   ├── domain/          → main, com presenters em interface + impl
 │   ├── infra/           change_notifier_*, DI e rotas pelo weave_di
 │   ├── main/
