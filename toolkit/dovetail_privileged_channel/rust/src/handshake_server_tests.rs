@@ -112,4 +112,10 @@ async fn pedido_antes_do_hello_e_recusado() {
         ),
         "veio {e:#}"
     );
+    drop(lado_servidor);
+    let recusa = match recv_frame::<(), (), _>(&mut lado_cliente).await.unwrap() {
+        Some(Frame::ServerHello(sh)) if !sh.accepted => sh.reject,
+        outro => panic!("esperava a recusa no fio, veio {outro:?}"),
+    };
+    assert_eq!(recusa.unwrap().code, ErrorCode::handshake_required());
 }

@@ -6,6 +6,8 @@ mod handshake_client;
 #[cfg(test)]
 mod handshake_client_tests;
 mod handshake_error;
+#[cfg(test)]
+mod handshake_reject_tests;
 mod handshake_server;
 #[cfg(test)]
 mod handshake_server_tests;

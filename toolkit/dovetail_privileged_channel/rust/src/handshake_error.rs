@@ -1,10 +1,12 @@
 use std::fmt;
 
+use crate::envelope::ErrorBody;
+
 #[derive(Debug)]
 pub enum HandshakeError {
     UnexpectedFrame { expected: &'static str, got: String },
     StreamEnded,
-    Rejected { reason: String },
+    Rejected { reject: Option<ErrorBody> },
     VersionMismatch { client: u16, server: u16 },
     Timeout,
 }
@@ -19,7 +21,12 @@ impl fmt::Display for HandshakeError {
                 )
             }
             Self::StreamEnded => write!(f, "conexao fechada antes do fim do handshake"),
-            Self::Rejected { reason } => write!(f, "handshake recusado pelo servidor: {reason}"),
+            Self::Rejected { reject } => {
+                let reason = reject
+                    .as_ref()
+                    .map_or("sem motivo informado", |r| r.message.as_str());
+                write!(f, "handshake recusado pelo servidor: {reason}")
+            }
             Self::VersionMismatch { client, server } => {
                 write!(
                     f,

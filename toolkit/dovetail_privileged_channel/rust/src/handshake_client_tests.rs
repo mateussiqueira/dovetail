@@ -95,7 +95,8 @@ async fn major_diferente_e_recusado_com_o_motivo() {
     assert!(
         matches!(
             e.downcast_ref(),
-            Some(HandshakeError::Rejected { reason }) if reason.contains("major 2")
+            Some(HandshakeError::Rejected { reject: Some(r) })
+                if r.code.as_str() == "VERSION_UNSUPPORTED" && r.message.contains("major 2")
         ),
         "veio {e:#}"
     );

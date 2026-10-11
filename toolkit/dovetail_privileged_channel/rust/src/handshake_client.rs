@@ -60,11 +60,8 @@ where
     };
 
     if !server_hello.accepted {
-        let reason = server_hello
-            .reject
-            .map(|e| e.message)
-            .unwrap_or_else(|| "sem motivo informado".into());
-        return Err(HandshakeError::Rejected { reason }.into());
+        let reject = server_hello.reject;
+        return Err(HandshakeError::Rejected { reject }.into());
     }
     if server_hello.proto_major != config.client_major {
         return Err(HandshakeError::VersionMismatch {
