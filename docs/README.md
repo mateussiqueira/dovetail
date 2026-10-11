@@ -2,9 +2,9 @@
 
 # dovetail documentation
 
-This index exists because there are twenty-five documents, and a document you
-cannot find is not written. Every line says **which question** the file
-answers — and a test refuses when one of them is not listed here.
+This index exists because a document you cannot find is not written. Every
+line says **which question** the file answers — and a test refuses when one of
+them is not listed here.
 
 ## Start here
 
@@ -49,6 +49,18 @@ What the app loads. It all comes in through one barrel:
 | [`dovetail_process_runner`](../toolkit/dovetail_process_runner/README.md) | running a process without the three deadlocks `Process.run` has |
 | [`dovetail_rust_core`](../toolkit/dovetail_rust_core/README.md) | the Dart↔Rust mechanics: tokio runtime, event pump, probe |
 
+## Beside the runtime
+
+Not in the barrel: an app declares each one on its own, when it needs it.
+
+| package | what it answers |
+|---|---|
+| [`dovetail_privileged_helper`](../toolkit/dovetail_privileged_helper/README.md) | installing, reporting and removing the privileged component, with a state instead of a bool |
+| [`dovetail_privileged_channel`](../toolkit/dovetail_privileged_channel/README.md) | the Rust channel to that component: transport, peer authentication, framing, handshake |
+| [`dovetail_privileged_daemon`](../toolkit/dovetail_privileged_daemon/README.md) | the Rust skeleton of the daemon itself: service install, accept loop, validation, logs |
+| [`dovetail_http_client`](../toolkit/dovetail_http_client/README.md) | a typed HTTP client for the product's own API, and where the token lives |
+| [`dovetail_screenshots`](../toolkit/dovetail_screenshots/README.md) | every screen and state captured as PNG, without `pumpAndSettle` and with the icon fonts |
+
 ## What is not here
 
 The app that consumes the toolkit, and the bridge to its Rust core, live in
@@ -69,10 +81,12 @@ exercises a mechanism. Those carry a note at the top saying so.
 - [`dovetail_platform_channel`](../toolkit/dovetail_platform_channel/ARCHITECTURE.md)
   — why the panel is computed rather than measured, and the wire format
   compared byte for byte.
+- [`dovetail_privileged_helper`](../toolkit/dovetail_privileged_helper/ARCHITECTURE.md)
+  — why six states and not the four macOS reports.
 
 ## What the documentation promises, and who enforces it
 
-Six things here are checked by a test, because a document ages quietly:
+Five things here are checked by a test, because a document ages quietly:
 
 | what | who enforces it |
 |---|---|
@@ -81,7 +95,6 @@ Six things here are checked by a test, because a document ages quietly:
 | the README's test table matches the actual run | `verify test` |
 | every package has a README, CHANGELOG and LICENSE | `package_paperwork_test.dart` |
 | every document is listed in this index, and every link resolves | `docs_index_test.dart` |
-| a Dart call reaches Rust and comes back | `verify ffi` |
 
 The rest is prose, which nobody can enforce. If something here diverges from
 the code, **the code is right and the document is old** — and fixing the

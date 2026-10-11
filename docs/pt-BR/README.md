@@ -2,9 +2,9 @@
 
 # Documentação do dovetail
 
-Este índice existe porque são vinte e cinco documentos, e um documento que você
-não encontra não está escrito. Cada linha diz **qual pergunta** o arquivo
-responde — e um teste recusa quando algum deles não é citado aqui.
+Este índice existe porque um documento que você não encontra não está escrito.
+Cada linha diz **qual pergunta** o arquivo responde — e um teste recusa quando
+algum deles não é citado aqui.
 
 ## Comece aqui
 
@@ -48,6 +48,20 @@ O que o app carrega. Entra tudo por um barril: `package:dovetail/dovetail.dart`.
 | [`toolkit/dovetail_process_runner`](../../toolkit/dovetail_process_runner/README.md) | rodar processo sem os três impasses que `Process.run` tem |
 | [`toolkit/dovetail_rust_core`](../../toolkit/dovetail_rust_core/README.md) | a mecânica Dart↔Rust: runtime tokio, bomba de eventos, sonda |
 
+## Ao lado do runtime
+
+Fora do barril: o app declara cada um por conta própria, quando precisa.
+
+| pacote | o que responde |
+|---|---|
+| [`toolkit/dovetail_privileged_helper`](../../toolkit/dovetail_privileged_helper/README.pt-BR.md) | instalar, relatar e remover o componente privilegiado, com um estado em vez de um bool |
+| [`toolkit/dovetail_privileged_channel`](../../toolkit/dovetail_privileged_channel/README.md) | o canal Rust até esse componente: transporte, autenticação do par, framing, handshake |
+| [`toolkit/dovetail_privileged_daemon`](../../toolkit/dovetail_privileged_daemon/README.md) | o esqueleto Rust do próprio daemon: instalação do serviço, laço de accept, validação, logs |
+| [`toolkit/dovetail_http_client`](../../toolkit/dovetail_http_client/README.md) | um cliente HTTP tipado para a API do próprio produto, e onde o token mora |
+| [`toolkit/dovetail_screenshots`](../../toolkit/dovetail_screenshots/README.md) | cada tela e estado capturados em PNG, sem `pumpAndSettle` e com as fontes de ícone |
+
+Os quatro últimos só existem em inglês.
+
 ## O que não está aqui
 
 O app que consome o toolkit, e a ponte com o núcleo Rust dele, moram noutro
@@ -67,10 +81,12 @@ exercita um mecanismo. Esses levam no topo uma nota dizendo isso.
 - [`dovetail_platform_channel`](../../toolkit/dovetail_platform_channel/ARCHITECTURE.md)
   — por que o painel é calculado e não medido, e o formato de fio comparado
   byte a byte.
+- [`dovetail_privileged_helper`](../../toolkit/dovetail_privileged_helper/ARCHITECTURE.md)
+  — por que seis estados e não os quatro que o macOS informa.
 
 ## O que a documentação promete, e quem cobra
 
-Seis coisas aqui são conferidas por teste, porque documento envelhece calado:
+Cinco coisas aqui são conferidas por teste, porque documento envelhece calado:
 
 | o que | quem cobra |
 |---|---|
@@ -79,7 +95,6 @@ Seis coisas aqui são conferidas por teste, porque documento envelhece calado:
 | a tabela de testes do README bate com a corrida | `verify test` |
 | todo pacote tem README, CHANGELOG, LICENSE | `package_paperwork_test.dart` |
 | todo documento é citado neste índice, e todo link resolve | `docs_index_test.dart` |
-| uma chamada Dart chega ao Rust e volta | `verify ffi` |
 
 E o resto é prosa, que ninguém consegue cobrar. Se algo aqui divergir do
 código, **o código está certo e o documento está velho** — e vale mais

@@ -53,23 +53,52 @@ Abra uma issue com o seu sistema operacional e a saída.
 
 | pacote | o que faz |
 | --- | --- |
-| `dovetail` | o guarda-chuva: junta o runtime numa dependência só |
-| `dovetail_cli` | a esteira: `init`, `doctor`, `build`, `sign`, `ship`, `release` |
-| `dovetail_rust_core` | a ponte com o núcleo Rust, sobre flutter_rust_bridge |
-| `dovetail_bundler` | empacota: `.app`, `.dmg`, `.msi`, `.deb`, `.rpm`, AppImage |
-| `dovetail_signer` | assina e notariza, e recusa quando não pode provar |
-| `dovetail_updater` | verifica manifesto assinado com minisign e atualiza |
-| `dovetail_platform_channel` | instância única e integração de janela |
+| [`dovetail`](https://pub.dev/packages/dovetail) | o guarda-chuva: junta o runtime numa dependência só |
+| [`dovetail_cli`](https://pub.dev/packages/dovetail_cli) | a esteira: `init`, `doctor`, `build`, `sign`, `ship`, `release` |
+| [`dovetail_rust_core`](https://pub.dev/packages/dovetail_rust_core) | a ponte com o núcleo Rust, sobre flutter_rust_bridge |
+| [`dovetail_bundler`](https://pub.dev/packages/dovetail_bundler) | empacota: `.app`, `.dmg`, `.msi`, `.deb`, `.rpm`, AppImage |
+| [`dovetail_signer`](https://pub.dev/packages/dovetail_signer) | assina e notariza, e recusa quando não pode provar |
+| [`dovetail_updater`](https://pub.dev/packages/dovetail_updater) | verifica manifesto assinado com minisign e atualiza |
+| [`dovetail_platform_channel`](https://pub.dev/packages/dovetail_platform_channel) | instância única e integração de janela |
 | `dovetail_privileged_helper` | o daemon, serviço ou unit que um app em sandbox não pode ser |
 | `dovetail_privileged_channel` | o fio até esse daemon: socket ou pipe, e quem tem direito de falar |
 | `dovetail_privileged_daemon` | o esqueleto do próprio daemon: instalar, aceitar, validar, registrar |
 | `dovetail_http_client` | um cliente HTTP tipado, e o cofre do sistema onde o token mora |
-| `dovetail_shortcut_channel` | atalho global, com ou sem foco de janela |
-| `dovetail_process_runner` | processo externo com timeout e desfecho tipado |
-| `dovetail_form_validation` | validação de formulário sem depender de widget |
+| [`dovetail_shortcut_channel`](https://pub.dev/packages/dovetail_shortcut_channel) | atalho global, com ou sem foco de janela |
+| [`dovetail_process_runner`](https://pub.dev/packages/dovetail_process_runner) | processo externo com timeout e desfecho tipado |
+| [`dovetail_form_validation`](https://pub.dev/packages/dovetail_form_validation) | validação de formulário sem depender de widget |
 | `dovetail_screenshots` | o harness que fotografa as telas do app, com as fontes carregadas |
 
+Os que têm link estão no pub.dev. Os outros cinco não estão publicados lá, e
+são alcançados por este repositório.
+
+### O que as suítes cobrem de fato
+
+A contagem por pacote está na tabela do
+[README em inglês](README.md#what-the-suites-actually-cover), e só lá: é aquela
+tabela que o `dart tool/verify.dart` confere, linha Dart por linha Dart, contra
+o que as suítes acabaram de reportar. Uma cópia aqui envelheceria sem ninguém
+cobrar.
+
 ## Começar
+
+Tudo de que o runtime precisa vem por uma dependência só:
+
+```yaml
+dependencies:
+  dovetail: ^0.1.0
+```
+
+E a esteira é um comando. O pacote não declara executável, então o pub o roda
+pelo nome em vez de pôr um `dovetail` no `PATH`:
+
+```bash
+dart pub global activate dovetail_cli
+dart pub global run dovetail_cli:dovetail --help
+```
+
+O que está no pub.dev é a 0.1.1, de 2026-09-09: mais antiga que o canal interno
+descrito abaixo. O CLI deste repositório está à frente dela, e roda da fonte:
 
 ```bash
 git clone https://github.com/mateussiqueira/dovetail
@@ -78,15 +107,12 @@ dart pub get
 dart run bin/dovetail.dart --help
 ```
 
+O binário autocontido, e como instalá-lo, estão no
+[README do `dovetail_cli`](toolkit/dovetail_cli/README.pt-BR.md).
+
 O repositório é um monorepo de pacotes em `toolkit/`. Cada um publica sozinho e
 declara os outros por versão; o `pubspec_overrides.yaml` de cada pacote aponta
 para o vizinho local, então `dart pub get` resolve sem passar pelo pub.dev.
-
-Para instalar o binário e chamá-lo de qualquer diretório:
-
-```bash
-cd toolkit/dovetail_cli && tool/build_release.sh --install
-```
 
 ## Os comandos
 
@@ -104,8 +130,15 @@ A esteira inteira é um binário. Nada do que ela faz precisa da fonte dela.
 | `dovetail icon` | deriva os ícones de cada plataforma de uma imagem só |
 | `dovetail inspect` | diz o que um artefato é, lendo o cabeçalho dele |
 | `dovetail keygen` | cria o par de chaves minisign do canal de update |
-| `dovetail manifest` | escreve e assina o manifesto que o app vai ler |
+| `dovetail manifest` | escreve o manifesto que o app vai ler, com assinaturas que já existem |
 | `dovetail ship` | a esteira inteira, a partir da config |
+| `dovetail release` | assina cada artefato construído e escreve o manifesto que aponta para eles |
+| `dovetail probe` | verifica um manifesto publicado como o app verificaria |
+| `dovetail update` | troca o SDK para o latest do canal e re-aponta o app, num passo só |
+| `dovetail dev` | mantém o lado Dart da ponte em dia enquanto você edita o Rust |
+| `dovetail upgrade` | re-aponta o `pubspec_overrides.yaml` do app para o SDK instalado |
+| `dovetail self-install` | instala o SDK de um canal de release, com o `dovetail` ligado em `~/.local/bin` |
+| `dovetail self-update` | troca o SDK e este binário para o latest do canal, mantendo a versão que os apps apontam |
 
 ### Dois canais, e o que tem quilometragem
 
@@ -127,21 +160,34 @@ uma pessoa sabe abrir. Familiar por fora, correto por dentro.
 
 É esse o caminho que levou um produto real a cem testadores. É a coisa mais
 exercitada deste repositório.
-| `dovetail release` | publica a versão e move o canal |
-| `dovetail probe` | verifica um manifesto publicado como o app verificaria |
-| `dovetail update` | aplica uma atualização, como o app faria |
-| `dovetail dev` | roda o app com o núcleo Rust em modo de desenvolvimento |
-| `dovetail upgrade` | atualiza os pacotes que o projeto usa |
-| `dovetail self-install` | instala este binário no `PATH` |
-| `dovetail self-update` | atualiza este binário pelo canal assinado |
+
+## Documentação
+
+A documentação a fundo mora em [`docs/pt-BR/`](docs/pt-BR/README.md), nos
+originais em português, com o inglês em [`docs/`](docs/README.md).
+
+- [Quickstart](docs/pt-BR/quickstart.md) — do CLI instalado ao primeiro ship
+- [Configuração](docs/pt-BR/configuracao.md) — cada chave do `dovetail.yaml`
+- [Problemas](docs/pt-BR/problemas.md) — o que quebra, e o que a mensagem quer dizer
+- [Migrar do Tauri](docs/pt-BR/migrar-do-tauri.md) — o que vem junto e o que não vem
+- [Escrever o app](ESCREVER_O_APP.md) — a arquitetura em cima do toolkit
+- [Roadmap de produção](docs/pt-BR/roadmap-producao.md) — o inventário honesto do que falta
 
 ## Contribuir
 
-Leia [CONTRIBUTING.md](CONTRIBUTING.md). O resumo: rode os testes do pacote que
-tocou, e diga na descrição do PR **em que sistema operacional** você mediu. Este
-projeto tem uma dívida específica — quase tudo foi verificado num só lugar — e
-um PR que diga "testei no Windows 11, isto falhou assim" vale mais aqui do que
-uma feature nova.
+Leia [CONTRIBUTING.pt-BR.md](CONTRIBUTING.pt-BR.md). O resumo: rode os testes do
+pacote que tocou, e diga na descrição do PR **em que sistema operacional** você
+mediu. Este projeto tem uma dívida específica — quase tudo foi verificado num só
+lugar — e um PR que diga "testei no Windows 11, isto falhou assim" vale mais
+aqui do que uma feature nova.
+
+O portão é um comando na raiz, e os hooks que ele instala o rodam por você:
+
+```bash
+dart tool/verify.dart install                        # o pre-commit roda o `fast`, o pre-push o portão inteiro
+dart tool/verify.dart test --only dovetail_bundler   # um pacote só, enquanto você itera
+dart tool/verify.dart                                # tudo, como o push vai rodar
+```
 
 ## Licença
 

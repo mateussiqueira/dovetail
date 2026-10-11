@@ -61,20 +61,25 @@ output.
 | [`dovetail_signer`](https://pub.dev/packages/dovetail_signer) | signs and notarises, and refuses when it cannot prove it |
 | [`dovetail_updater`](https://pub.dev/packages/dovetail_updater) | verifies a minisign-signed manifest and updates |
 | [`dovetail_platform_channel`](https://pub.dev/packages/dovetail_platform_channel) | single instance and window integration |
-| [`dovetail_privileged_helper`](https://pub.dev/packages/dovetail_privileged_helper) | the root daemon, service or unit a sandboxed app cannot be |
+| `dovetail_privileged_helper` | the root daemon, service or unit a sandboxed app cannot be |
 | `dovetail_privileged_channel` | the wire to that daemon: socket or pipe, and who is allowed to speak |
 | `dovetail_privileged_daemon` | the daemon's own skeleton: install, accept, validate, log |
 | `dovetail_http_client` | a typed HTTP client, and the OS keychain the token lives in |
 | [`dovetail_shortcut_channel`](https://pub.dev/packages/dovetail_shortcut_channel) | global shortcut, with or without window focus |
 | [`dovetail_process_runner`](https://pub.dev/packages/dovetail_process_runner) | external process with a timeout and a typed outcome |
 | [`dovetail_form_validation`](https://pub.dev/packages/dovetail_form_validation) | form validation that does not depend on a widget |
+| `dovetail_screenshots` | the harness that photographs the app's screens, with the fonts loaded |
+
+The linked ones are on pub.dev. The other five are not published there, and
+are reached from this repository.
 
 ### What the suites actually cover
 
 Counts come from the run, not from memory: `dart tool/verify.dart` compares
-every row below against what the suites just reported, and fails on the first
-one that has aged. Four rows had already aged in a single day before this
-check existed.
+every Dart row below against what the suites just reported, and fails on the
+first one that has aged. Four rows had already aged in a single day before this
+check existed. The three Rust rows are outside that check: they are counted
+with `cargo test -- --list` in each crate, and can age.
 
 | package | tests | what they prove |
 | --- | --- | --- |
@@ -90,8 +95,8 @@ check existed.
 | `toolkit/dovetail_process_runner` | 23 Dart | timeout and typed outcome |
 | `toolkit/dovetail_rust_core` | 13 Dart | the bridge surface |
 | `toolkit/dovetail_screenshots` | 10 Dart | the capture mechanism, bounded frames, loaded icon fonts |
-| `toolkit/dovetail_http_client` | 32 Rust | typed calls, safe routes, and the keychain round trip |
-| `toolkit/dovetail_privileged_channel` | 38 Rust | the handshake, the framing, and who may speak |
+| `toolkit/dovetail_http_client` | 35 Rust | typed calls, safe routes, and the keychain round trip |
+| `toolkit/dovetail_privileged_channel` | 45 Rust | the handshake, the framing, and who may speak |
 | `toolkit/dovetail_privileged_daemon` | 13 Rust | the service lifecycle on three platforms |
 
 ## Getting started
@@ -103,14 +108,16 @@ dependencies:
   dovetail: ^0.1.0
 ```
 
-And the pipeline is a command:
+And the pipeline is a command. The package declares no executable, so pub runs
+it by name instead of putting a `dovetail` on the `PATH`:
 
 ```bash
 dart pub global activate dovetail_cli
-dovetail --help
+dart pub global run dovetail_cli:dovetail --help
 ```
 
-To work on the toolkit itself:
+What pub.dev carries is 0.1.1, from 2026-09-09: older than the internal
+channel below. The CLI in this repository is ahead of it, and runs from source:
 
 ```bash
 git clone https://github.com/mateussiqueira/dovetail
@@ -118,6 +125,9 @@ cd dovetail/toolkit/dovetail_cli
 dart pub get
 dart run bin/dovetail.dart --help
 ```
+
+The self-contained binary, and how to install it, are in the
+[`dovetail_cli` README](toolkit/dovetail_cli/README.md).
 
 The repository is a monorepo of packages under `toolkit/`. Each one publishes
 on its own and declares the others by version; every package's
@@ -140,8 +150,15 @@ The whole pipeline is one binary. Nothing it does needs its own source.
 | `dovetail icon` | derives every platform's icons from a single image |
 | `dovetail inspect` | says what an artefact is, by reading its header |
 | `dovetail keygen` | creates the minisign key pair for the update channel |
-| `dovetail manifest` | writes and signs the manifest the app will read |
+| `dovetail manifest` | writes the manifest the app will read, from signatures that already exist |
 | `dovetail ship` | the whole pipeline, from the config |
+| `dovetail release` | signs each built artefact and writes the manifest that points at them |
+| `dovetail probe` | verifies a published manifest the way the app would |
+| `dovetail update` | moves the SDK to the channel's latest and re-points the app, in one step |
+| `dovetail dev` | keeps the Dart side of the bridge current while you edit Rust |
+| `dovetail upgrade` | re-points the app's `pubspec_overrides.yaml` at the installed SDK |
+| `dovetail self-install` | installs the SDK from a release channel, with `dovetail` linked in `~/.local/bin` |
+| `dovetail self-update` | moves the SDK and this binary to the channel's latest, keeping the version apps point at |
 
 ### Two channels, and the one with mileage
 
@@ -164,13 +181,6 @@ inside.
 
 This is the path that carried a real product to a hundred testers. It is the
 most exercised thing in the repository.
-| `dovetail release` | publishes the version and moves the channel |
-| `dovetail probe` | verifies a published manifest the way the app would |
-| `dovetail update` | applies an update, the way the app would |
-| `dovetail dev` | runs the app with the Rust core in development mode |
-| `dovetail upgrade` | updates the toolkit packages a project uses |
-| `dovetail self-install` | installs this binary on the `PATH` |
-| `dovetail self-update` | updates this binary through the signed channel |
 
 ## Documentation
 
@@ -192,6 +202,14 @@ operating system** you measured on. This project has one specific debt —
 almost everything was verified in a single place — and a pull request saying
 "tested on Windows 11, this failed like so" is worth more here than a new
 feature.
+
+The gate is one command at the root, and the hooks it installs run it for you:
+
+```bash
+dart tool/verify.dart install                        # pre-commit runs `fast`, pre-push the whole gate
+dart tool/verify.dart test --only dovetail_bundler   # one package, while you iterate
+dart tool/verify.dart                                # everything, as the push will
+```
 
 ## Licence
 
