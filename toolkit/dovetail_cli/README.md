@@ -76,8 +76,9 @@ app:
 - **ad-hoc** signing on macOS — `sign --ad-hoc`, the identity `-` — with no
   Developer ID and no notarisation;
 - the installer that can install the **declared privileged component**: the
-  `.pkg` on macOS when the daemon takes `route: system`, and the `.deb`/`.rpm`
-  on Linux, whose postinst already installs the unit;
+  `.pkg` on macOS when the daemon takes `route: system`, delivered inside a
+  `.dmg` with the instructions, and the `.deb`/`.rpm` on Linux, whose postinst
+  already installs the unit;
 - **no updater manifest.** An internal artefact must not appear in the update
   channel installed clients read, so `ship` **refuses** an internal build whose
   config has an `update:` section, instead of trusting whoever runs the
@@ -100,19 +101,21 @@ idempotent). Because macOS has no uninstall script for a package, the
 `/Library/Application Support/<identifier>/uninstall`; it boots the daemon out,
 removes the plist and the binary, forgets the receipt with `pkgutil --forget`,
 and deletes itself. The package is unsigned — signing one takes a Developer ID
-Installer and `productsign`, another identity — so `ship` prints the line that
-installs it honestly: `sudo installer -pkg <file> -target /`.
+Installer and `productsign`, another identity — so `ship` says how to install
+it honestly: open the `.dmg` and run the `.pkg` inside it, or from a shell
+`sudo installer -pkg <the pkg inside the image> -target /`, because Finder
+refuses a package with no Developer ID Installer signature.
 
 ## Installing
 
 ```bash
 dart pub global activate dovetail_cli
+dart pub global run dovetail_cli:dovetail --help
 ```
 
-```bash
-$ dovetail --version
-dovetail 0.1.0 (macos-arm64, dart 3.12.2)
-```
+The package declares no executable, so pub runs it by name instead of putting
+a `dovetail` on the `PATH`. What pub.dev carries is 0.1.1, from 2026-09-09:
+older than `--channel internal`.
 
 To build the self-contained binary from source instead:
 
@@ -122,6 +125,12 @@ tool/build_release.sh --install
 
 That compiles and leaves the binary in `~/.local/bin`, warning if the
 directory is not on the `PATH`. A different path goes as the second argument.
+The binary names the commit it came from:
+
+```bash
+$ dovetail --version
+dovetail 0.1.0 (macos-arm64, dart 3.12.2, commit b01edc4)
+```
 
 Neither route asks for notarisation or goes through Gatekeeper: a locally
 compiled binary does not arrive quarantined. That only matters again when the
@@ -719,7 +728,9 @@ grown a method that no forwarder exposes. With no template at all — neither
 
 The trap is in two documents in this repo: you write a method in Rust,
 everything compiles, and it **does not exist on the Dart side** — with no error
-anywhere, until `verify frb` shouts. `dev` makes the bridge speak first:
+anywhere, until something regenerates the bridge and compares. Here that was
+`verify frb`, which left this repository with the app. `dev` makes the bridge
+speak first:
 
 ```bash
 dovetail dev            # refuses if the Dart is behind (naming the method); otherwise watches and regenerates

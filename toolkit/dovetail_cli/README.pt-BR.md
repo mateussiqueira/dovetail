@@ -57,18 +57,77 @@ verdade no app deste repositório: o `app-dir` apontava para o diretório acima
 do `.app`, a assinatura vinha depois do dmg, e o nome previsto não era o nome
 que o bundler escrevia.
 
-## Instalar nesta máquina
+### `--channel internal`: o build para quem testa
+
+A esteira acima é o canal de **release**, e continua sendo o padrão — os mesmos
+passos, os mesmos artefatos, o mesmo manifesto. Existe um segundo canal para o
+build que precisa chegar à equipe antes de o projeto ter um Developer ID:
+
+```bash
+dovetail ship --channel internal
+```
+
+São quatro coisas, todas derivadas da config e nenhuma específica de um app:
+
+- um build de **debug** (`--no-release`), porque símbolo e log são o que um
+  testador relata;
+- assinatura **ad-hoc** no macOS — `sign --ad-hoc`, a identidade `-` — sem
+  Developer ID e sem notarização;
+- o instalador que consegue instalar o **componente privilegiado declarado**: o
+  `.pkg` no macOS quando o daemon usa `route: system`, entregue dentro de um
+  `.dmg` com as instruções, e o `.deb`/`.rpm` no Linux, cujo postinst já instala
+  a unit;
+- **nenhum manifesto de updater.** Artefato interno não pode aparecer no canal
+  de update que os clientes instalados leem, então o `ship` **recusa** um build
+  interno cuja config tem seção `update:`, em vez de confiar em quem roda o
+  comando.
+
+Ele falha honesto, antes do build: um `service.macos` em `route: system` é
+recusado no canal de release (um dmg não roda script, então o daemon nunca se
+instala), e `route: bundled` é recusado no interno (o SMAppService só registra
+um daemon com assinatura válida e o Team ID do app, e ad-hoc não tem nenhum dos
+dois). A recusa nomeia o canal que funciona. O
+`dovetail doctor --channel internal` responde a mesma pergunta antes de alguém
+gastar um build.
+
+O `.pkg` do macOS roda um `postinstall` como root: copia o helper de dentro do
+bundle para `/Library/PrivilegedHelperTools`, escreve a property list em
+`/Library/LaunchDaemons` com `root:wheel` e modo `0644`, e a carrega com
+`launchctl bootstrap` (`bootout` antes, para reinstalar por cima ser
+idempotente). Como o macOS não tem script de desinstalação para pacote, o
+`postinstall` também escreve o desinstalador em
+`/Library/Application Support/<identifier>/uninstall`; ele derruba o daemon,
+remove o plist e o binário, esquece o recibo com `pkgutil --forget` e apaga a si
+mesmo. O pacote não é assinado — assinar um exige um Developer ID Installer e o
+`productsign`, outra identidade —, então o `ship` diz como instalá-lo com
+honestidade: abrir o `.dmg` e rodar o `.pkg` de dentro dele, ou, do shell,
+`sudo installer -pkg <the pkg inside the image> -target /`, porque o Finder
+recusa pacote sem assinatura de Developer ID Installer.
+
+## Instalação
+
+```bash
+dart pub global activate dovetail_cli
+dart pub global run dovetail_cli:dovetail --help
+```
+
+O pacote não declara executável, então o pub o roda pelo nome em vez de pôr um
+`dovetail` no `PATH`. O que está no pub.dev é a 0.1.1, de 2026-09-09: mais
+antiga que o `--channel internal`.
+
+Para compilar o binário autocontido a partir da fonte:
 
 ```bash
 tool/build_release.sh --install
 ```
 
 Compila e deixa o binário em `~/.local/bin`, avisando se o diretório não
-estiver no `PATH`. Um caminho diferente vai como segundo argumento.
+estiver no `PATH`. Um caminho diferente vai como segundo argumento. O binário
+diz de que commit saiu:
 
 ```bash
 $ dovetail --version
-dovetail 0.1.0 (macos-arm64, dart 3.12.2)
+dovetail 0.1.0 (macos-arm64, dart 3.12.2, commit b01edc4)
 ```
 
 Nada disso pede notarização nem passa pelo Gatekeeper: um binário compilado
@@ -294,13 +353,6 @@ manifesto e a URL de cada artefato (`<base-url>/<versão>/<arquivo>`), e recusa
 uma chave de plataforma que não esteja em `targets`. A forma longa
 `platformKey=url=path` continua valendo para quando a URL não segue o padrão —
 inclusive com query string, que a forma antiga truncava no primeiro `=`.
-
-## Instalação
-
-```bash
-dart pub global activate dovetail_cli
-dovetail --help
-```
 
 ## A esteira, na ordem em que roda
 
@@ -661,7 +713,8 @@ instalado — o comando recusa nomeando o instalador.
 
 A armadilha está em dois documentos deste repo: você escreve um método em
 Rust, tudo compila, e ele **não existe do lado Dart** — sem erro em lugar
-nenhum, até o `verify frb` gritar. O `dev` faz a ponte falar antes:
+nenhum, até algo regenerar a ponte e comparar. Aqui isso era o `verify frb`, que
+saiu deste repositório junto com o app. O `dev` faz a ponte falar antes:
 
 ```bash
 dovetail dev            # recusa se o Dart está atrás (nomeando o método); senão vigia e regenera
