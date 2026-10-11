@@ -24,11 +24,14 @@ tests.
 |---|---|---|
 | Windows, NSIS | **built here**, with a caveat | script order, escaping, staging, invocation. Compiles on macOS with `unicode: false`; the Unicode stub blows up with `std::bad_alloc` on arm64 |
 | Windows, MSI | **built here** | two backends: `wix` on Windows, `wixl` on any other host. The generated `.wxs` is validated by `xmllint`, the GUID has a golden test, and the produced MSI is checked with `msiinfo` and `msiextract` |
-| macOS, `.dmg` | written | refuses a `.app` that does not carry the promised architectures, before `hdiutil` |
+| macOS, `.dmg` | written | refuses a `.app` that does not carry the promised architectures, before `hdiutil`; names its filesystem (`-fs HFS+`) instead of taking `hdiutil`'s default, and a real image passes `hdiutil verify` |
+| macOS, `.pkg` | written | the app at `/Applications` through `pkgbuild` and `productbuild`, with the launchd plist and the scripts: the `postinstall` boots out before it installs, the uninstaller undoes it in reverse and forgets the receipt; a helper the bundle does not carry is refused before `pkgbuild` |
+| macOS, `.pkg` inside a `.dmg` | written | the internal channel's download: the image carries the pkg and the instructions, proven by mounting one a real `hdiutil` produced |
 | macOS, `.app.tar.gz` | written | the signed bundle at the root of the tar, with no `._*` entries (`COPYFILE_DISABLE`); it is what the updater extracts and the manifest publishes — `bundle --macos-format tar` |
 | macOS, universal `.app` | written | `UniversalBundle` merges two single-architecture builds, proven with real `rustc` and `lipo` |
 | Linux, `.deb` | written | read back by the system's `ar` and `tar`, with file modes and maintenance scripts |
 | Linux, `.rpm` | written | spec and scriptlets; the local `rpmbuild` only knows `aarch64` |
+| Linux, AppImage | written | the runtime with the squashfs appended; the ELF header names the architecture, and a missing runtime is refused with where to get one |
 | Icons | written | the `.icns` taken apart by Apple's `iconutil`, the `.ico` read by `file` |
 
 Test counts are not written here, because they age. `dart test` says.

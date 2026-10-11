@@ -57,13 +57,23 @@ Not on crates.io, on purpose: reach it by git dependency, as the rest of this
 toolkit is.
 
 ```toml
-dovetail_privileged_channel = { git = "https://github.com/mateussiqueira/dovetail", tag = "v0.1.6" }
+dovetail_privileged_channel = { git = "https://github.com/mateussiqueira/dovetail", tag = "v0.1.11" }
 ```
+
+`v0.1.11`, the newest tag, carries the transport, the peer authentication and
+the framing. What came after it is only on `main` for now — the two handshake
+procedures below, the deadline on the server's wait for the `Hello`, and the
+typed `RecvError` and `SendError` — so until a tag carries them, pin a commit
+with `rev`.
 
 ## Using it
 
+The helper's side:
+
 ```rust
-use dovetail_privileged_channel::{bind, framer, recv_frame, send_frame, Endpoint, Frame, Hello};
+use dovetail_privileged_channel::{
+    bind, framer, server_handshake, Endpoint, ServerConfig, PROTOCOL_MAJOR, PROTOCOL_MINOR,
+};
 
 let endpoint = Endpoint::new("/var/run/myapp/helper.sock");
 let mut listener = bind(&endpoint).await?;
@@ -73,10 +83,50 @@ tracing::info!(method = %peer.method, subject = %peer.subject, "peer aceito");
 
 let mut framed = framer(stream);
 // Frame<MeuComando, MeuResultado> — o vocabulário é do app.
+let config = ServerConfig {
+    server_major: PROTOCOL_MAJOR,
+    server_minor: PROTOCOL_MINOR,
+    helper_version: "1.4.0".into(),
+    peer_check: peer,
+};
+let shake = server_handshake::<MeuComando, MeuResultado, _>(&mut framed, config, nonce).await?;
+if !shake.accepted {
+    return Ok(()); // the refusal already went out on the wire
+}
 ```
 
 `accept()` returns the `PeerCheck` that authorises the connection, so the caller
 can log or audit *who* was allowed in, not just that someone was.
+
+`server_handshake` waits `HANDSHAKE_TIMEOUT_MS` (3 s) for the client's `Hello`,
+and returns `HandshakeError::Timeout` when it does not come. A first frame that
+is not a `Hello` is refused **on the wire** before the error returns: a
+`ServerHello` with `accepted: false` and `HANDSHAKE_REQUIRED` for a `Request`,
+`FRAME_TOO_LARGE` above `MAX_FRAME_BYTES`, `MALFORMED_FRAME` otherwise — so the
+client can tell a refusal from a hang. Another protocol major is refused on the
+wire as well, with `VERSION_UNSUPPORTED`, and comes back as `accepted: false`,
+which is what the `if` above is for.
+
+The app's side is `client_handshake`. Both take the 16-byte nonce from the
+caller:
+
+```rust
+let stream = tokio::net::UnixStream::connect("/var/run/myapp/helper.sock").await?;
+let mut framed = framer(stream);
+let config = ClientConfig {
+    client_major: PROTOCOL_MAJOR,
+    client_minor: PROTOCOL_MINOR,
+    client_version: "1.4.0".into(),
+};
+let shake = client_handshake::<MeuComando, MeuResultado, _>(&mut framed, config, nonce).await?;
+```
+
+It waits the same deadline for the `ServerHello`, and refuses what the server
+should not have accepted: a refusal becomes `HandshakeError::Rejected`, carrying
+the server's reason, and an accepted answer with another major becomes
+`HandshakeError::VersionMismatch`. Underneath both, `send_frame` refuses a frame
+above `MAX_FRAME_BYTES` before writing it, and `recv_frame` says which failure it
+saw: `RecvError::TooLarge`, `Malformed` or `Io`.
 
 ## Scope
 
