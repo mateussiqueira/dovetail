@@ -2,7 +2,8 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::Duration;
 
-use dovetail_privileged_channel::{bind, Endpoint};
+use dovetail_privileged_channel::{bind, AcceptError, Endpoint, PeerCheck};
+use futures::{stream, Stream, StreamExt};
 
 use crate::connection::handle_conn;
 use crate::DaemonApp;
@@ -15,10 +16,31 @@ where
     app.prepare().await?;
 
     let endpoint = Endpoint::new(A::ENDPOINT);
-    let mut listener = bind(&endpoint).await?;
+    let listener = bind(&endpoint).await?;
     tracing::info!("helper ouvindo no transporte local do SO");
 
-    tokio::pin!(shutdown);
+    let incoming = stream::unfold(listener, |mut listener| async move {
+        Some((listener.accept().await, listener))
+    });
+    accept_loop(incoming, shutdown, |conn, peer| {
+        let app = app.clone();
+        tokio::spawn(async move {
+            if let Err(err) = handle_conn(conn, peer, app).await {
+                tracing::debug!(?err, "conexao encerrada com erro");
+            }
+        });
+    })
+    .await;
+
+    Ok(())
+}
+
+async fn accept_loop<C>(
+    incoming: impl Stream<Item = Result<(C, PeerCheck), AcceptError>>,
+    shutdown: impl Future<Output = ()>,
+    mut serve: impl FnMut(C, PeerCheck),
+) {
+    tokio::pin!(incoming, shutdown);
     let mut falhas_seguidas: u64 = 0;
     loop {
         tokio::select! {
@@ -26,18 +48,17 @@ where
                 tracing::info!("encerrando loop de aceitacao");
                 break;
             }
-            accepted = listener.accept() => {
+            accepted = incoming.next() => {
                 match accepted {
-                    Ok((conn, peer)) => {
+                    None => break,
+                    Some(Ok((conn, peer))) => {
                         falhas_seguidas = 0;
-                        let app = app.clone();
-                        tokio::spawn(async move {
-                            if let Err(err) = handle_conn(conn, peer, app).await {
-                                tracing::debug!(?err, "conexao encerrada com erro");
-                            }
-                        });
+                        serve(conn, peer);
                     }
-                    Err(err) => {
+                    Some(Err(AcceptError::PeerRefused(reason))) => {
+                        tracing::warn!(motivo = %reason, "peer recusado; conexao fechada");
+                    }
+                    Some(Err(err)) => {
                         falhas_seguidas += 1;
                         let espera = std::cmp::min(100 * falhas_seguidas, 2_000);
                         tracing::warn!(
@@ -52,6 +73,68 @@ where
             }
         }
     }
+}
 
-    Ok(())
+#[cfg(test)]
+mod tests {
+    use std::io;
+    use std::time::Instant;
+
+    use super::*;
+
+    const FIRST_BACKOFF: Duration = Duration::from_millis(100);
+
+    type Accepted = Result<(u32, PeerCheck), AcceptError>;
+
+    fn app(id: u32) -> Accepted {
+        let peer = PeerCheck {
+            method: "peercred".into(),
+            subject: "the app".into(),
+        };
+        Ok((id, peer))
+    }
+
+    fn refused() -> Accepted {
+        Err(AcceptError::PeerRefused(anyhow::anyhow!("not the app")))
+    }
+
+    fn too_many_open_files() -> Accepted {
+        Err(AcceptError::Io(io::Error::other("too many open files")))
+    }
+
+    async fn serve_in_order(script: Vec<Accepted>) -> Vec<(u32, Duration)> {
+        let started = Instant::now();
+        let mut served = Vec::new();
+        accept_loop(stream::iter(script), std::future::pending(), |id, _| {
+            served.push((id, started.elapsed()))
+        })
+        .await;
+        served
+    }
+
+    fn ids(served: &[(u32, Duration)]) -> Vec<u32> {
+        served.iter().map(|(id, _)| *id).collect()
+    }
+
+    #[tokio::test]
+    async fn the_app_is_served_without_waiting_behind_a_refused_peer() {
+        let served = serve_in_order(vec![refused(), app(1)]).await;
+        assert_eq!(ids(&served), [1]);
+        let waited = served[0].1;
+        assert!(waited < FIRST_BACKOFF, "the app waited {waited:?}");
+    }
+
+    #[tokio::test]
+    async fn an_io_error_still_backs_off_before_the_next_accept() {
+        let served = serve_in_order(vec![too_many_open_files(), app(1)]).await;
+        assert_eq!(ids(&served), [1]);
+        let waited = served[0].1;
+        assert!(waited >= FIRST_BACKOFF, "the backoff took {waited:?}");
+    }
+
+    #[tokio::test]
+    async fn refusals_do_not_stop_the_loop() {
+        let script = vec![refused(), app(1), refused(), refused(), app(2)];
+        assert_eq!(ids(&serve_in_order(script).await), [1, 2]);
+    }
 }

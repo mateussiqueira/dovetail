@@ -28,4 +28,4 @@ pub use limits::{
     HANDSHAKE_TIMEOUT_MS, IDLE_TIMEOUT_MS, MAX_FRAME_BYTES, PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
 pub use peer_auth::verify_peer;
-pub use transport::{bind, Listener, Stream};
+pub use transport::{bind, AcceptError, Listener, Stream};

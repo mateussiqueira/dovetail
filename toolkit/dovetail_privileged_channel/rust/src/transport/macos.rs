@@ -5,7 +5,7 @@ use tokio::net::UnixListener;
 use crate::endpoint::Endpoint;
 use crate::handshake::PeerCheck;
 use crate::peer_auth;
-use crate::transport::Stream;
+use crate::transport::{admit, AcceptError, Stream};
 
 pub struct MacListener {
     inner: UnixListener,
@@ -30,10 +30,9 @@ impl MacListener {
         Ok(Self { inner })
     }
 
-    pub async fn accept(&mut self) -> anyhow::Result<(Stream, PeerCheck)> {
-        let (stream, _addr) = self.inner.accept().await?;
-        let peer = peer_auth::verify_peer(&stream)?;
-        Ok((stream, peer))
+    pub async fn accept(&mut self) -> Result<(Stream, PeerCheck), AcceptError> {
+        let (stream, _addr) = self.inner.accept().await.map_err(AcceptError::Io)?;
+        admit(stream, peer_auth::verify_peer)
     }
 }
 
