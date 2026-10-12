@@ -37,6 +37,29 @@ escrito** quando ela falta — um pulo explicado não é uma falha, mas também 
 é uma prova. Se um deles pular na tua máquina e você tiver a ferramenta, isso é
 um bug: relate.
 
+## Hooks e portões
+
+Nada roda num servidor ainda, então os hooks são o portão. Instale uma vez
+por clone:
+
+```bash
+dart tool/verify.dart hooks
+```
+
+Ele aponta o `core.hooksPath` para o `.githooks` deste clone, como `git
+config core.hooksPath "$PWD/.githooks"`, e não sobrescreve um que aponte
+para outro lugar. O `.githooks/pre-push` confere cada branch que você
+publica, numa worktree do commit enviado:
+
+- `scripts/pr/check_open_pr_limit.sh`: no máximo três PRs abertos;
+- `scripts/checks/check_pr_rules.sh`: até 250 linhas alteradas e 7
+  arquivos, Conventional Commits, branch no formato `feat/...`. Uma
+  varredura mecânica diz o motivo com `PR_SIZE_EXEMPT='<motivo>'`; uma
+  branch empilhada é medida contra a mãe com `PR_BASE=<mãe>`;
+- todo `*_selftest.sh` em `scripts/checks` e `scripts/pr`, `cargo fmt
+  --check` nos crates que a branch tocou e `dart tool/verify.dart`, que
+  `DOVETAIL_VERIFY_SKIP='<motivo>'` pula.
+
 ## O que o PR precisa dizer
 
 - **Em que sistema operacional você mediu.** Sem isso a informação mais
@@ -50,6 +73,9 @@ um bug: relate.
 - Comentário explica **por que**, não o que o código já diz. Um comentário que
   narra a linha abaixo dele é ruído; um que registra a decisão que a linha
   esconde, ou o defeito que ela evita, é o mais valioso do arquivo.
+- O `scripts/checks/check_no_comments.sh` recusa comentário em linha nova,
+  como nos repositórios irmãos. Ele não é aplicado aqui, pela decisão escrita
+  no `tool/verify.dart`.
 - Teste que descreve o defeito que evita vale mais que teste que descreve a
   função.
 - Nome de identificador em inglês. Comentário e documentação podem estar em
