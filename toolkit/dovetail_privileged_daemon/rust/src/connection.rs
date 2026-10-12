@@ -167,7 +167,7 @@ where
                 "frame de handshake malformado",
             ))
         }
-        Ok(Err(RecvError::Io(_))) => {
+        Ok(Err(_)) => {
             return Err(ErrorBody::new(
                 ErrorCode::handshake_required(),
                 "conexao interrompida antes do handshake",

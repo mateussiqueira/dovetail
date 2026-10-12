@@ -24,6 +24,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub struct SendError {
     pub size: usize,
     pub limit: usize,
@@ -63,6 +64,7 @@ where
 }
 
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum RecvError {
     TooLarge,
     Malformed(serde_json::Error),
