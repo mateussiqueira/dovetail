@@ -99,13 +99,16 @@ if !shake.accepted {
 can log or audit *who* was allowed in, not just that someone was.
 
 `server_handshake` waits `HANDSHAKE_TIMEOUT_MS` (3 s) for the client's `Hello`,
-and returns `HandshakeError::Timeout` when it does not come. A first frame that
-is not a `Hello` is refused **on the wire** before the error returns: a
+and returns `HandshakeError::Timeout` when it does not come. Whatever arrives
+instead of a `Hello` is refused **on the wire** before the error returns: a
 `ServerHello` with `accepted: false` and `HANDSHAKE_REQUIRED` for a `Request`,
+for a deadline that runs out and for a stream that ends before a whole frame,
 `FRAME_TOO_LARGE` above `MAX_FRAME_BYTES`, `MALFORMED_FRAME` otherwise — so the
-client can tell a refusal from a hang. Another protocol major is refused on the
-wire as well, with `VERSION_UNSUPPORTED`, and comes back as `accepted: false`,
-which is what the `if` above is for.
+client can tell a refusal from a hang. The refusal is best effort: with nobody
+left to read it, the caller still gets the original error. Another protocol
+major is refused on the wire as well, with `VERSION_UNSUPPORTED` and the
+server's own `proto_minor`, and comes back as `accepted: false`, which is what
+the `if` above is for.
 
 The app's side is `client_handshake`. Both take the 16-byte nonce from the
 caller:

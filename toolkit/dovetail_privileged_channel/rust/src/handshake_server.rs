@@ -26,7 +26,7 @@ pub struct ServerHandshakeResult {
     pub client_hello: Hello,
 }
 
-type HelloFailure = (anyhow::Error, Option<ErrorBody>);
+type HelloFailure = (anyhow::Error, ErrorBody);
 
 pub async fn server_handshake<Req, Resp, S>(
     framed: &mut Framer<S>,
@@ -34,14 +34,13 @@ pub async fn server_handshake<Req, Resp, S>(
     nonce: [u8; 16],
 ) -> Result<ServerHandshakeResult>
 where
-    Req: Serialize + DeserializeOwned + std::fmt::Debug,
-    Resp: Serialize + DeserializeOwned + std::fmt::Debug,
+    Req: Serialize + DeserializeOwned,
+    Resp: Serialize + DeserializeOwned,
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let hello = match read_hello::<Req, Resp, S>(framed).await {
         Ok(hello) => hello,
-        Err((error, None)) => return Err(error),
-        Err((error, Some(reject))) => {
+        Err((error, reject)) => {
             let sh = ServerHello {
                 accepted: false,
                 proto_major: config.server_major,
@@ -71,7 +70,11 @@ where
     let sh = ServerHello {
         accepted,
         proto_major: config.server_major,
-        proto_minor: negotiated_minor,
+        proto_minor: if accepted {
+            negotiated_minor
+        } else {
+            config.server_minor
+        },
         helper_version: config.helper_version,
         nonce,
         peer_check: config.peer_check,
@@ -88,16 +91,28 @@ where
 
 async fn read_hello<Req, Resp, S>(framed: &mut Framer<S>) -> Result<Hello, HelloFailure>
 where
-    Req: DeserializeOwned + std::fmt::Debug,
-    Resp: DeserializeOwned + std::fmt::Debug,
+    Req: DeserializeOwned,
+    Resp: DeserializeOwned,
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let deadline = Duration::from_millis(HANDSHAKE_TIMEOUT_MS);
     let next = timeout(deadline, recv_frame::<Req, Resp, S>(framed)).await;
     let (error, code, message): (anyhow::Error, ErrorCode, &str) = match next {
-        Err(_) => return Err((HandshakeError::Timeout.into(), None)),
-        Ok(Ok(None)) => return Err((HandshakeError::StreamEnded.into(), None)),
-        Ok(Err(e @ RecvError::Io(_))) => return Err((e.into(), None)),
+        Err(_) => (
+            HandshakeError::Timeout.into(),
+            ErrorCode::handshake_required(),
+            "handshake nao recebido dentro do prazo",
+        ),
+        Ok(Ok(None)) => (
+            HandshakeError::StreamEnded.into(),
+            ErrorCode::handshake_required(),
+            "conexao fechada antes do handshake",
+        ),
+        Ok(Err(e @ RecvError::Io(_))) => (
+            e.into(),
+            ErrorCode::handshake_required(),
+            "conexao interrompida antes do handshake",
+        ),
         Ok(Err(e @ RecvError::TooLarge)) => (
             e.into(),
             ErrorCode::frame_too_large(),
@@ -120,13 +135,13 @@ where
             "primeiro frame deve ser Hello",
         ),
     };
-    Err((error, Some(ErrorBody::new(code, message))))
+    Err((error, ErrorBody::new(code, message)))
 }
 
-fn unexpected(frame: &impl std::fmt::Debug) -> anyhow::Error {
+fn unexpected<Req, Resp>(frame: &Frame<Req, Resp>) -> anyhow::Error {
     HandshakeError::UnexpectedFrame {
         expected: "Hello",
-        got: format!("{frame:?}"),
+        got: frame.name().into(),
     }
     .into()
 }

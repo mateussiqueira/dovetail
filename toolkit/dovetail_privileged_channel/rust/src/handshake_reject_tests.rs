@@ -53,11 +53,11 @@ async fn servidor_depois_de(bytes: &[u8]) -> (anyhow::Error, Option<ErrorCode>) 
 }
 
 #[tokio::test]
-async fn cliente_mudo_estoura_o_prazo_e_nada_vai_no_fio() {
+async fn cliente_mudo_estoura_o_prazo_e_recebe_handshake_required() {
     let (e, recusa) = servidor_depois_de(&[]).await;
     let e: HandshakeError = e.downcast().unwrap();
     assert!(matches!(e, HandshakeError::Timeout), "veio {e}");
-    assert_eq!(recusa, None);
+    assert_eq!(recusa, Some(ErrorCode::handshake_required()));
 }
 
 #[tokio::test]
