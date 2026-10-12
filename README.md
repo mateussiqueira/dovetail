@@ -50,6 +50,29 @@ If something breaks on your machine, that is not a surprise — it is the
 information we do not have. Open an issue with your operating system and the
 output.
 
+## Maturity
+
+Measured on 2026-10-12 at `c2bc5bb`. Beta, as above; this section says, layer by layer, what has run and what has only been written. It gives no scores: a number would be an opinion, and everything below can be re-checked.
+
+| layer | packages | what has run |
+| --- | --- | --- |
+| runtime | `dovetail`, `dovetail_platform_channel`, `dovetail_shortcut_channel`, `dovetail_rust_core`, `dovetail_updater`, `dovetail_form_validation`, `dovetail_process_runner` | the suites, almost entirely on one macOS arm64 machine |
+| pipeline | `dovetail_cli`, `dovetail_bundler`, `dovetail_signer` | the internal channel, end to end; the release channel only with stand-ins |
+| privileged side | `dovetail_privileged_helper`, `dovetail_privileged_channel`, `dovetail_privileged_daemon` | framing, handshake and service lifecycle, in tests |
+| support | `dovetail_http_client`, `dovetail_screenshots` | the suites, on that same machine |
+
+**Counted.** 1513 Dart tests are declared in `tool/skip_baseline.json`, 45 of them skipped, each with its reason; that baseline last changed on 2026-09-19. 141 Rust test functions sit in five crates, counted from the source rather than from a run. Coverage is not measured.
+
+**Peer authentication** is the part of the privileged channel that is not finished. On macOS a release build refuses every peer, because the code-signature check is not written; a debug build accepts any local process on a world-writable socket. On Linux the peer's credentials are read and no policy is applied. On Windows the client's directory has to be the helper's.
+
+**Hosted CI** has never passed: GitHub lists 78 runs and none succeeded. In a sample of three (2026-09-09, 2026-09-19, 2026-10-12) no job executed a step. When it does run, `ci.yml` covers the Dart and Flutter suites, formatting, analysis and a publish dry run. It has no job for the Rust crates, and its package list leaves out `dovetail_privileged_helper`.
+
+**Releases.** pub.dev carries 10 of the 15 packages, all at 0.1.1 except `dovetail_rust_core` at 0.1.2, published 2026-09-09. Git tags run from `v0.1.2` to `v0.1.11`, the newest dated 2026-10-07; `main` is 34 commits ahead of it. The privileged-side Rust crates are reached by git tag, so what came after the tag is reached with `rev`. No GitHub Release has been published.
+
+**The gate** is `dart tool/verify.dart`, installed as the commit and push hooks by `dart tool/verify.dart install`. It calls shell scripts for the Rust conventions, and `tool/release.sh` runs the proofs under `tool/ci/` before a version leaves. None of that runs off the author's machine yet.
+
+**Not done:** a run on a Windows host, a Developer ID and notarisation, the macOS peer check, a host for the signed download channel, a coverage floor.
+
 ## The packages
 
 | package | what it does |
