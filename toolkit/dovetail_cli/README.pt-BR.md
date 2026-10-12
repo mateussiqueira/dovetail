@@ -108,12 +108,13 @@ recusa pacote sem assinatura de Developer ID Installer.
 
 ```bash
 dart pub global activate dovetail_cli
-dart pub global run dovetail_cli:dovetail --help
+dovetail --help
 ```
 
-O pacote não declara executável, então o pub o roda pelo nome em vez de pôr um
-`dovetail` no `PATH`. O que está no pub.dev é a 0.1.1, de 2026-09-09: mais
-antiga que o `--channel internal`.
+O pacote declara o `dovetail` como executável, então o `activate` o põe no
+`PATH`. O que está no pub.dev é a 0.1.1, de 2026-09-09: mais antiga que o
+`--channel internal`, e sem o executável, então ali ela roda como
+`dart pub global run dovetail_cli:dovetail --help`.
 
 Para compilar o binário autocontido a partir da fonte:
 

@@ -10,6 +10,9 @@ issue_tracker: https://github.com/mateussiqueira/dovetail/issues
 environment:
   sdk: ^3.12.0
 
+executables:
+  dovetail: dovetail
+
 dependencies:
   args: ^2.6.0
   crypto: ^3.0.6
