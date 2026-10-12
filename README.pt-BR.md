@@ -186,7 +186,7 @@ aqui do que uma feature nova.
 O portão é um comando na raiz, e os hooks que ele instala o rodam por você:
 
 ```bash
-dart tool/verify.dart install                        # o pre-commit roda o `fast`, o pre-push o portão inteiro
+dart tool/verify.dart hooks                          # pre-push: regras de PR, autotestes, o portão inteiro
 dart tool/verify.dart test --only dovetail_bundler   # um pacote só, enquanto você itera
 dart tool/verify.dart                                # tudo, como o push vai rodar
 ```

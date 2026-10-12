@@ -1,0 +1,111 @@
+#!/usr/bin/env bash
+set -uo pipefail
+
+root="$(git rev-parse --path-format=absolute --show-toplevel)"
+scratch="$root/../dovetail.verify-worktree"
+unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE GIT_OBJECT_DIRECTORY GIT_COMMON_DIR GIT_ALTERNATE_OBJECT_DIRECTORIES
+zero="0000000000000000000000000000000000000000"
+fail=0
+shas=()
+refs=()
+branches=()
+
+while read -r _local_ref local_sha remote_ref _remote_sha; do
+  [ "${local_sha:-$zero}" = "$zero" ] && continue
+  shas+=("$local_sha")
+  refs+=("$remote_ref")
+  case "$remote_ref" in refs/heads/*) branches+=("${remote_ref#refs/heads/}") ;; esac
+done
+
+echo "── Teto de PRs abertos ──"
+if ! PR_LIMIT_REMOTE_URL="${2:-}" bash "$root/scripts/pr/check_open_pr_limit.sh" "${branches[@]+"${branches[@]}"}"; then
+  echo ""
+  echo "🚫 PUSH BLOQUEADO — teto de PRs abertos."
+  exit 1
+fi
+[ "${#shas[@]}" -gt 0 ] || exit 0
+
+step() {
+  local name="$1"
+  shift
+  echo ""
+  echo "── $name ──"
+  if "$@"; then
+    echo "✅ $name"
+  else
+    echo "❌ $name"
+    fail=1
+  fi
+}
+
+in_dir() { local dir="$1"; shift; (cd "$dir" && "$@"); }
+
+checkout() {
+  if [ -d "$scratch/.git" ] || [ -f "$scratch/.git" ]; then
+    git -C "$scratch" checkout --force --detach --quiet "$1" && git -C "$scratch" clean -dfq
+  else
+    rm -rf "$scratch"
+    git -C "$root" worktree prune
+    git -C "$root" worktree add --detach --quiet "$scratch" "$1"
+  fi
+}
+
+touched_crates() {
+  local base file dir
+  base="$(git -C "$scratch" merge-base origin/main HEAD 2>/dev/null)" || return 0
+  git -C "$scratch" diff --name-only "$base" HEAD -- '*.rs' '*Cargo.toml' | while IFS= read -r file; do
+    dir="$(dirname "$file")"
+    while [ "$dir" != "." ] && [ ! -f "$scratch/$dir/Cargo.toml" ]; do
+      dir="$(dirname "$dir")"
+    done
+    [ -f "$scratch/$dir/Cargo.toml" ] && echo "$dir"
+  done | sort -u
+}
+
+branch_gates() {
+  local selftest crate
+  step "Regras de PR" in_dir "$scratch" env PR_BRANCH="$1" bash scripts/checks/check_pr_rules.sh
+  for selftest in "$scratch"/scripts/checks/*_selftest.sh "$scratch"/scripts/pr/*_selftest.sh; do
+    [ -f "$selftest" ] && step "Autoteste ${selftest#"$scratch"/}" in_dir "$scratch" bash "$selftest"
+  done
+  for crate in $(touched_crates); do
+    step "cargo fmt --check ($crate)" in_dir "$scratch/$crate" cargo fmt --check
+  done
+}
+
+for i in "${!shas[@]}"; do
+  sha="${shas[$i]}"
+  if ! checkout "$sha"; then
+    echo "pre-push: no worktree of ${sha:0:8} at $scratch" >&2
+    exit 1
+  fi
+  echo ""
+  echo "pre-push: verifying ${sha:0:8} (${refs[$i]})"
+  case "${refs[$i]}" in
+    refs/heads/main) ;;
+    refs/heads/*) branch_gates "${refs[$i]#refs/heads/}" ;;
+  esac
+  [ "$fail" -eq 0 ] || break
+  if [ -n "${DOVETAIL_VERIFY_SKIP:-}" ]; then
+    echo ""
+    echo "pre-push: dart tool/verify.dart skipped: ${DOVETAIL_VERIFY_SKIP}"
+    continue
+  fi
+  step "Portão inteiro (dart tool/verify.dart)" in_dir "$scratch" dart tool/verify.dart
+  if [ "$fail" -ne 0 ]; then
+    echo "" >&2
+    echo "pre-push: ${sha:0:8} does not pass. Nothing was pushed." >&2
+    echo "  Re-run one package while you fix it:" >&2
+    echo "    cd $scratch && dart tool/verify.dart test --only <package>" >&2
+    echo "  To skip only this last step, say why:" >&2
+    echo "    DOVETAIL_VERIFY_SKIP='<reason>' git push" >&2
+    break
+  fi
+done
+
+echo ""
+if [ "$fail" -ne 0 ]; then
+  echo "🚫 PUSH BLOQUEADO — corrija os erros acima."
+  exit 1
+fi
+echo "✅ Tudo conforme — publicando a branch."

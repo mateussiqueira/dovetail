@@ -43,6 +43,29 @@ Some tests need a built artefact or a system tool (`codesign`, `minisign`,
 explained skip is not a failure, but it is not a proof either. If one of them
 skips on your machine and you do have the tool, that is a bug: report it.
 
+## Hooks and gates
+
+Nothing runs on a server yet, so the hooks are the gate. Install them
+once per clone:
+
+```bash
+dart tool/verify.dart hooks
+```
+
+It sets `core.hooksPath` to this clone's `.githooks`, like `git config
+core.hooksPath "$PWD/.githooks"`, and will not overwrite one that points
+elsewhere. `.githooks/pre-push` checks every branch you push, in a
+worktree of the pushed commit:
+
+- `scripts/pr/check_open_pr_limit.sh`: at most three open pull requests;
+- `scripts/checks/check_pr_rules.sh`: up to 250 changed lines and 7
+  files, Conventional Commits, a `feat/`-style branch name. A mechanical
+  sweep says why with `PR_SIZE_EXEMPT='<reason>'`; a stacked branch is
+  measured against its parent with `PR_BASE=<parent>`;
+- every `*_selftest.sh` in `scripts/checks` and `scripts/pr`, `cargo fmt
+  --check` on the crates the branch touched, and `dart tool/verify.dart`,
+  which `DOVETAIL_VERIFY_SKIP='<reason>'` skips.
+
 ## What the pull request needs to say
 
 - **Which operating system you measured on.** Without that, the most
@@ -58,6 +81,9 @@ skips on your machine and you do have the tool, that is a bug: report it.
 - A comment explains **why**, not what the code already says. A comment that
   narrates the line below it is noise; one that records the decision the line
   hides, or the defect it avoids, is the most valuable thing in the file.
+- `scripts/checks/check_no_comments.sh` refuses comments in new lines, as in
+  the sibling repositories. It is not applied here, by the decision written
+  in `tool/verify.dart`.
 - A test that describes the defect it prevents is worth more than a test that
   describes the function.
 - Identifiers in English. Comments and documentation may be in Portuguese —

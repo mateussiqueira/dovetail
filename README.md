@@ -231,7 +231,7 @@ feature.
 The gate is one command at the root, and the hooks it installs run it for you:
 
 ```bash
-dart tool/verify.dart install                        # pre-commit runs `fast`, pre-push the whole gate
+dart tool/verify.dart hooks                          # pre-push: PR rules, selftests, the whole gate
 dart tool/verify.dart test --only dovetail_bundler   # one package, while you iterate
 dart tool/verify.dart                                # everything, as the push will
 ```

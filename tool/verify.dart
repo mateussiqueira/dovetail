@@ -160,7 +160,7 @@ targets   doctor    the host: tools present, hooks installed
           release   the whole macOS pipeline against a local host, signed and
                     verified end to end (macOS, needs DOVETAIL_PRODUCT)
           readme    the README table agrees with the baseline
-          install   point core.hooksPath at tool/githooks
+          install   point core.hooksPath at .githooks (alias: hooks)
           all       every target above, exit code decided at the end
 
 --only    narrows fast, test, cross, rust and all to packages whose path
@@ -220,6 +220,7 @@ Future<int> _run(List<String> arguments) async {
       return _releaseProof(only: _only(arguments));
     case 'readme':
       return _readme();
+    case 'hooks':
     case 'install':
       return _install();
     case 'all':
@@ -377,7 +378,7 @@ int _doctor() {
       configured.isEmpty
           ? '  hooks    not installed. Run: dart tool/verify.dart install'
           : '  hooks    core.hooksPath is "$configured", which is not this '
-                'repository\'s tool/githooks',
+                'repository\'s .githooks',
     );
   }
 
@@ -395,7 +396,7 @@ bool _hooksAreOurs(String configured) {
   if (configured.isEmpty) {
     return false;
   }
-  final Directory ours = Directory('$repoRoot/tool/githooks');
+  final Directory ours = Directory('$repoRoot/.githooks');
   if (!ours.existsSync()) {
     return false;
   }
@@ -413,7 +414,7 @@ bool _hooksAreOurs(String configured) {
 }
 
 int _install() {
-  final String wanted = '$repoRoot/tool/githooks';
+  final String wanted = '$repoRoot/.githooks';
   final String configured = _git(<String>[
     'config',
     '--get',
