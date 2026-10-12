@@ -110,12 +110,13 @@ refuses a package with no Developer ID Installer signature.
 
 ```bash
 dart pub global activate dovetail_cli
-dart pub global run dovetail_cli:dovetail --help
+dovetail --help
 ```
 
-The package declares no executable, so pub runs it by name instead of putting
-a `dovetail` on the `PATH`. What pub.dev carries is 0.1.1, from 2026-09-09:
-older than `--channel internal`.
+The package declares `dovetail` as an executable, so `activate` puts it on the
+`PATH`. What pub.dev carries is 0.1.1, from 2026-09-09: older than
+`--channel internal`, and without the executable, so there it runs as
+`dart pub global run dovetail_cli:dovetail --help`.
 
 To build the self-contained binary from source instead:
 

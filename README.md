@@ -108,16 +108,18 @@ dependencies:
   dovetail: ^0.1.0
 ```
 
-And the pipeline is a command. The package declares no executable, so pub runs
-it by name instead of putting a `dovetail` on the `PATH`:
+And the pipeline is a command. The package declares `dovetail` as an
+executable, so `activate` puts it on the `PATH`:
 
 ```bash
 dart pub global activate dovetail_cli
-dart pub global run dovetail_cli:dovetail --help
+dovetail --help
 ```
 
 What pub.dev carries is 0.1.1, from 2026-09-09: older than the internal
-channel below. The CLI in this repository is ahead of it, and runs from source:
+channel below, and without the executable, so there it runs as
+`dart pub global run dovetail_cli:dovetail --help`. The CLI in this
+repository is ahead of it, and runs from source:
 
 ```bash
 git clone https://github.com/mateussiqueira/dovetail

@@ -89,16 +89,18 @@ dependencies:
   dovetail: ^0.1.0
 ```
 
-E a esteira é um comando. O pacote não declara executável, então o pub o roda
-pelo nome em vez de pôr um `dovetail` no `PATH`:
+E a esteira é um comando. O pacote declara o `dovetail` como executável, então
+o `activate` o põe no `PATH`:
 
 ```bash
 dart pub global activate dovetail_cli
-dart pub global run dovetail_cli:dovetail --help
+dovetail --help
 ```
 
 O que está no pub.dev é a 0.1.1, de 2026-09-09: mais antiga que o canal interno
-descrito abaixo. O CLI deste repositório está à frente dela, e roda da fonte:
+descrito abaixo, e sem o executável, então ali ela roda como
+`dart pub global run dovetail_cli:dovetail --help`. O CLI deste repositório
+está à frente dela, e roda da fonte:
 
 ```bash
 git clone https://github.com/mateussiqueira/dovetail
