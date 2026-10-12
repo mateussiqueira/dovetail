@@ -1,7 +1,7 @@
 final class DovetailVersion {
   const DovetailVersion._();
 
-  static const String number = '0.1.0';
+  static const String number = '0.1.1';
 
   static String get line =>
       'dovetail $number ($_os-$_arch, dart $_dart, commit $_commit)';
