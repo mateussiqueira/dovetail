@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use tokio::io::duplex;
 
 use crate::envelope::{ErrorCode, Request};
@@ -79,6 +80,13 @@ async fn major_diferente_e_recusado_com_o_motivo() {
 }
 
 #[tokio::test]
+async fn a_recusa_de_versao_anuncia_a_versao_do_servidor() {
+    let (r, sh) = apertar_a_mao(hello(2, 0), servidor(1, 1)).await;
+    assert!(!r.accepted);
+    assert_eq!((sh.proto_major, sh.proto_minor), (1, 1));
+}
+
+#[tokio::test]
 async fn fim_do_fluxo_antes_do_hello() {
     let (a, b) = duplex(1024);
     let mut lado_servidor = framer(b);
@@ -118,4 +126,25 @@ async fn pedido_antes_do_hello_e_recusado() {
         outro => panic!("esperava a recusa no fio, veio {outro:?}"),
     };
     assert_eq!(recusa.unwrap().code, ErrorCode::handshake_required());
+}
+
+#[derive(Serialize, Deserialize)]
+struct NoDebug;
+
+#[tokio::test]
+async fn tipos_sem_debug_passam_pelo_handshake() {
+    let (a, b) = duplex(1024);
+    let mut lado_cliente = framer(a);
+    let mut lado_servidor = framer(b);
+    let pedido = Frame::<NoDebug, NoDebug>::Request(Request {
+        id: 1,
+        cmd: NoDebug,
+    });
+    send_frame(&mut lado_cliente, &pedido).await.unwrap();
+    let r = server_handshake::<NoDebug, NoDebug, _>(&mut lado_servidor, servidor(1, 1), [7; 16]);
+    let e: HandshakeError = r.await.unwrap_err().downcast().unwrap();
+    assert!(
+        matches!(&e, HandshakeError::UnexpectedFrame { got, .. } if got == "Request"),
+        "veio {e}"
+    );
 }

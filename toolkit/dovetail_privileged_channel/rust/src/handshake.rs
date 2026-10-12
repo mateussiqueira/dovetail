@@ -11,6 +11,17 @@ pub enum Frame<Req, Resp> {
     Response(Response<Resp>),
 }
 
+impl<Req, Resp> Frame<Req, Resp> {
+    pub(crate) fn name(&self) -> &'static str {
+        match self {
+            Self::Hello(_) => "Hello",
+            Self::ServerHello(_) => "ServerHello",
+            Self::Request(_) => "Request",
+            Self::Response(_) => "Response",
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Hello {
     pub proto_major: u16,
