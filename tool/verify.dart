@@ -71,6 +71,19 @@ List<(String, String)> _selected(String? only) => <(String, String)>[
     if (only == null || each.$1.contains(only)) each,
 ];
 
+const List<String> _crates = <String>[
+  'toolkit/dovetail_rust_core/rust',
+  'toolkit/dovetail_shortcut_channel/rust',
+  'toolkit/dovetail_privileged_channel/rust',
+  'toolkit/dovetail_privileged_daemon/rust',
+  'toolkit/dovetail_http_client/rust',
+];
+
+List<String> _selectedCrates(String? only) => <String>[
+  for (final String crate in _crates)
+    if (only == null || crate.contains(only)) crate,
+];
+
 /// Tools a skip in the baseline depends on. If one of these disappears, a
 /// test that used to run turns into a skip — which the baseline catches on
 /// its own. They are listed so `doctor` can say WHY before the suite does.
@@ -1500,13 +1513,7 @@ int _rustFormat({String? only}) {
   if (_which('cargo') == null) {
     return 0;
   }
-  final List<String> crates = <String>[
-    for (final String crate in const <String>[
-      'toolkit/dovetail_rust_core/rust',
-      'toolkit/dovetail_shortcut_channel/rust',
-    ])
-      if (only == null || crate.contains(only)) crate,
-  ];
+  final List<String> crates = _selectedCrates(only);
 
   final List<String> crooked = <String>[];
   for (final String crate in crates) {
@@ -1699,13 +1706,7 @@ int _rustTests({String? only}) {
   // duas que sobraram compilam nos tres hosts, entao aquelas pernas podem
   // largar o `--only`: ele deixou de significar "menos a que nao compila
   // aqui" e voltou a significar "so esta, porque estou iterando nela".
-  const List<String> allCrates = <String>[
-    'toolkit/dovetail_rust_core/rust',
-    'toolkit/dovetail_shortcut_channel/rust',
-  ];
-  final List<String> crates = only == null
-      ? allCrates
-      : allCrates.where((String crate) => crate.contains(only)).toList();
+  final List<String> crates = _selectedCrates(only);
 
   int failed = 0;
   for (final String crate in crates) {
@@ -1825,13 +1826,7 @@ int _clippy({String? only}) {
   // Narrowed by the same `--only <substr>` that `rust` accepts, for the same
   // reason: the CI legs that are not macOS lint the toolkit crates and leave
   // the product crate for the machine that can compile it.
-  const List<String> allCrates = <String>[
-    'toolkit/dovetail_rust_core/rust',
-    'toolkit/dovetail_shortcut_channel/rust',
-  ];
-  final List<String> crates = only == null
-      ? allCrates
-      : allCrates.where((String crate) => crate.contains(only)).toList();
+  final List<String> crates = _selectedCrates(only);
 
   int failed = 0;
   for (final String crate in crates) {
