@@ -48,17 +48,6 @@ for crate in ipc-proto common-types api-client; do
   fi
 done
 
-# O `new` resolve weave_di por flag, variavel ou SDK — nunca por sonda. Aqui
-# ele e obrigatorio porque o app consumidor e de verdade: builda.
-weave="${DOVETAIL_WEAVE_PATH:-$repo_root/../../projects/weave}"
-if [ ! -f "$weave/pubspec.yaml" ]; then
-  echo "no weave_di checkout at $weave" >&2
-  echo "  The generated app imports package:weave_di and this proof builds it." >&2
-  echo "  Point at a checkout: DOVETAIL_WEAVE_PATH=<dir with pubspec.yaml>" >&2
-  exit 1
-fi
-weave="$(cd "$weave" && pwd)"
-
 bridge="$stage/probe_bridge"
 app="$stage/probe_app"
 
@@ -84,7 +73,7 @@ bash "$bridge/tool/build_xcframework.sh"
 
 echo "── app consumidor ──"
 dart run "$cli" new --root "$stage" --name probe_app \
-  --dovetail-path "$repo_root/toolkit/dovetail" --weave-path "$weave"
+  --dovetail-path "$repo_root/toolkit/dovetail"
 sed_inplace "$app/pubspec.yaml" \
   "s|^  dovetail:$|  probe_bridge:\n    path: $bridge\n  dovetail:|"
 

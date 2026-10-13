@@ -137,40 +137,6 @@ for package in \
   echo "    packages/$package"
 done
 
-echo "==> weave_di"
-# O template do app usa weave_di para DI e rotas. Ele mora noutro repositório,
-# que é PRIVADO — então nem a url https salva quem está de fora, e a forma
-# antiga (dependência `git` com `git@weave-di.github.com:`, um alias de SSH do
-# ~/.ssh/config de uma máquina só) fazia todo projeto gerado morrer no primeiro
-# `flutter pub get` de qualquer outra pessoa.
-#
-# A resposta é a mesma dos outros pacotes do runtime: viaja dentro do tarball.
-# A máquina de release precisa do checkout — mesma fronteira de confiança que
-# os dois irmãos privados já têm — e o consumidor não precisa de nada.
-weave_src="${DOVETAIL_WEAVE_PATH:-$repo_root/../../projects/weave}"
-if [ ! -f "$weave_src/pubspec.yaml" ]; then
-  echo "no weave_di checkout at $weave_src" >&2
-  echo "  The app template imports package:weave_di, the repository is private," >&2
-  echo "  and an SDK without it is a scaffold that cannot resolve." >&2
-  echo "  Point at a checkout: DOVETAIL_WEAVE_PATH=<dir with pubspec.yaml>" >&2
-  exit 1
-fi
-weave_version=$(awk '/^version:/ {print $2; exit}' "$weave_src/pubspec.yaml")
-if [ -z "$weave_version" ]; then
-  echo "no version: in $weave_src/pubspec.yaml" >&2
-  exit 1
-fi
-weave_dst="$stage/sdk/$version/packages/weave_di"
-mkdir -p "$weave_dst"
-cp "$weave_src/pubspec.yaml" "$weave_dst/pubspec.yaml"
-[ -f "$weave_src/pubspec.lock" ] && cp "$weave_src/pubspec.lock" "$weave_dst/pubspec.lock"
-cp -R "$weave_src/lib" "$weave_dst/lib"
-# O SDK grava de onde e de qual versão veio: sem isto, um tarball com weave_di
-# desatualizado é indistinguível de um atualizado, e a única pista some com o
-# diretório de staging.
-printf '%s\n' "$weave_version" > "$weave_dst/.dovetail-weave-version"
-echo "    packages/weave_di ($weave_version)"
-
 echo "==> the bridge template"
 cp -R "$repo_root/tool/sdk/templates" "$stage/sdk/$version/templates"
 
