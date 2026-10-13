@@ -2,12 +2,6 @@
 
 # CI: the gate on all three OSs
 
-> **Context for anyone arriving through the public repository.** This document
-> mentions `product/`, which is the private app where the toolkit is
-> exercised, and it does not exist in this repository. The mechanism described
-> belongs to the toolkit and holds for any app; only the example's path
-> belongs to another tree.
-
 `.github/workflows/ci.yml` runs the gate off this machine. This document says
 what each leg executes and **why** — and what stays unproven until a hosted
 run comes back green.
@@ -18,21 +12,12 @@ The difference between "compiles for the target" and "ran on the target". This
 machine proves macOS arm64; a hosted runner is where Windows and Linux get
 their first real run.
 
-## The layout, and why it is mandatory
+## The layout
 
-The product resolves its siblings by path, and both of those repositories are
-private. So the workflow:
-
-- checks out `dovetail` into `dovetail/`;
-- checks out the siblings **at the workspace root**, beside it — the only
-  position where the `../../..` paths resolve;
-- reads the siblings with a private PAT, `secrets.SIBLINGS_TOKEN`.
-
-Without the secret, **every job refuses at the first step**, naming what is
-missing: a PAT that can read the two private repositories the origin monorepo
-consumes by path. The public repository needs none: the ten packages resolve
-against each other through `pubspec_overrides.yaml`. Nothing here signs or
-publishes — the workflow is a gate, not a `ship`.
+The workflow checks out this repository and nothing else: no job depends on a
+private repository, a credential or a host, and the packages resolve against
+each other through `pubspec_overrides.yaml`. Nothing here signs or publishes —
+the workflow is a gate, not a `ship`.
 
 ## What each leg runs, and why they differ
 
@@ -85,8 +70,7 @@ How to re-record it, when someone needs to — and it is needed every time a
 test enters or leaves, because the baseline stores `declared` per suite:
 `tool/rebless_cold.sh`. It copies the **tracked** files (the index: a new file
 needs `git add` first, and the script says which would be left out) into a
-directory beside this one (the product's `../../../` paths have to reach the
-siblings), without `.dart_tool`, `build/` or `target/`; runs `dart
+directory beside this one, without `.dart_tool`, `build/` or `target/`; runs `dart
 tool/verify.dart test` there; brings `dist/verify-run.json` back, does
 `bless --force` and prints the totals the README's headline has to state. The
 `git ls-files -z | rsync --files-from=- --from0` is what guarantees no warm
@@ -124,26 +108,11 @@ The same as Linux: `doctor`, `fast`, `test`, `rust --only toolkit`,
 `cross --only toolkit`, `readme`. Without the docker proofs, which have
 nothing to do here.
 
-## `--only toolkit`, and the line it does not cross
-
-`rust` and `cross` accept `--only <substr>` (the same `--only` that `test`
-has). The non-macOS legs use `--only toolkit` to prove the toolkit's crates
-and **leave the product's bridge crate out**: that crate drags in the sibling
-repository's crates by path, and none of them has ever compiled for a Linux or
-Windows host. Proving them is the item "the app compiles on Windows and Linux",
-not the item "the gate runs on all three OSs" — and the fix, if it fails,
-lives in the sibling repo.
-
 ## What was fixed before the first paid run
 
-Four defects that would only show up on a runner, and would have cost one run
-each — in macOS minutes, which are worth 10x:
+Three defects that would only show up on a runner, and would have cost one
+run each — in macOS minutes, which are worth 10x:
 
-- **The `SIBLINGS_TOKEN` guard could not print.** `defaults.run.
-  working-directory: dovetail` already applies to the job's **first** step,
-  which runs **before** `actions/checkout` creates that directory. It was the
-  only message in the file written for whoever hits it first, and the only one
-  that could not be seen. That step now carries `working-directory: .`.
 - **`clippy` and `rustfmt` never arrived.** `dtolnay/rust-toolchain` installs
   the `minimal` profile, and neither comes with it — while `verify fast` runs
   `cargo fmt --check` and `cross` runs clippy. All three legs would be red in
@@ -176,8 +145,6 @@ claim otherwise. What the first run decides:
   session;
 - whether the baseline's skip set matches a clean runner (the cold shape was
   recorded for that, and the reasons are now machine-independent);
-- whether the product's Dart suites even load on Linux and Windows — no
-  product test has ever run on those hosts;
 - whether the runner's makensis behaves like the one here.
 
 Every job uploads `dist/verify-run.json` and the `dist/doctor-*.log` reports
@@ -186,8 +153,7 @@ as artefacts, and runs `dovetail doctor` with `continue-on-error`: on a runner,
 
 ## Triggering it
 
-`push` to `main`, or `workflow_dispatch` by hand. Before the first push:
-create the `SIBLINGS_TOKEN` secret on the repository.
+`push` to `main`, or `workflow_dispatch` by hand.
 
 ## The `startup_failure` that cost two days, and its two causes
 
@@ -198,8 +164,7 @@ causes, one behind the other:
 1. **`secrets` is not a valid context in a step's `if:`.** GitHub refuses the
    whole workflow before creating any job. `actionlint` names the error in
    seconds; the sanctioned pattern is to expose the secret once in the
-   workflow's `env:` and test `env.SIBLINGS_TOKEN` everywhere — which is what
-   the file does today.
+   workflow's `env:` and test `env.<NAME>` everywhere.
 2. **The owner's account does not execute Actions.** Even a minimal `echo`
    workflow stayed in `startup_failure` with an empty `name` and zero check
    runs. The annotation says it plainly: *"The job was not started because
@@ -213,7 +178,7 @@ While the account does not execute Actions, the Linux leg has a local path:
 `tool/ci/gate-linux.Dockerfile` builds the same environment as the runner
 (Ubuntu 24.04 x86_64, pinned Flutter and Rust, the gate's tools) and runs
 `doctor`, `fast`, `test`, `rust --only toolkit`, `cross --only toolkit`,
-`readme` inside the container, with the siblings mounted beside it. It is what
+`readme` inside the container, with the repository mounted in it. It is what
 proved the gate runs on a real Linux before any runner existed.
 
 The gate is deterministic where it was measured: `bash tool/soak.sh 5` gave

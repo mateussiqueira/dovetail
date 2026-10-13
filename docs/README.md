@@ -65,13 +65,9 @@ Not in the barrel: an app declares each one on its own, when it needs it.
 
 ## What is not here
 
-The app that consumes the toolkit, and the bridge to its Rust core, live in
-another repository: they are product, not framework. What this repository
-carries is the entire toolkit — which is everything any app needs in order to
-be built, packaged, signed and updated.
-
-Some documents still mention `product/` as the path of the example that
-exercises a mechanism. Those carry a note at the top saying so.
+An app. What this repository carries is the entire toolkit — which is
+everything any app needs in order to be built, packaged, signed and updated —
+and the template `dovetail new` turns into one.
 
 ## The decisions, with the reasoning
 

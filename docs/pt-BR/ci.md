@@ -2,11 +2,6 @@
 
 # CI: o portão nos três SOs
 
-> **Contexto para quem chega pelo repositório público.** Este documento cita
-> `product/`, que é o app privado onde o toolkit é exercitado, e não existe
-> neste repositório. O mecanismo descrito é do toolkit e vale para qualquer
-> app; só o caminho do exemplo é de outra árvore.
-
 `.github/workflows/ci.yml` roda o portão fora desta máquina. Este documento
 diz o que cada leg executa e **por que** — e o que continua sem prova até uma
 corrida hospedada voltar verde.
@@ -17,22 +12,12 @@ A diferença entre "compila para o alvo" e "rodou no alvo". Esta máquina prova
 o macOS arm64; um runner hospedado é onde Windows e Linux ganham a primeira
 corrida de verdade.
 
-## O layout, e por que ele é obrigatório
+## O layout
 
-O produto resolve os irmãos por path (`../../../example-rust` no Cargo,
-`../../../example-design-system` no pubspec), e os dois repos são privados. O
-workflow então:
-
-- faz checkout do `dovetail` em `dovetail/`;
-- faz checkout dos irmãos **na raiz do workspace**, ao lado — é a única
-  posição em que os `../../..` resolvem;
-- lê os irmãos com um PAT privado, `secrets.SIBLINGS_TOKEN`.
-
-Sem o secret, **cada job recusa no primeiro passo**, nomeando o que falta:
-um PAT que leia os dois repositórios privados que o monorepo de origem
-consome por path. O repositório público não precisa de nenhum: os dez
-pacotes resolvem entre si por `pubspec_overrides.yaml`.
-Nada aqui assina nem publica — o workflow é um portão, não um `ship`.
+O workflow faz checkout deste repositório e de mais nada: nenhum job depende
+de repositório privado, credencial ou host, e os pacotes resolvem entre si por
+`pubspec_overrides.yaml`. Nada aqui assina nem publica — o workflow é um
+portão, não um `ship`.
 
 ## O que cada leg roda, e por que difere
 
@@ -84,8 +69,7 @@ Como regravar, quando alguém precisar — e é preciso toda vez que um teste
 entra ou sai, porque o baseline guarda `declared` por suíte:
 `tool/rebless_cold.sh`. Ele copia os arquivos **rastreados** (o índice: um
 arquivo novo precisa de `git add` antes, e o script avisa quais ficariam de
-fora) para um diretório irmão deste (os `../../../` do `product/` precisam
-alcançar `example-rust` e `example-design-system`), sem `.dart_tool`, sem `build/`
+fora) para um diretório irmão deste, sem `.dart_tool`, sem `build/`
 e sem `target/`; roda `dart tool/verify.dart test` lá; traz o
 `dist/verify-run.json` de volta, dá `bless --force` e imprime os totais que a
 manchete do README tem de dizer. O `git ls-files -z | rsync --files-from=-
@@ -123,26 +107,11 @@ O mesmo que o Linux: `doctor`, `fast`, `test`, `rust --only toolkit`,
 `cross --only toolkit`, `readme`. Sem as provas docker, que não têm o que
 fazer aqui.
 
-## O `--only toolkit`, e a linha que ele não cruza
-
-`rust` e `cross` aceitam `--only <substr>` (o mesmo `--only` que o `test`
-tem). Os legs que não são macOS usam `--only toolkit` para provar os crates do
-toolkit e **deixar `product/desktop_core_bridge` de fora**: esse crate arrasta
-os crates do `example-rust` por path, e nenhum deles jamais compilou para
-um host Linux ou Windows. Prová-los é o item "o app compila em Windows e
-Linux", não o item "o portão roda nos três SOs" — e o conserto, se falhar,
-mora no repo irmão.
-
 ## O que foi consertado antes da primeira corrida paga
 
-Quatro defeitos que só apareceriam num runner, e que teriam custado uma corrida
+Três defeitos que só apareceriam num runner, e que teriam custado uma corrida
 cada — em minuto de macOS, que vale 10x:
 
-- **A guarda do `SIBLINGS_TOKEN` não conseguia imprimir.** `defaults.run.
-  working-directory: dovetail` vale já para o **primeiro** passo do job, que
-  roda **antes** de `actions/checkout` criar esse diretório. Era a única
-  mensagem do arquivo escrita para quem bate nela primeiro, e a única que não
-  podia ser vista. Agora esse passo carrega `working-directory: .`.
 - **`clippy` e `rustfmt` não chegavam.** `dtolnay/rust-toolchain` instala o
   perfil `minimal`, e nenhum dos dois vem nele — enquanto `verify fast` roda
   `cargo fmt --check` e `cross` roda o clippy. As três pernas ficariam
@@ -173,8 +142,6 @@ documento não afirma o contrário. O que a primeira corrida decide:
 - se o ffi abre janela num runner macOS sem sessão gráfica garantida;
 - se o conjunto de skips do baseline casa com o runner limpo (a forma fria
   foi gravada para isso, e os motivos agora são independentes de máquina);
-- se as suítes Dart de `product/` carregam em Linux e Windows — nenhum teste
-  do produto rodou nesses hosts;
 - se o makensis do runner se comporta como o daqui.
 
 Cada job sobe `dist/verify-run.json` e os relatórios `dist/doctor-*.log`
@@ -183,8 +150,7 @@ como artifact, e roda `dovetail doctor` com `continue-on-error`: num runner,
 
 ## Disparar
 
-`push` para `main`, ou `workflow_dispatch` à mão. Antes do primeiro push:
-criar o secret `SIBLINGS_TOKEN` no repo.
+`push` para `main`, ou `workflow_dispatch` à mão.
 
 ## O `startup_failure` que custou dois dias, e as duas causas
 
@@ -195,8 +161,7 @@ causas, uma atrás da outra:
 1. **`secrets` não é contexto válido em `if:` de step.** O GitHub recusa o
    workflow inteiro antes de criar job nenhum. O `actionlint` nomeia o erro
    em segundos; o padrão sancionado é expor o secret uma vez no `env:` do
-   workflow e testar `env.SIBLINGS_TOKEN` em todo lugar — o que o arquivo
-   faz hoje.
+   workflow e testar `env.<NOME>` em todo lugar.
 2. **A conta do dono não executa Actions.** Mesmo um workflow mínimo de um
    `echo` continuou em `startup_failure` com `name` vazio e zero check-runs.
    A anotação diz isso sem rodeios: *"The job was not started because your
@@ -210,7 +175,7 @@ Enquanto a conta não executa Actions, o leg do Linux tem um caminho local:
 `tool/ci/gate-linux.Dockerfile` constrói o mesmo ambiente do runner
 (Ubuntu 24.04 x86_64, Flutter e Rust pinados, as ferramentas do portão) e
 roda `doctor`, `fast`, `test`, `rust --only toolkit`, `cross --only toolkit`,
-`readme` dentro do container, com os irmãos montados ao lado. É o que provou
+`readme` dentro do container, com o repositório montado nele. É o que provou
 que o portão roda num Linux real antes de qualquer runner.
 
 O portão é determinístico onde se mediu: `bash tool/soak.sh 5` deu `5/5 green`

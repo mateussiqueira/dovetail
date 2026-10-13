@@ -66,13 +66,9 @@ Os quatro últimos só existem em inglês.
 
 ## O que não está aqui
 
-O app que consome o toolkit, e a ponte com o núcleo Rust dele, moram noutro
-repositório: são produto, não framework. O que este repositório carrega é o
-toolkit inteiro — que é tudo de que qualquer app precisa para ser construído,
-empacotado, assinado e atualizado.
-
-Alguns documentos ainda mencionam `product/` como o caminho do exemplo que
-exercita um mecanismo. Esses levam no topo uma nota dizendo isso.
+Um app. O que este repositório carrega é o toolkit inteiro — que é tudo de que
+qualquer app precisa para ser construído, empacotado, assinado e atualizado — e
+o template que o `dovetail new` transforma em um.
 
 ## As decisões, com o porquê
 
