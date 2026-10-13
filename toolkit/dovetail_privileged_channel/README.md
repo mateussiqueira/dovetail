@@ -68,6 +68,11 @@ as in release: `AcceptError::PeerRefused`, with a reason that names what to
 declare. `verify_peer` alone has no policy to judge against, so on Linux it
 refuses too. macOS and Windows do not read the policy.
 
+The policy is also what lets the right peer reach the socket. With one, the
+socket is `0666` in a `0755` directory: every local user can connect, and the
+policy decides who stays. Without one, the socket stays `0600` in a `0700`
+directory, since nobody would be let in anyway.
+
 ## Installing
 
 Not on crates.io, on purpose: reach it by git dependency, as the rest of this
