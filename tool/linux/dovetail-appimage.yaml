@@ -1,5 +1,5 @@
-identifier: com.example.vpnDesktop
-name: VPN
+identifier: com.example.demoApp
+name: Demo
 manufacturer: Example Org
 targets:
   - linux-aarch64

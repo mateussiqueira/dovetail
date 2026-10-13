@@ -1,20 +1,20 @@
-identifier: com.example.vpnDesktop
-name: VPN
+identifier: com.example.demoApp
+name: Demo
 manufacturer: Example Org
 targets:
   - linux-aarch64
 service:
-  name: vpn-desktop-helper.service
-  description: Privileged helper for the VPN tunnel
-  exec-start: /usr/lib/vpn_desktop/vpn_desktop --helper
+  name: demo-app-helper.service
+  description: Privileged helper for the demo app
+  exec-start: /usr/lib/demo_app/demo_app --helper
   capabilities:
     - CAP_NET_ADMIN
-  runtime-directory: vpn-desktop
-  state-directory: vpn-desktop
+  runtime-directory: demo-app
+  state-directory: demo-app
   purge-paths:
-    - /var/lib/vpn-desktop
+    - /var/lib/demo-app
   polkit:
-    action: com.example.vpnDesktop.manage
+    action: com.example.demoApp.manage
     vendor: Example Org
-    description: Manage the VPN tunnel
-    message: Authentication is required to manage the VPN tunnel
+    description: Manage the demo app
+    message: Authentication is required to manage the demo app
