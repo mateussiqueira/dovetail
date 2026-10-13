@@ -63,6 +63,13 @@ fn admit<S>(
     Ok((stream, peer))
 }
 
+#[cfg(any(test, windows))]
+fn take_connected<S>(pending: &mut Option<S>, outcome: io::Result<()>) -> Result<S, AcceptError> {
+    let instance = pending.take().expect("instancia pendente");
+    outcome.map_err(AcceptError::Io)?;
+    Ok(instance)
+}
+
 #[cfg(any(test, all(unix, not(target_os = "macos"))))]
 fn admit_by_policy<S>(
     stream: S,
@@ -102,6 +109,33 @@ mod tests {
         let (server, mut client) = duplex(64);
         let (mut stream, peer) = admit(server, |_| Ok(the_app())).unwrap();
         assert_eq!(peer.subject, "uid=501");
+        stream.write_all(b"x").await.unwrap();
+        assert_eq!(client.read_u8().await.unwrap(), b'x');
+    }
+
+    #[tokio::test]
+    async fn a_pipe_instance_that_failed_to_connect_is_closed_not_kept_for_the_next_accept() {
+        let (server, mut client) = duplex(64);
+        let mut pending = Some(server);
+        let failed = take_connected(&mut pending, Err(io::Error::other("connect failed")));
+        assert!(matches!(failed, Err(AcceptError::Io(_))), "got {failed:?}");
+        assert!(
+            pending.is_none(),
+            "the failed instance would be connected again"
+        );
+        let read = client.read(&mut [0; 1]).await.unwrap();
+        assert_eq!(read, 0, "the failed instance was left open");
+    }
+
+    #[tokio::test]
+    async fn a_connected_pipe_instance_goes_to_the_caller_and_leaves_the_listener() {
+        let (server, mut client) = duplex(64);
+        let mut pending = Some(server);
+        let mut stream = take_connected(&mut pending, Ok(())).unwrap();
+        assert!(
+            pending.is_none(),
+            "the next accept would reuse a connected instance"
+        );
         stream.write_all(b"x").await.unwrap();
         assert_eq!(client.read_u8().await.unwrap(), b'x');
     }
