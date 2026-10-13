@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:{{name}}/main/di/home_module.dart';
+import 'package:{{name}}/presentation/presenters/home/home_presenter.dart';
 import 'package:{{name}}/presentation/ui/pages/home_page.dart';
+import 'package:weave_di/weave_di.dart';
 
-Widget makeHomePage() => HomePage(presenter: makeHomePresenter());
+Widget makeHomePage(WeaveContainer c) =>
+    HomePage(presenter: c.get<HomePresenter>());
