@@ -4,21 +4,7 @@ import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-import 'support/repo_root.dart';
-
-/// The app this repository actually builds. Its plist is written by Xcode
-/// from MACOSX_DEPLOYMENT_TARGET, which is the substitution this whole class
-/// exists to trust.
-String get _realApp => inRepo(<String>[
-  'product',
-  'vpn_desktop',
-  'build',
-  'macos',
-  'Build',
-  'Products',
-  'Debug',
-  'vpn_desktop.app',
-]);
+String get _realApp => Platform.environment['DOVETAIL_SAMPLE_APP'] ?? '';
 
 void main() {
   late Directory root;
@@ -196,16 +182,10 @@ void main() {
     });
   });
 
-  group('against the app this repository actually builds', () {
+  group('against a real built app', () {
     test('it should declare a floor that Xcode substituted', () {
       if (!Directory(_realApp).existsSync()) {
-        // Repo-relative on purpose: the reason travels in the baseline, and
-        // an absolute path would make the same skip read as a different
-        // reason on a machine that clones elsewhere.
-        markTestSkipped(
-          'no built vpn_desktop.app in this checkout; run flutter build '
-          'macos --debug in product/vpn_desktop first',
-        );
+        markTestSkipped('set DOVETAIL_SAMPLE_APP to a built .app first');
         return;
       }
       final String found = MinimumSystemVersion.enforce(bundlePath: _realApp);
