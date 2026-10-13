@@ -15,8 +15,7 @@ where
 {
     app.prepare().await?;
 
-    let endpoint = Endpoint::new(A::ENDPOINT);
-    let listener = bind(&endpoint).await?;
+    let listener = bind(&endpoint::<A>()).await?;
     tracing::info!("helper ouvindo no transporte local do SO");
 
     let incoming = stream::unfold(listener, |mut listener| async move {
@@ -33,6 +32,14 @@ where
     .await;
 
     Ok(())
+}
+
+fn endpoint<A: DaemonApp>() -> Endpoint {
+    let endpoint = Endpoint::new(A::ENDPOINT);
+    match A::peer_policy() {
+        Some(policy) => endpoint.with_peer_policy(policy),
+        None => endpoint,
+    }
 }
 
 async fn accept_loop<C>(
@@ -81,6 +88,48 @@ mod tests {
     use std::time::Instant;
 
     use super::*;
+    use crate::connection_fixture::Echo;
+    use crate::{PeerPolicy, RespPayload, ServiceIdentity};
+
+    #[derive(Default)]
+    struct Guarded;
+
+    #[async_trait::async_trait]
+    impl DaemonApp for Guarded {
+        type Command = ();
+        type Reply = ();
+        const ENDPOINT: &'static str = Echo::ENDPOINT;
+        const IDENTITY: ServiceIdentity = Echo::IDENTITY;
+        const VERSION: &'static str = Echo::VERSION;
+        const LOG_DIR: &'static str = Echo::LOG_DIR;
+
+        fn command_timeout(_: &()) -> Duration {
+            Duration::from_secs(1)
+        }
+
+        fn validate(_: &()) -> Result<(), String> {
+            Ok(())
+        }
+
+        fn peer_policy() -> Option<PeerPolicy> {
+            Some(PeerPolicy::default().allow_uid(0).allow_gid(27))
+        }
+
+        async fn dispatch(&self, _: &()) -> RespPayload<()> {
+            RespPayload::ok(())
+        }
+    }
+
+    #[test]
+    fn an_app_that_declares_no_policy_binds_an_endpoint_without_one() {
+        assert_eq!(endpoint::<Echo>().peer_policy(), None);
+    }
+
+    #[test]
+    fn the_policy_the_app_declares_reaches_the_endpoint() {
+        let declared = PeerPolicy::default().allow_uid(0).allow_gid(27);
+        assert_eq!(endpoint::<Guarded>().peer_policy(), Some(&declared));
+    }
 
     const FIRST_BACKOFF: Duration = Duration::from_millis(100);
 

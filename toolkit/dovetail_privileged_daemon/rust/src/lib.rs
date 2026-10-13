@@ -9,7 +9,7 @@ mod mode;
 mod server;
 mod service;
 
-pub use dovetail_privileged_channel::{ErrorBody, ErrorCode, RespPayload};
+pub use dovetail_privileged_channel::{ErrorBody, ErrorCode, PeerPolicy, RespPayload};
 pub use mode::Mode;
 
 use std::sync::Arc;
@@ -35,6 +35,10 @@ pub trait DaemonApp: Default + Send + Sync + 'static {
 
     fn command_timeout(cmd: &Self::Command) -> std::time::Duration;
     fn validate(cmd: &Self::Command) -> Result<(), String>;
+
+    fn peer_policy() -> Option<PeerPolicy> {
+        None
+    }
 
     async fn prepare(&self) -> anyhow::Result<()> {
         Ok(())

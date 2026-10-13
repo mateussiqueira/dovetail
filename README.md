@@ -63,7 +63,7 @@ Measured on 2026-10-12 at `c2bc5bb`. Beta, as above; this section says, layer by
 
 **Counted.** 1513 Dart tests are declared in `tool/skip_baseline.json`, 45 of them skipped, each with its reason; that baseline last changed on 2026-09-19. 141 Rust test functions sit in five crates, counted from the source rather than from a run. Coverage is not measured.
 
-**Peer authentication** is the part of the privileged channel that is not finished. On macOS a release build refuses every peer, because the code-signature check is not written; a debug build accepts any local process on a world-writable socket. On Linux the peer's credentials are read and no policy is applied. On Windows the client's directory has to be the helper's.
+**Peer authentication** is the part of the privileged channel that is not finished. On macOS a release build refuses every peer, because the code-signature check is not written; a debug build accepts any local process on a world-writable socket. On Linux a peer gets in only when its uid or its gid is in the `PeerPolicy` the product declares, which a daemon built on `dovetail_privileged_daemon` takes from `DaemonApp::peer_policy`; without one, every peer is refused. On Windows the client's directory has to be the helper's.
 
 **Hosted CI** has never passed: GitHub lists 78 runs and none succeeded. In a sample of three (2026-09-09, 2026-09-19, 2026-10-12) no job executed a step. When it does run, `ci.yml` covers the Dart and Flutter suites, formatting, analysis and a publish dry run. It has no job for the Rust crates, and its package list leaves out `dovetail_privileged_helper`.
 
@@ -119,8 +119,8 @@ with `cargo test -- --list` in each crate, and can age.
 | `toolkit/dovetail_rust_core` | 13 Dart | the bridge surface |
 | `toolkit/dovetail_screenshots` | 10 Dart | the capture mechanism, bounded frames, loaded icon fonts |
 | `toolkit/dovetail_http_client` | 35 Rust | typed calls, safe routes, and the keychain round trip |
-| `toolkit/dovetail_privileged_channel` | 55 Rust | the handshake, the framing, who may speak, and a nonce the clock cannot predict |
-| `toolkit/dovetail_privileged_daemon` | 23 Rust | the service lifecycle on three platforms, an accept loop a refused peer cannot stall, and what each opening of a connection puts on the wire |
+| `toolkit/dovetail_privileged_channel` | 62 Rust | the handshake, the framing, who may speak, and a nonce the clock cannot predict |
+| `toolkit/dovetail_privileged_daemon` | 25 Rust | the service lifecycle on three platforms, an accept loop a refused peer cannot stall, what each opening of a connection puts on the wire, and the app's peer policy reaching the channel |
 
 ## Getting started
 
