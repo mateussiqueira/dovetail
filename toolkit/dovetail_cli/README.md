@@ -621,10 +621,10 @@ template (`tool/sdk/templates/app`), not a loose `lib/main.dart`:
 
 ```
 demo/
-├── lib/               clean architecture (the layout the mobile team
-│   ├── data/            uses): data → domain → infra → presentation
-│   ├── domain/          → main, with presenters as interface + impl
-│   ├── infra/           change_notifier_*, DI and routes through weave_di
+├── lib/               clean architecture: data → domain → infra →
+│   ├── data/            presentation → main, with presenters as
+│   ├── domain/          interface + impl (change_notifier_*), composed
+│   ├── infra/           by plain factories and MaterialApp.routes
 │   ├── main/
 │   ├── presentation/
 │   └── shared/
@@ -633,9 +633,9 @@ demo/
 │                       template `bridge init` uses — with one example
 │                       forwarder and the coverage gate that refuses a grown
 │                       core with no forwarder
-├── scripts/checks/    the team's two conformance suites, adapted:
-│   ├── flutter/         the mobile one (layers, naming, Weave, size),
-│   └── rust/            the desktop one (comments, English, size, URLs)
+├── scripts/checks/    two conformance suites:
+│   ├── flutter/         layers, naming, injection, navigation, size
+│   └── rust/            comments, English, size, URLs
 ├── .githooks/         pre-commit and pre-push running the gate
 ├── run_app.sh         both suites' gate + flutter run -d macos
 └── Makefile           quality, codegen, tests, run, hooks, build
@@ -656,18 +656,9 @@ nowhere lies on the first `flutter pub get`. The widget test `new` writes
 genuinely exercises dovetail's own runtime — a smoke test that only renders the
 app would prove Flutter, not the SDK the scaffold promised to wire in.
 
-`weave_di` — the template's DI and routing — resolves by the same rule, and for
-a reason worth writing down: it used to be a `git` dependency with the url
-`git@weave-di.github.com:`, an **SSH alias** that exists in one machine's
-`~/.ssh/config`. Every project this command generated inherited that, so the
-first `flutter pub get` from anyone else died on a host DNS does not resolve.
-The package is now published on pub.dev under MIT, so the ordinary route is a
-hosted version; the SDK copy remains for an offline install. The order is
-`--weave-path`, then `$DOVETAIL_WEAVE_PATH`, then the installed SDK; with none
-of the three the command refuses **before writing a single byte**, because half
-a scaffold is worse than none. A path that exists but has no `pubspec.yaml`
-counts as absent, and so does an exported but empty variable — both would
-produce a `path:` that only fails later.
+The scaffold depends on nothing outside the toolkit: its pubspec lists
+`flutter`, `dovetail` and the bridge, and the code it writes imports only
+those and itself — there are tests pinning both.
 
 No `pubspec.yaml` this command writes carries `git:` — there is a test pinning
 that.

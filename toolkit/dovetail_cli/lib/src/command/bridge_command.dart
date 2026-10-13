@@ -8,8 +8,6 @@ import 'package:dovetail_cli/src/bridge/bridge_scaffold.dart';
 import 'package:dovetail_cli/src/bridge/bridge_template.dart';
 import 'package:dovetail_cli/src/sdk/sdk_locator.dart';
 
-/// Gera o plugin ffiPlugin que fala com o núcleo Rust de um produto — o
-/// mecanismo do qual o `product/desktop_core_bridge` é o fixture.
 final class BridgeCommand extends Command<int> {
   BridgeCommand({SdkLocator? sdkLocator}) {
     addSubcommand(BridgeInitCommand(sdkLocator: sdkLocator));

@@ -1,5 +1,18 @@
 # Changelog
 
+## Não publicado
+
+`new` deixa de depender de um pacote de injeção de dependência e rotas que mora
+num repositório privado: o template compõe o app com funções-fábrica e com o
+`MaterialApp.routes` do próprio Flutter, e um projeto gerado resolve só com o
+toolkit. Saem a opção e a variável de ambiente que apontavam para aquele
+pacote, e o parâmetro `environment` de `NewCommand`, que só existia para ler a
+variável. O teste do scaffold de verdade, que pulava sempre por depender do
+repositório privado, agora roda: `flutter pub get`, `flutter test` e `doctor`
+no projeto gerado.
+
+---
+
 ## 0.1.1 — 2026-09-09
 
 Nada no código mudou. A 0.1.0 foi publicada com o README em português e com
@@ -120,10 +133,10 @@ A porta única do toolkit, distribuída como binário: `init`, `doctor`, `dev`,
 - `build` mostra a saída do `flutter build` conforme ela sai, não no fim: um
   comando que só fala ao terminar não se distingue de um travado. O
   `sign --notarize` faz o mesmo com o `notarytool submit --wait`.
-- `new` localiza as quatro coisas que o scaffold aponta — barril, `weave_di`,
-  template do app e template do bridge — antes de escrever qualquer byte, e
-  recusa **junto**: uma corrida lista tudo o que falta com a sua saída, em vez
-  de mostrar uma falta por corrida. Com uma só, a mensagem é a de sempre.
+- `new` localiza o que o scaffold aponta — barril, template do app e template
+  do bridge — antes de escrever qualquer byte, e recusa **junto**: uma corrida
+  lista tudo o que falta com a sua saída, em vez de mostrar uma falta por
+  corrida. Com uma só, a mensagem é a de sempre.
 - `doctor` ganha a seção `binary`: compara o `dovetail` que responde no PATH
   com o processo atual, por commit e por conjunto de comandos, e nomeia os
   comandos que o instalado não tem — o sinal que antes só aparecia na hora de
