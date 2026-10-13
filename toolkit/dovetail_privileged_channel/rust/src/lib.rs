@@ -1,3 +1,7 @@
+#[cfg(target_os = "macos")]
+mod code_signature;
+#[cfg(all(test, target_os = "macos"))]
+mod code_signature_tests;
 mod endpoint;
 mod envelope;
 mod framing;

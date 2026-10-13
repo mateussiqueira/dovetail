@@ -99,9 +99,17 @@ fn mesmo_caminho(a: &std::path::Path, b: &std::path::Path) -> bool {
 
 #[cfg(target_os = "macos")]
 pub fn verify_peer(conn: &Stream) -> anyhow::Result<PeerCheck> {
+    verify_code(conn, None)
+}
+
+#[cfg(target_os = "macos")]
+pub(crate) fn verify_code(conn: &Stream, requirement: Option<&str>) -> anyhow::Result<PeerCheck> {
     use std::os::unix::io::AsRawFd;
 
     let fd = conn.as_raw_fd();
+    if let Some(requirement) = requirement {
+        return crate::code_signature::check(fd, requirement);
+    }
 
     let mut uid: libc::uid_t = 0;
     let mut gid: libc::gid_t = 0;
@@ -119,7 +127,8 @@ pub fn verify_peer(conn: &Stream) -> anyhow::Result<PeerCheck> {
             gid,
             %subject,
             "PEER ACEITO SEM VERIFICACAO DE CODE SIGNATURE (SO EM DEBUG): qualquer \
-             binario do uid {uid} entra por este canal. Em release o helper recusa."
+             binario do uid {uid} entra por este canal. Em release o helper recusa; \
+             declare o requisito com PeerPolicy::require_code para conferir a assinatura."
         );
         Ok(PeerCheck {
             method: "peercred+codesign".to_string(),
@@ -132,15 +141,12 @@ pub fn verify_peer(conn: &Stream) -> anyhow::Result<PeerCheck> {
         tracing::error!(
             uid,
             gid,
-            "peer rejeitado (fail-closed): verificacao de code signature ausente"
+            "peer rejeitado (fail-closed): requisito de codigo ausente"
         );
         anyhow::bail!(
-            "code signature do peer nao verificada: em release o canal falha \
-             FECHADO em vez de aceitar o uid {uid} (gid {gid}) sem conferir a \
-             assinatura. Implemente, neste arquivo, o pid do peer \
-             (LOCAL_PEERPID/getsockopt) + SecCodeCopyGuestWithAttributes + \
-             SecCodeCheckValidity contra o SecRequirement do produto, para \
-             habilitar o canal em release."
+            "requisito de codigo ausente, uid {uid} (gid {gid}) recusado: em release o \
+             canal recusa todo peer ate o produto declarar o requisito com \
+             Endpoint::with_peer_policy(PeerPolicy::default().require_code(..))"
         )
     }
 }
