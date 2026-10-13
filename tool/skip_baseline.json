@@ -199,6 +199,10 @@
           "declared": 27,
           "skips": {}
         },
+        "test/dovetail_version_test.dart": {
+          "declared": 1,
+          "skips": {}
+        },
         "test/icon_command_test.dart": {
           "declared": 5,
           "skips": {}
