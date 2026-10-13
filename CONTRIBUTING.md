@@ -62,6 +62,8 @@ worktree of the pushed commit:
   files, Conventional Commits, a `feat/`-style branch name. A mechanical
   sweep says why with `PR_SIZE_EXEMPT='<reason>'`; a stacked branch is
   measured against its parent with `PR_BASE=<parent>`;
+- `scripts/checks/check_no_comments.sh`: no comment in a new line of Dart,
+  Rust or shell;
 - every `*_selftest.sh` in `scripts/checks` and `scripts/pr`, `cargo fmt
   --check` on the crates the branch touched, and `dart tool/verify.dart`,
   which `DOVETAIL_VERIFY_SKIP='<reason>'` skips.
@@ -78,17 +80,16 @@ worktree of the pushed commit:
 - `dart format` before committing. The formatter is the arbiter, no debate.
   The vendored `cargokit/` is excluded on purpose: it comes from an archived
   project and the `cross` gate compares the two copies byte for byte.
-- A comment explains **why**, not what the code already says. A comment that
-  narrates the line below it is noise; one that records the decision the line
-  hides, or the defect it avoids, is the most valuable thing in the file.
-- `scripts/checks/check_no_comments.sh` refuses comments in new lines, as in
-  the sibling repositories. It is not applied here, by the decision written
-  in `tool/verify.dart`.
+- No comments in new code (Dart, Rust and shell), as in the sibling
+  repositories: `scripts/checks/check_no_comments.sh` refuses them on
+  pre-push. The why, the decision a line hides or the defect it avoids, goes
+  in the commit body and the pull request, and a test that describes the
+  defect keeps it alive. Existing comments stay until the code around them
+  changes.
 - A test that describes the defect it prevents is worth more than a test that
   describes the function.
-- Identifiers in English. Comments and documentation may be in Portuguese —
-  the project is bilingual about that, and we are not going to translate what
-  already exists.
+- Identifiers in English. Documentation may be in Portuguese — the project is
+  bilingual about that, and we are not going to translate what already exists.
 
 ## Documentation
 
