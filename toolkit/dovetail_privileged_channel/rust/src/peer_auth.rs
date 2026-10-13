@@ -138,11 +138,6 @@ pub(crate) fn verify_code(conn: &Stream, requirement: Option<&str>) -> anyhow::R
 
     #[cfg(not(debug_assertions))]
     {
-        tracing::error!(
-            uid,
-            gid,
-            "peer rejeitado (fail-closed): requisito de codigo ausente"
-        );
         anyhow::bail!(
             "requisito de codigo ausente, uid {uid} (gid {gid}) recusado: em release o \
              canal recusa todo peer ate o produto declarar o requisito com \

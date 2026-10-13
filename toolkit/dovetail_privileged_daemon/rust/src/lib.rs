@@ -6,6 +6,7 @@ mod connection_tests;
 pub mod exit_codes;
 mod logging;
 mod mode;
+mod refusal_log;
 mod server;
 mod service;
 
