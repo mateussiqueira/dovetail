@@ -1,10 +1,5 @@
 //! O nucleo Rust que a ponte usa: o runtime, a bomba de eventos e a
 //! tabela que a governa.
-//!
-//! As camadas seguem o padrao dos projetos de optimas: `domain` nao
-//! depende de ninguem, `data` depende so de `domain`, e `infra` e o unico
-//! lugar que toca recurso do sistema (aqui, as threads do tokio). Este
-//! arquivo e a fachada: quem consome a crate nao precisa saber a camada.
 mod data;
 mod domain;
 mod infra;

@@ -1,9 +1,4 @@
 //! A superficie que o Dart chama: `extern "C"` e nada mais.
-//!
-//! E a camada de apresentacao desta crate — o nome vem do padrao dos
-//! projetos de optimas, e o papel e o mesmo: traduzir o que vem de fora
-//! para o vocabulario de dentro, e devolver codigo de status. Nenhuma
-//! regra mora aqui.
 use crate::domain::status::Status;
 use crate::infra::event_pump;
 use crate::infra::hotkey_parser;
