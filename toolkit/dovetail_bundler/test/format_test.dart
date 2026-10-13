@@ -20,6 +20,21 @@ BundleSpec specFor(String appDirectory) => BundleSpec(
   homepage: 'https://example.com',
 );
 
+String appWithFloor(String floor) {
+  final Directory app = Directory(p.join(root.path, 'Example.app'));
+  Directory(p.join(app.path, 'Contents', 'MacOS')).createSync(recursive: true);
+  File(
+    p.join(app.path, 'Contents', 'MacOS', 'Example'),
+  ).writeAsStringSync('binary');
+  File(p.join(app.path, 'Contents', 'Info.plist')).writeAsStringSync(
+    '<?xml version="1.0" encoding="UTF-8"?>\n'
+    '<plist version="1.0"><dict>\n'
+    '<key>LSMinimumSystemVersion</key><string>$floor</string>\n'
+    '</dict></plist>\n',
+  );
+  return app.path;
+}
+
 void main() {
   setUp(() {
     root = Directory.systemTemp.createTempSync('dovetail_formats');
@@ -203,7 +218,7 @@ void main() {
           '/tmp/Example.app',
           '-ov',
           '-format',
-          'UDZO',
+          'ULMO',
           '/tmp/out.dmg',
         ],
         reason:
@@ -238,34 +253,86 @@ void main() {
         return;
       }
 
-      final Directory app = Directory(p.join(root.path, 'Example.app'))
-        ..createSync();
-      Directory(
-        p.join(app.path, 'Contents', 'MacOS'),
-      ).createSync(recursive: true);
-      File(
-        p.join(app.path, 'Contents', 'MacOS', 'Example'),
-      ).writeAsStringSync('binary');
-      // A bundle with no Info.plist is not a bundle, and the dmg bundler now
-      // says so. The fixture had none because nothing used to read it.
-      File(p.join(app.path, 'Contents', 'Info.plist')).writeAsStringSync(
-        '<?xml version="1.0" encoding="UTF-8"?>\n'
-        '<plist version="1.0"><dict>\n'
-        '<key>LSMinimumSystemVersion</key><string>10.15</string>\n'
-        '</dict></plist>\n',
-      );
-
       const DmgBundler sut = DmgBundler(runner: SystemProcessRunner());
-      final String dmg = await sut.bundle(specFor(app.path));
+      final String dmg = await sut.bundle(specFor(appWithFloor('10.15')));
 
       expect(File(dmg).existsSync(), true);
       expect(p.basename(dmg), 'example_1.2.3.dmg');
 
+      final ProcessResult info = Process.runSync('hdiutil', <String>[
+        'imageinfo',
+        '-plist',
+        dmg,
+      ]);
+      expect(info.stdout.toString(), contains('<string>ULMO</string>'));
       final ProcessResult verified = Process.runSync('hdiutil', <String>[
         'verify',
         dmg,
       ]);
       expect(verified.exitCode, 0, reason: verified.stderr.toString());
+    });
+
+    test('lzma should be the default format', () {
+      const DmgBundler sut = DmgBundler(runner: _NoopRunner());
+
+      expect(sut.format, DiskImageFormat.lzma);
+    });
+
+    test('zlib should reach hdiutil when asked for', () {
+      const DmgBundler sut = DmgBundler(
+        runner: _NoopRunner(),
+        format: DiskImageFormat.zlib,
+      );
+
+      final List<String> arguments = sut.argumentsFor(
+        specFor('/tmp/Example.app'),
+        '/tmp/out.dmg',
+      );
+
+      expect(arguments, containsAllInOrder(<String>['-format', 'UDZO']));
+    });
+
+    test('lzma should open on 10.15 and later only', () {
+      expect(DiskImageFormat.lzma.opensOn('10.14.6'), false);
+      expect(DiskImageFormat.lzma.opensOn('10.15'), true);
+      expect(DiskImageFormat.lzma.opensOn('11.0'), true);
+      expect(DiskImageFormat.lzma.opensOn('26'), true);
+    });
+
+    test('zlib should open on every macOS a bundle can name', () {
+      expect(DiskImageFormat.zlib.opensOn('10.9'), true);
+    });
+
+    test(
+      'an lzma dmg should be refused for an app that runs on 10.14',
+      () async {
+        final _Writing runner = _Writing();
+        final DmgBundler sut = DmgBundler(runner: runner);
+
+        await expectLater(
+          sut.bundle(specFor(appWithFloor('10.14'))),
+          throwsA(
+            isA<BundleFailure>().having(
+              (BundleFailure failure) => failure.message,
+              'message',
+              contains('macOS 10.15 and later'),
+            ),
+          ),
+        );
+        expect(runner.calls, isEmpty);
+      },
+    );
+
+    test('a zlib dmg should wrap the app that runs on 10.14', () async {
+      final _Writing runner = _Writing();
+      final DmgBundler sut = DmgBundler(
+        runner: runner,
+        format: DiskImageFormat.zlib,
+      );
+
+      await sut.bundle(specFor(appWithFloor('10.14')));
+
+      expect(runner.calls.single, contains('UDZO'));
     });
   });
   group('AppVersion build metadata', () {
@@ -482,4 +549,22 @@ final class _NoopRunner implements ProcessRunner {
     String? stdin,
     Duration? timeout,
   }) async => const ProcessOutcome(exitCode: 0, stdout: '', stderr: '');
+}
+
+final class _Writing implements ProcessRunner {
+  final List<List<String>> calls = <List<String>>[];
+
+  @override
+  Future<ProcessOutcome> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    String? stdin,
+    Duration? timeout,
+  }) async {
+    calls.add(<String>[executable, ...arguments]);
+    File(arguments.last).writeAsStringSync('dmg bytes');
+    return const ProcessOutcome(exitCode: 0, stdout: '', stderr: '');
+  }
 }

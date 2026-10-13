@@ -119,7 +119,7 @@ void main() {
       final List<String> hdiutil = recording.calls.firstWhere(
         (List<String> call) => call.first == 'hdiutil',
       );
-      expect(hdiutil, containsAllInOrder(<String>['-format', 'UDZO']));
+      expect(hdiutil, containsAllInOrder(<String>['-format', 'ULMO']));
     });
 
     test('refuses with no instructions', () {

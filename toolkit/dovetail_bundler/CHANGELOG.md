@@ -1,5 +1,22 @@
 # Changelog
 
+## Não publicado
+
+O `.dmg` sai em LZMA (`ULMO`) por padrão, e não mais em zlib (`UDZO`). No app de
+exemplo em arm64, a mediana de três corridas caiu de 11,7 MB para 8,3 MB, e o
+universal de 22,7 MB para 16,2 MB. `DiskImageFormat.zlib` devolve o `UDZO`.
+
+O LZMA só abre do macOS 10.15 em diante, que é o piso do próprio Flutter. Um
+`.app` que declara `LSMinimumSystemVersion` mais antigo é recusado antes do
+`hdiutil`, com o `UDZO` como saída.
+
+O tamanho do LZMA varia entre corridas iguais: às vezes o `hdiutil` deixa no
+arquivo um buraco de cerca de 1 MiB de zeros que nenhum bloco referencia. O
+conteúdo montado é idêntico em todas as corridas. O updater não baixa o `.dmg`,
+e sim o `.app.tar.gz`.
+
+---
+
 ## 0.1.2 — 2026-09-18
 
 O plist do daemon passa a sair com `StandardOutPath` e `StandardErrorPath`

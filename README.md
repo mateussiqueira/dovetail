@@ -108,7 +108,7 @@ with `cargo test -- --list` in each crate, and can age.
 | --- | --- | --- |
 | `toolkit/dovetail` | 7 Dart | the umbrella re-exports the runtime, and a test proves the surface does not drift |
 | `toolkit/dovetail_cli` | 566 Dart | the pipeline, end to end, against a local host with a private CA |
-| `toolkit/dovetail_bundler` | 321 Dart | every artefact format, read back by its own header |
+| `toolkit/dovetail_bundler` | 327 Dart | every artefact format, read back by its own header |
 | `toolkit/dovetail_updater` | 172 Dart | a manifest without a valid signature is refused |
 | `toolkit/dovetail_platform_channel` | 201 Dart | window, tray, single instance, deep links, appearance |
 | `toolkit/dovetail_signer` | 94 Dart | signing refuses what it cannot prove |
