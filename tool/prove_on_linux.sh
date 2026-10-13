@@ -51,9 +51,9 @@ echo "==> the updater probe, cross compiled for linux"
 
 echo "==> an app directory shaped like a flutter linux build"
 (cd "$here/tool/linux" && dart compile exe probe_app.dart --target-os linux \
-  --target-arch "$dart_arch" -o "$stage/work/appdir/vpn_desktop") \
+  --target-arch "$dart_arch" -o "$stage/work/appdir/demo_app") \
   | sed 's/^/    /'
-chmod 755 "$stage/work/appdir/vpn_desktop"
+chmod 755 "$stage/work/appdir/demo_app"
 printf '{"AssetManifest.json":["AssetManifest.json"]}' \
   > "$stage/work/appdir/data/flutter_assets/AssetManifest.json"
 head -c 4096 /dev/urandom > "$stage/work/appdir/lib/libapp.so"
