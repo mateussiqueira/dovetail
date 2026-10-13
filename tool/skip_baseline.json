@@ -53,13 +53,13 @@
         "test/mach_o_test.dart": {
           "declared": 18,
           "skips": {
-            "BundleArchitectures the real app should satisfy the architecture it was built for": "build vpn_desktop for macOS first",
-            "BundleArchitectures the real arm-only app should be refused as universal": "build vpn_desktop for macOS first",
-            "BundleArchitectures the summary should name the files that are short, not just count": "build vpn_desktop for macOS first",
-            "DmgBundler with an architecture promise should refuse to wrap a thin app in a universal dmg": "build vpn_desktop for macOS first",
+            "BundleArchitectures the real app should satisfy the architecture it was built for": "set DOVETAIL_SAMPLE_APP to a built .app first",
+            "BundleArchitectures the real arm-only app should be refused as universal": "set DOVETAIL_SAMPLE_APP to a built .app first",
+            "BundleArchitectures the summary should name the files that are short, not just count": "set DOVETAIL_SAMPLE_APP to a built .app first",
+            "DmgBundler with an architecture promise should refuse to wrap a thin app in a universal dmg": "set DOVETAIL_SAMPLE_APP to a built .app first",
             "MachO against lipo, on real binaries should agree with lipo on a merged universal library": "build both apple slices first",
             "MachO against lipo, on real binaries should agree with lipo on each cross-compiled slice": "build both apple slices first",
-            "MachO against lipo, on real binaries should agree with lipo on every Mach-O inside the real app": "build vpn_desktop for macOS first"
+            "MachO against lipo, on real binaries should agree with lipo on every Mach-O inside the real app": "set DOVETAIL_SAMPLE_APP to a built .app first"
           }
         },
         "test/macos_pkg_test.dart": {
@@ -69,7 +69,7 @@
         "test/minimum_system_version_test.dart": {
           "declared": 12,
           "skips": {
-            "against the app this repository actually builds it should declare a floor that Xcode substituted": "no built vpn_desktop.app in this checkout; run flutter build macos --debug in product/vpn_desktop first"
+            "against a real built app it should declare a floor that Xcode substituted": "set DOVETAIL_SAMPLE_APP to a built .app first"
           }
         },
         "test/msi_bundler_test.dart": {
@@ -159,8 +159,8 @@
         "test/bundle_arch_test.dart": {
           "declared": 5,
           "skips": {
-            "a thin app asked for universal should be refused": "build vpn_desktop for macOS first",
-            "the architecture asked for should reach the file name": "build vpn_desktop for macOS first"
+            "a thin app asked for universal should be refused": "set DOVETAIL_SAMPLE_APP to a built .app first",
+            "the architecture asked for should reach the file name": "set DOVETAIL_SAMPLE_APP to a built .app first"
           }
         },
         "test/cli_log_test.dart": {
@@ -577,8 +577,8 @@
         "test/real_codesign_test.dart": {
           "declared": 2,
           "skips": {
-            "against the app this repository actually builds signing inside out ad hoc should satisfy the system verifier": "needs macOS and a built vpn_desktop.app; run flutter build macos --debug in product/vpn_desktop first",
-            "against the app this repository actually builds the signed bundle should report a signature, not an absence": "needs macOS and a built vpn_desktop.app"
+            "against a real built app signing inside out ad hoc should satisfy the system verifier": "needs macOS and DOVETAIL_SAMPLE_APP set to a built .app",
+            "against a real built app the signed bundle should report a signature, not an absence": "needs macOS and DOVETAIL_SAMPLE_APP set to a built .app"
           }
         },
         "test/real_universal_codesign_test.dart": {

@@ -7,16 +7,7 @@ import 'package:test/test.dart';
 
 import 'support/repo_root.dart';
 
-final String _realApp = inRepo(<String>[
-  'product',
-  'vpn_desktop',
-  'build',
-  'macos',
-  'Build',
-  'Products',
-  'Debug',
-  'vpn_desktop.app',
-]);
+final String _realApp = Platform.environment['DOVETAIL_SAMPLE_APP'] ?? '';
 
 final String _shortcutRust = inRepo(<String>[
   'toolkit',
@@ -207,7 +198,7 @@ void main() {
 
     test('should agree with lipo on every Mach-O inside the real app', () {
       if (!Directory(_realApp).existsSync()) {
-        markTestSkipped('build vpn_desktop for macOS first');
+        markTestSkipped('set DOVETAIL_SAMPLE_APP to a built .app first');
         return;
       }
 
@@ -229,7 +220,7 @@ void main() {
   group('BundleArchitectures', () {
     test('the real arm-only app should be refused as universal', () {
       if (!Directory(_realApp).existsSync()) {
-        markTestSkipped('build vpn_desktop for macOS first');
+        markTestSkipped('set DOVETAIL_SAMPLE_APP to a built .app first');
         return;
       }
 
@@ -250,7 +241,7 @@ void main() {
 
     test('the real app should satisfy the architecture it was built for', () {
       if (!Directory(_realApp).existsSync()) {
-        markTestSkipped('build vpn_desktop for macOS first');
+        markTestSkipped('set DOVETAIL_SAMPLE_APP to a built .app first');
         return;
       }
 
@@ -266,7 +257,7 @@ void main() {
       'the summary should name the files that are short, not just count',
       () {
         if (!Directory(_realApp).existsSync()) {
-          markTestSkipped('build vpn_desktop for macOS first');
+          markTestSkipped('set DOVETAIL_SAMPLE_APP to a built .app first');
           return;
         }
 
@@ -275,7 +266,10 @@ void main() {
           required_: <TargetArch>{TargetArch.x86_64, TargetArch.arm64},
         ).summary;
 
-        expect(summary, contains('Contents/MacOS/vpn_desktop'));
+        expect(
+          summary,
+          contains('Contents/MacOS/${p.basenameWithoutExtension(_realApp)}'),
+        );
         expect(summary, contains('arm64'));
       },
     );
@@ -341,7 +335,7 @@ void main() {
 
     test('should refuse to wrap a thin app in a universal dmg', () async {
       if (!Directory(_realApp).existsSync()) {
-        markTestSkipped('build vpn_desktop for macOS first');
+        markTestSkipped('set DOVETAIL_SAMPLE_APP to a built .app first');
         return;
       }
 

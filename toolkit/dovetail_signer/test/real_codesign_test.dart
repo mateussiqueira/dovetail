@@ -4,18 +4,7 @@ import 'package:dovetail_signer/dovetail_signer.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-import 'support/repo_root.dart';
-
-final String _builtApp = inRepo(<String>[
-  'product',
-  'vpn_desktop',
-  'build',
-  'macos',
-  'Build',
-  'Products',
-  'Debug',
-  'vpn_desktop.app',
-]);
+final String _builtApp = Platform.environment['DOVETAIL_SAMPLE_APP'] ?? '';
 
 List<String> walk(String root) {
   final List<String> found = <String>[];
@@ -28,7 +17,7 @@ List<String> walk(String root) {
 }
 
 void main() {
-  group('against the app this repository actually builds', () {
+  group('against a real built app', () {
     late String bundle;
 
     setUpAll(() {
@@ -56,8 +45,7 @@ void main() {
       () async {
         if (bundle.isEmpty) {
           markTestSkipped(
-            'needs macOS and a built vpn_desktop.app; run '
-            'flutter build macos --debug in product/vpn_desktop first',
+            'needs macOS and DOVETAIL_SAMPLE_APP set to a built .app',
           );
           return;
         }
@@ -91,7 +79,9 @@ void main() {
 
     test('the signed bundle should report a signature, not an absence', () {
       if (bundle.isEmpty) {
-        markTestSkipped('needs macOS and a built vpn_desktop.app');
+        markTestSkipped(
+          'needs macOS and DOVETAIL_SAMPLE_APP set to a built .app',
+        );
         return;
       }
 

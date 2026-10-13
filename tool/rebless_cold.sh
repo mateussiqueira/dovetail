@@ -5,9 +5,6 @@
 # sem build/ e sem target/; `verify test` lá; o run file volta; `bless --force`
 # (o commit do irmão é outro, por isso o force).
 #
-# Irmão, e não qualquer lugar: os `../../../` de product/ precisam alcançar
-# example-rust e example-design-system ao lado deste repositório.
-#
 # Por que frio: o baseline guarda `declared` por suíte e cada skip com motivo.
 # Gravado nesta máquina quente, ele descreve o que ESTA máquina pula (2 ou 3),
 # e um runner limpo — sem .app construído, sem fatias Apple, sem a crate do
@@ -54,7 +51,7 @@ git -c user.name=cold -c user.email=cold@local commit -qm cold
 echo "cold tree  $cold ($(git rev-parse --short HEAD))"
 
 set +e
-env -u DOVETAIL_WEAVE_PATH dart tool/verify.dart test
+env -u DOVETAIL_WEAVE_PATH -u DOVETAIL_SAMPLE_APP -u DOVETAIL_PRODUCT dart tool/verify.dart test
 code=$?
 set -e
 if [ "$code" -ne 0 ]; then

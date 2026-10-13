@@ -6,18 +6,7 @@ import 'package:dovetail_cli/dovetail_cli.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-import 'support/repo_root.dart';
-
-final String _realApp = inRepo(<String>[
-  'product',
-  'vpn_desktop',
-  'build',
-  'macos',
-  'Build',
-  'Products',
-  'Debug',
-  'vpn_desktop.app',
-]);
+final String _realApp = Platform.environment['DOVETAIL_SAMPLE_APP'] ?? '';
 
 void main() {
   late Directory root;
@@ -58,7 +47,7 @@ void main() {
 
   test('a thin app asked for universal should be refused', () async {
     if (!Directory(_realApp).existsSync()) {
-      markTestSkipped('build vpn_desktop for macOS first');
+      markTestSkipped('set DOVETAIL_SAMPLE_APP to a built .app first');
       return;
     }
 
@@ -80,7 +69,7 @@ void main() {
 
   test('the architecture asked for should reach the file name', () async {
     if (!Directory(_realApp).existsSync()) {
-      markTestSkipped('build vpn_desktop for macOS first');
+      markTestSkipped('set DOVETAIL_SAMPLE_APP to a built .app first');
       return;
     }
 
