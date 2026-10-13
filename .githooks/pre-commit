@@ -1,0 +1,4 @@
+#!/bin/sh
+motor="$(git rev-parse --show-toplevel)/scripts/checks/pre_commit.sh"
+[ -f "$motor" ] || { echo "pre-commit: $motor ausente nesta árvore; nada a conferir"; exit 0; }
+exec bash "$motor"
