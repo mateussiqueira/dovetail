@@ -91,6 +91,20 @@ flutter create --platforms=linux . >/dev/null 2>&1
 echo "── flutter pub get ──"
 flutter pub get >/dev/null 2>&1
 
+echo "── weave_di do pub.dev ──"
+if grep -q weave_di pubspec_overrides.yaml; then
+  echo "the SDK overrides weave_di; the app has to resolve it from pub.dev" >&2
+  exit 1
+fi
+weave_source="$(awk '/^  weave_di:/ {f=1} f && /source:/ {print $2; exit}' pubspec.lock)"
+if [ "$weave_source" != "hosted" ]; then
+  echo "weave_di resolved from '$weave_source', not from pub.dev" >&2
+  exit 1
+fi
+
+echo "── flutter analyze ──"
+flutter analyze 2>&1 | tail -1
+
 echo "── flutter test ──"
 flutter test 2>&1 | tail -1
 

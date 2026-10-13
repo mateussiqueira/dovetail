@@ -45,17 +45,15 @@ step "prove_sdk.sh (canário do container)" bash tool/ci/prove_sdk.sh
 # provado. Um release que pula um canário em silêncio é pior do que um que
 # recusa: quem lê "todos os canários verdes" acredita.
 core="${DOVETAIL_CORE_PATH:-$repo_root/../example-rust/crates/core}"
-weave="${DOVETAIL_WEAVE_PATH:-$repo_root/../../projects/weave}"
 bridge_proof="verde"
-if [ -f "$core/Cargo.toml" ] && [ -f "$weave/pubspec.yaml" ]; then
+if [ -f "$core/Cargo.toml" ]; then
   step "prove_bridge.sh (canário do bridge)" bash tool/ci/prove_bridge.sh
 else
   bridge_proof="PULADO"
   echo
   echo "==> prove_bridge.sh PULADO"
-  [ -f "$core/Cargo.toml" ] || echo "    sem o núcleo do produto em $core"
-  [ -f "$weave/pubspec.yaml" ] || echo "    sem o checkout do weave_di em $weave"
-  echo "    aponte com \$DOVETAIL_CORE_PATH / \$DOVETAIL_WEAVE_PATH para prová-lo"
+  echo "    sem o núcleo do produto em $core"
+  echo "    aponte com \$DOVETAIL_CORE_PATH para prová-lo"
 fi
 
 # O canário do daemon responde a pergunta que nenhuma unidade respondeu: as seis
