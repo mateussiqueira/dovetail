@@ -10,6 +10,7 @@ mod domain;
 mod infra;
 
 pub use data::event_pump::pump;
+pub use data::line_subscriber::LineSubscriber;
 pub use data::pump_table::Replacement;
 pub use domain::abortable_pump::AbortablePump;
 
@@ -17,5 +18,6 @@ pub use domain::abortable_pump::AbortablePump;
 /// e `infra` se encontram — e por isso nenhuma das duas conhece a outra.
 pub type PumpTable = data::pump_table::PumpTable<infra::runtime_pump_task::PumpTask>;
 pub use domain::bridge_error::BridgeError;
+pub use infra::log_lines::log_lines;
 pub use infra::runtime_pump_task::PumpTask;
 pub use infra::tokio_runtime::{run_on_runtime, runtime};

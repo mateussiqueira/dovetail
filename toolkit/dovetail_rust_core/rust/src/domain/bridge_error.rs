@@ -7,6 +7,7 @@ use std::fmt;
 pub enum BridgeError {
     RuntimeUnavailable(String),
     TaskPanicked(String),
+    LogUnavailable(String),
 }
 
 impl fmt::Display for BridgeError {
@@ -17,6 +18,9 @@ impl fmt::Display for BridgeError {
             }
             BridgeError::TaskPanicked(reason) => {
                 write!(f, "a bridge task did not finish: {reason}")
+            }
+            BridgeError::LogUnavailable(reason) => {
+                write!(f, "could not forward the log lines: {reason}")
             }
         }
     }
