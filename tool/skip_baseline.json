@@ -241,9 +241,7 @@
         },
         "test/new_command_test.dart": {
           "declared": 25,
-          "skips": {
-            "what it scaffolds the scaffold should be a real project: flutter test and doctor pass": "set $DOVETAIL_WEAVE_PATH to a weave_di checkout to resolve the scaffold for real; the repository is private, so the gate cannot assume one"
-          }
+          "skips": {}
         },
         "test/package_paperwork_test.dart": {
           "declared": 4,
