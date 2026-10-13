@@ -71,9 +71,9 @@ void main() {
       ..createSync(recursive: true)
       ..writeAsStringSync(
         '[dependencies]\n'
-        'example-core = { path = "../../../../example-rust/crates/core" }\n'
-        'foo = { path = "../../../../example-rust/crates/foo" }\n'
-        'bar = { path = "../../../../example-rust/crates/bar" }\n'
+        'example-core = { path = "../../../../core-workspace/crates/core" }\n'
+        'foo = { path = "../../../../core-workspace/crates/foo" }\n'
+        'bar = { path = "../../../../core-workspace/crates/bar" }\n'
         'dovetail_rust_core = { path = "../../../toolkit/dovetail_rust_core/rust" }\n'
         'flutter_rust_bridge = "=2.13.0"\n',
       );
@@ -188,7 +188,7 @@ void main() {
       expect(cargo, contains('bar = { path ='));
       expect(
         cargo,
-        isNot(contains('../../../../example-rust/crates/core')),
+        isNot(contains('../../../../core-workspace/crates/core')),
         reason: 'o dep do core não é copiado — o template já o declara',
       );
       expect(

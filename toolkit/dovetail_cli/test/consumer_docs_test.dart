@@ -12,7 +12,7 @@ import 'support/repo_root.dart';
 /// `dovetail dev`, `make tests`). O que é só do monorepo pode ficar, desde
 /// que DIGA que é: num parágrafo em itálico que começa com `*(` e nomeia o
 /// monorepo, como os três que já existem.
-const List<String> _repoOnly = <String>['tool/verify.dart', 'product/'];
+const List<String> _repoOnly = <String>['tool/verify.dart'];
 
 /// A marca vale nos dois idiomas: o documento existe em ingles no caminho
 /// canonico e em portugues ao lado, e a regra e sobre o que o leitor de um

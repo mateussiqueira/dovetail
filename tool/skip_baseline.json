@@ -153,7 +153,7 @@
         "test/build_defines_contract_test.dart": {
           "declared": 1,
           "skips": {
-            "every define the build emits should be read by the product": "este contrato mede um app real contra os defines que o build emite, e o app do produto não mora no repositório público. Rode-o no monorepo que carrega product/, ou aponte um app seu."
+            "every define the build emits should be read by the product": "set DOVETAIL_PRODUCT to an app root to measure its lib/ against the defines the build emits"
           }
         },
         "test/bundle_arch_test.dart": {

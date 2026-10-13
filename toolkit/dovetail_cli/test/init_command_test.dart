@@ -44,7 +44,7 @@ void main() {
   void flutterProject({
     String version = '1.4.2+9',
     List<String> platforms = const <String>['macos', 'linux'],
-    String name = 'vpn_desktop',
+    String name = 'demo_app',
   }) {
     writeFile('pubspec.yaml', 'name: $name\nversion: $version\n');
     for (final String platform in platforms) {
@@ -133,12 +133,12 @@ void main() {
 
     test('an underscore in the package name should not reach the '
         'identifier', () async {
-      flutterProject(name: 'vpn_desktop');
+      flutterProject(name: 'demo_app');
 
       expect(await init(<String>[]), 0);
       expect(
         written().identifier,
-        'com.example.vpn-desktop',
+        'com.example.demo-app',
         reason:
             'CFBundleIdentifier takes alphanumerics, hyphens and dots only, so '
             'an underscore makes a bundle macOS refuses to launch',
