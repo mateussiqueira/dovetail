@@ -2,11 +2,6 @@
 
 # Release simulado: a esteira inteira sem as três coisas que ainda não existem
 
-> **Contexto para quem chega pelo repositório público.** Este documento cita
-> `product/`, que é o app privado onde o toolkit é exercitado, e não existe
-> neste repositório. O mecanismo descrito é do toolkit e vale para qualquer
-> app; só o caminho do exemplo é de outra árvore.
-
 Uma release de produção precisa de três coisas que este repositório não tem: a
 chave minisign de produção, um host https e um Developer ID com credenciais de
 notarização. Nenhuma delas é código. O que este documento descreve é como rodar
@@ -21,22 +16,21 @@ contrato**, para que o dia da release real seja trocar valores no
 | Developer ID | identidade ad hoc `-` | `APPLE_SIGNING_IDENTITY=-` | ordem dos selos, entitlements, `codesign --verify` no `.app` e no `.dmg` |
 
 O que **não** se prova assim, e só o real prova: Gatekeeper e notarização
-(`spctl` dizendo `Notarized Developer ID`), DNS e CDN, e o parque Tauri
-aceitando o update — o app novo é outro binário, com outra chave, e o plugin
-do updater do parque nunca é chamado; a compatibilidade a honrar é a do
-`example-rust` novo consigo mesmo.
+(`spctl` dizendo `Notarized Developer ID`), DNS e CDN, e um app instalado
+aceitando o update.
 
 ## Um comando
 
 ```bash
-tool/ci/prove_update.sh --host macos
+PRODUCT=<raiz do app> tool/ci/prove_update.sh --host macos
 ```
 
-Ele exige o `.app` de Release já construído no produto (`dovetail build` em
-`product/vpn_desktop`), `openssl`, `minisign`, `dart`, `python3` e as
-ferramentas de linha de comando do Xcode (`codesign`, `hdiutil`), e roda
-**sempre** o CLI da árvore, nunca o instalado no PATH — o instalado pode estar
-comandos atrás, e o `doctor` diz quando está.
+`PRODUCT` é a raiz de um app com o `.app` de Release já construído (`dovetail
+build` nele; um app do `dovetail new`, ou qualquer app Flutter depois do
+`dovetail init`, serve). Ele exige também `openssl`, `minisign`, `dart`,
+`python3` e as ferramentas de linha de comando do Xcode (`codesign`,
+`hdiutil`), e roda **sempre** o CLI da árvore, nunca o instalado no PATH — o
+instalado pode estar comandos atrás, e o `doctor` diz quando está.
 
 O que acontece, na ordem:
 
@@ -57,8 +51,8 @@ O que acontece, na ordem:
    ao Security framework da Apple, que exige isso de todo certificado de
    servidor TLS (o `curl` aceita sem; o cliente Dart recusa com "application
    verification failure"). `tool/serve_dist.dart` serve `dist/` por https,
-   respondendo também `/desktop-version/check/<os>` — a forma do endpoint que
-   o app consulta.
+   respondendo também `/<qualquer>/check/<os>` — a forma que o
+   `update.endpoint` toma.
 5. `probe` **sem** `--ca` tem de falhar pelo handshake (o cliente não aceita
    certificado que não conhece); com `--ca tls/ca.crt --public-key
    keys/staging.pub --target darwin-universal --installed 0.9.0 --download`,
@@ -73,12 +67,12 @@ app instalado aceitar um update do host local:
 
 - A raiz de staging **não é um projeto Flutter**: só carrega o `.app` copiado,
   o yaml, as chaves e o TLS. O build que embute os valores de staging é feito
-  no produto: o `dovetail.yaml` de `product/vpn_desktop` já carrega a chave de
-  staging e o endpoint em `localhost:8443`, então `dovetail build` lá embute
+  no app: ponha a chave de staging e o endpoint em `localhost:8443` no
+  `dovetail.yaml` dele, e o `dovetail build` lá embute
   os dois via `--dart-define`, e o app os lê com `String.fromEnvironment`. Para
   que esse app aceite o manifesto do stage, o stage tem de assinar com a
   **mesma** chave (aponte `update.key` e `update.public-key` do yaml de stage
-  para `keys/update.key` do produto, em vez do par descartável).
+  para `keys/update.key` do app, em vez do par descartável).
 - A CA privada precisa ser confiada pelo app. O `HttpClient` do Dart não lê o
   keychain para raízes extras, então a costura é a mesma do `probe`: um
   `HttpArtifactFetcher(client: ProbeCommand.clientTrusting(caPath))` ou o
@@ -89,8 +83,7 @@ app instalado aceitar um update do host local:
   que o build tira `dovetail.version`; não há flag para isso) e publique com
   `dovetail release --version` igual, senão o veredito é `up to date`.
 - O app em sandbox precisa de `com.apple.security.network.client` para sair
-  para a rede; os dois `.entitlements` do produto agora o carregam, e um teste
-  do produto prende isso.
+  para a rede, nos dois `.entitlements` dele.
 
 ## O dia da release real
 

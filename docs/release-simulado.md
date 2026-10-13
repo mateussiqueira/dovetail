@@ -2,12 +2,6 @@
 
 # Simulated release: the whole pipeline without the three things that do not exist yet
 
-> **Context for anyone arriving through the public repository.** This document
-> mentions `product/`, which is the private app where the toolkit is
-> exercised, and it does not exist in this repository. The mechanism described
-> belongs to the toolkit and holds for any app; only the example's path
-> belongs to another tree.
-
 A production release needs three things this repository does not have: the
 production minisign key, an https host, and a Developer ID with notarisation
 credentials. None of them is code. What this document describes is how to run
@@ -22,22 +16,22 @@ in `dovetail.yaml` and in the environment — and nothing else.
 | Developer ID | the ad hoc identity `-` | `APPLE_SIGNING_IDENTITY=-` | seal ordering, entitlements, `codesign --verify` on the `.app` and the `.dmg` |
 
 What this **cannot** prove, and only the real thing can: Gatekeeper and
-notarisation (`spctl` saying `Notarized Developer ID`), DNS and CDN, and the
-installed Tauri fleet accepting the update — the new app is a different
-binary, with a different key, and the fleet's updater plugin is never called;
-the compatibility to honour is the new app's with itself.
+notarisation (`spctl` saying `Notarized Developer ID`), DNS and CDN, and an installed app
+accepting the update.
 
 ## One command
 
 ```bash
-tool/ci/prove_update.sh --host macos
+PRODUCT=<app root> tool/ci/prove_update.sh --host macos
 ```
 
-It requires the Release `.app` already built in the product (`dovetail build`
-in the app's directory), plus `openssl`, `minisign`, `dart`, `python3` and the
-Xcode command line tools (`codesign`, `hdiutil`). It **always** runs the CLI
-from the tree, never the one installed on the `PATH` — the installed one may
-be several commands behind, and `doctor` says when it is.
+`PRODUCT` is the root of an app whose Release `.app` is already built
+(`dovetail build` in it; an app from `dovetail new`, or any Flutter app after
+`dovetail init`, will do). It also needs `openssl`, `minisign`, `dart`,
+`python3` and the Xcode command line tools (`codesign`, `hdiutil`). It
+**always** runs the CLI from the tree, never the one installed on the `PATH` —
+the installed one may be several commands behind, and `doctor` says when it
+is.
 
 What happens, in order:
 
@@ -60,8 +54,8 @@ What happens, in order:
    to Apple's Security framework, which demands that of every TLS server
    certificate (`curl` accepts it without; the Dart client refuses with
    "application verification failure"). `tool/serve_dist.dart` serves `dist/`
-   over https, answering `/desktop-version/check/<os>` as well — the endpoint
-   shape the app queries.
+   over https, answering `/<any>/check/<os>` as well — the shape
+   `update.endpoint` takes.
 5. `probe` **without** `--ca` must fail at the handshake (the client does not
    accept a certificate it does not know); with `--ca tls/ca.crt --public-key
    keys/staging.pub --target darwin-universal --installed 0.9.0 --download`,
@@ -76,12 +70,12 @@ To watch an installed app accept an update from the local host:
 
 - The staging root **is not a Flutter project**: it only carries the copied
   `.app`, the yaml, the keys and the TLS material. The build that embeds the
-  staging values happens in the product: its `dovetail.yaml` already carries
-  the staging key and the `localhost:8443` endpoint, so `dovetail build`
+  staging values happens in the app: put the staging key and the
+  `localhost:8443` endpoint in its `dovetail.yaml`, and `dovetail build`
   there embeds both through `--dart-define`, and the app reads them with
   `String.fromEnvironment`. For that app to accept the stage's manifest, the
   stage has to sign with the **same** key (point the stage yaml's
-  `update.key` and `update.public-key` at the product's `keys/update.key`
+  `update.key` and `update.public-key` at the app's `keys/update.key`
   instead of the throwaway pair).
 - The private CA has to be trusted by the app. Dart's `HttpClient` does not
   read the keychain for extra roots, so the seam is the same one `probe`
@@ -94,8 +88,7 @@ To watch an installed app accept an update from the local host:
   and publish with a matching `dovetail release --version`, otherwise the
   verdict is `up to date`.
 - A sandboxed app needs `com.apple.security.network.client` to reach the
-  network; both of the product's `.entitlements` now carry it, and a test in
-  the product pins that.
+  network, in both of its `.entitlements`.
 
 ## The day of the real release
 
