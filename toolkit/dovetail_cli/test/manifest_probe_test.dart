@@ -414,18 +414,13 @@ void main() {
   });
 
   group('what the product backend answers', () {
-    // A forma exata que DesktopVersionService.manifestFor devolve, no
-    // vpn.tv-back-end. Copiada, e não gerada, porque os dois lados são repos
-    // separados e não há junta mais barata — do outro lado o contrapeso é
-    // src/desktop-version/manifest.spec.ts, que prende a mesma forma contra o
-    // serviço. Se um dos dois mudar sozinho, um dos dois cai.
-    const String fromNest =
+    const String fromBackend =
         '{'
         '"version":"2.1.0",'
         '"notes":"Corrige a reconexão silenciosa.",'
         '"pub_date":"2026-09-03T00:00:00.000Z",'
         '"platforms":{"darwin-universal":{'
-        '"url":"https://updates.example.com/desktop-version/download/a3f1",'
+        '"url":"https://updates.example.com/download/a3f1",'
         '"signature":"SIGNATURE"}}}';
 
     test('a client asking for its own arch should find the release', () async {
@@ -435,7 +430,7 @@ void main() {
       }
       final ProbeReport report = await probe(
         <String, Object>{
-          _endpoint: fromNest.replaceFirst(
+          _endpoint: fromBackend.replaceFirst(
             'SIGNATURE',
             base64.encode(utf8.encode(signatureText!)),
           ),
@@ -455,7 +450,7 @@ void main() {
           return;
         }
         final UpdateManifest manifest = ManifestParser.parse(
-          fromNest.replaceFirst(
+          fromBackend.replaceFirst(
             'SIGNATURE',
             base64.encode(utf8.encode(signatureText!)),
           ),
