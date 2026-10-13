@@ -1757,12 +1757,6 @@ int _rustTests({String? only}) {
 /// dovetail apontava para eles no template e nunca os aplicava em si: o
 /// toolkit pregava o que nao praticava, e as 36 arquivos das crates daqui
 /// nunca tinham passado por nenhum deles.
-///
-/// `check_no_comments.sh` fica FORA por decisao escrita: neste repositorio o
-/// comentario que registra o defeito que motivou o codigo e o valor do
-/// arquivo, e nao um resto que deveria estar no corpo do PR. Os outros cinco
-/// valem — tamanho, TODO, identificador em ingles, url fixa, dependencia
-/// concreta —, e sao incrementais: so olham o que mudou desde a base.
 int _rustConventions(List<String> crates) {
   const String runner = 'tool/sdk/templates/app/scripts/checks/rust/run_all.sh';
   if (!File('$repoRoot/$runner').existsSync()) {
@@ -1777,10 +1771,7 @@ int _rustConventions(List<String> crates) {
     'bash',
     <String>[runner],
     workingDirectory: repoRoot,
-    environment: <String, String>{
-      'RUST_DIRS': crates.join(' '),
-      'PULAR_CHECKS': 'check_no_comments.sh',
-    },
+    environment: <String, String>{'RUST_DIRS': crates.join(' ')},
   );
   final String output = '${ran.stdout}${ran.stderr}';
 

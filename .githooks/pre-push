@@ -65,6 +65,7 @@ touched_crates() {
 branch_gates() {
   local selftest crate
   step "Regras de PR" in_dir "$scratch" env PR_BRANCH="$1" bash scripts/checks/check_pr_rules.sh
+  step "Portão de comentários" in_dir "$scratch" env BASE_REF="${PR_BASE:-origin/main}" bash scripts/checks/check_no_comments.sh
   for selftest in "$scratch"/scripts/checks/*_selftest.sh "$scratch"/scripts/pr/*_selftest.sh; do
     [ -f "$selftest" ] && step "Autoteste ${selftest#"$scratch"/}" in_dir "$scratch" bash "$selftest"
   done

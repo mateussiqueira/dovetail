@@ -56,6 +56,8 @@ publica, numa worktree do commit enviado:
   arquivos, Conventional Commits, branch no formato `feat/...`. Uma
   varredura mecânica diz o motivo com `PR_SIZE_EXEMPT='<motivo>'`; uma
   branch empilhada é medida contra a mãe com `PR_BASE=<mãe>`;
+- `scripts/checks/check_no_comments.sh`: nenhum comentário em linha nova de
+  Dart, Rust ou shell;
 - todo `*_selftest.sh` em `scripts/checks` e `scripts/pr`, `cargo fmt
   --check` nos crates que a branch tocou e `dart tool/verify.dart`, que
   `DOVETAIL_VERIFY_SKIP='<motivo>'` pula.
@@ -70,16 +72,15 @@ publica, numa worktree do commit enviado:
 ## Estilo
 
 - `dart format` antes de commitar. O formatador é o árbitro, sem discussão.
-- Comentário explica **por que**, não o que o código já diz. Um comentário que
-  narra a linha abaixo dele é ruído; um que registra a decisão que a linha
-  esconde, ou o defeito que ela evita, é o mais valioso do arquivo.
-- O `scripts/checks/check_no_comments.sh` recusa comentário em linha nova,
-  como nos repositórios irmãos. Ele não é aplicado aqui, pela decisão escrita
-  no `tool/verify.dart`.
+- Nenhum comentário em código novo (Dart, Rust e shell), como nos repositórios
+  irmãos: o `scripts/checks/check_no_comments.sh` recusa no pre-push. O porquê,
+  a decisão que a linha esconde ou o defeito que ela evita, vai no corpo do
+  commit e do PR, e um teste que descreve o defeito o mantém vivo. Os
+  comentários que já existem ficam até o código em volta mudar.
 - Teste que descreve o defeito que evita vale mais que teste que descreve a
   função.
-- Nome de identificador em inglês. Comentário e documentação podem estar em
-  português — o projeto é bilíngue nisso, e não vamos traduzir o que já existe.
+- Nome de identificador em inglês. Documentação pode estar em português — o
+  projeto é bilíngue nisso, e não vamos traduzir o que já existe.
 
 ## Licença
 
