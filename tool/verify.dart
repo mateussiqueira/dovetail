@@ -160,6 +160,8 @@ targets   doctor    the host: tools present, hooks installed
           release   the whole macOS pipeline against a local host, signed and
                     verified end to end (macOS, needs DOVETAIL_PRODUCT)
           readme    the README table agrees with the baseline
+          coverage  line coverage of the packages in
+                    scripts/checks/coverage_floors.txt, against each floor
           install   point core.hooksPath at .githooks (alias: hooks)
           all       every target above, exit code decided at the end
 
@@ -220,6 +222,8 @@ Future<int> _run(List<String> arguments) async {
       return _releaseProof(only: _only(arguments));
     case 'readme':
       return _readme();
+    case 'coverage':
+      return _coverage(only: _only(arguments));
     case 'hooks':
     case 'install':
       return _install();
@@ -252,6 +256,7 @@ Future<int> _all({String? only}) async {
   final int releaseCode = _releaseProof(only: only);
   final int readmeCode = _readme();
   final _Run run = await _test(only: only);
+  final int coverageCode = _coverage(only: only);
   // Null, not 1. A failed run declares fewer tests than it should — that is
   // what failing means — so comparing it against the baseline reports drift
   // that is really just the failure, twice. But calling a step that never ran
@@ -266,6 +271,7 @@ Future<int> _all({String? only}) async {
       rustCode == 0 &&
       releaseCode == 0 &&
       readmeCode == 0 &&
+      coverageCode == 0 &&
       !run.failed &&
       baselineCode == 0;
   stdout.writeln('');
@@ -278,6 +284,7 @@ Future<int> _all({String? only}) async {
       'rust ${rustCode == 0 ? 'ok' : 'failed'} · '
       'release ${releaseCode == 0 ? 'ok' : 'failed'} · '
       'readme ${readmeCode == 0 ? 'ok' : 'failed'} · '
+      'coverage ${coverageCode == 0 ? 'ok' : 'failed'} · '
       'test ${run.failed ? 'failed' : 'ok'} · '
       'baseline ${switch (baselineCode) {
         null => 'not run, because test failed',
@@ -1216,6 +1223,41 @@ Future<_Outcome> _runPackage(String package, String runner) async {
     failed: failed,
     report: report,
   );
+}
+
+int _coverage({String? only}) {
+  stdout.writeln('── coverage ──');
+  const String floors = 'scripts/checks/coverage_floors.txt';
+  final File file = File('$repoRoot/$floors');
+  if (!file.existsSync()) {
+    stdout.writeln('  MISSING  $floors');
+    return 1;
+  }
+  int failed = 0;
+  for (final String line in file.readAsLinesSync()) {
+    final List<String> fields = line.trim().split(RegExp(r'\s+'));
+    if (line.trim().isEmpty || (only != null && !fields.first.contains(only))) {
+      continue;
+    }
+    final ProcessResult measured = Process.runSync('bash', <String>[
+      'scripts/checks/check_coverage.sh',
+      ...fields,
+    ], workingDirectory: repoRoot);
+    final List<String> said = const LineSplitter().convert(
+      measured.stdout.toString(),
+    );
+    if (measured.exitCode == 0 && said.isNotEmpty) {
+      stdout.writeln('  ok       ${said.first}');
+      continue;
+    }
+    failed++;
+    stdout.writeln('  FAILED   ${fields.first}');
+    for (final String out in said.take(8)) {
+      stdout.writeln('           $out');
+    }
+  }
+  stdout.writeln(failed == 0 ? '  ok' : '  $failed coverage floor(s) failed');
+  return failed == 0 ? 0 : 1;
 }
 
 /// The README's table is the first page anybody reads, and a number typed by
