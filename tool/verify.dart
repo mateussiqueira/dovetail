@@ -769,6 +769,8 @@ int _cross({String? only}) {
   const List<String> crates = <String>[
     'toolkit/dovetail_rust_core/rust',
     'toolkit/dovetail_shortcut_channel/rust',
+    'toolkit/dovetail_privileged_channel/rust',
+    'toolkit/dovetail_privileged_daemon/rust',
   ];
   const List<String> triples = <String>[
     'x86_64-pc-windows-msvc',
@@ -787,19 +789,28 @@ int _cross({String? only}) {
     }
     for (final String crate in crates) {
       final ProcessResult checked = Process.runSync('cargo', <String>[
-        'check',
+        'clippy',
         '--quiet',
+        '--all-targets',
+        '--message-format=short',
         '--target',
         triple,
+        '--',
+        '-D',
+        'warnings',
       ], workingDirectory: '$repoRoot/$crate');
       if (checked.exitCode != 0) {
         failed++;
         stdout.writeln('  FAILED   $crate for $triple');
-        stdout.writeln(
-          '           ${checked.stderr.toString().trim().split('\n').first}',
-        );
+        for (final String line
+            in const LineSplitter()
+                .convert(checked.stderr.toString())
+                .where((String line) => line.contains('error'))
+                .take(3)) {
+          stdout.writeln('           ${line.trim()}');
+        }
       } else {
-        stdout.writeln('  ok       $crate typechecks for $triple');
+        stdout.writeln('  ok       $crate is clippy-clean for $triple');
       }
     }
   }

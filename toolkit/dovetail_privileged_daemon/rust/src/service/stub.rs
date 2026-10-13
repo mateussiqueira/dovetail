@@ -1,3 +1,5 @@
+#![allow(clippy::extra_unused_type_parameters)]
+
 use crate::exit_codes;
 use crate::DaemonApp;
 

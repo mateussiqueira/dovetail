@@ -9,18 +9,11 @@ use windows_service::service::{
 };
 use windows_service::service_manager::{ServiceManager, ServiceManagerAccess};
 
-const ERROR_ACCESS_DENIED: i32 = 5;
-const ERROR_SERVICE_DOES_NOT_EXIST: i32 = 1060;
-const ERROR_SERVICE_NOT_ACTIVE: i32 = 1062;
-const ERROR_SERVICE_DEPENDENCY_FAIL: i32 = 1068;
-const ERROR_SERVICE_MARKED_FOR_DELETE: i32 = 1072;
-const ERROR_SERVICE_EXISTS: i32 = 1073;
-const ERROR_SERVICE_DEPENDENCY_DELETED: i32 = 1075;
-const ERROR_SERVICE_ALREADY_RUNNING: i32 = 1056;
-const CREATE_NO_WINDOW: u32 = 0x0800_0000;
-const SVC_SDDL: &str = "D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;AU)(A;;RP;;;IU)";
-
-use super::{codigo_do_erro, falha, FalhaSetup};
+use super::{
+    codigo_do_erro, falha, FalhaSetup, CREATE_NO_WINDOW, ERROR_ACCESS_DENIED,
+    ERROR_SERVICE_ALREADY_RUNNING, ERROR_SERVICE_DEPENDENCY_DELETED, ERROR_SERVICE_DEPENDENCY_FAIL,
+    ERROR_SERVICE_EXISTS, ERROR_SERVICE_MARKED_FOR_DELETE, SVC_SDDL,
+};
 
 pub fn register_service<A: DaemonApp>() -> i32 {
     match registrar::<A>() {
