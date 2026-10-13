@@ -31,7 +31,7 @@ command.
 | Platform | Mechanism | Verified against |
 | --- | --- | --- |
 | macOS | `getpeereid` + code signature | *not implemented — see below* |
-| Linux | `SO_PEERCRED` | pid/uid/gid (polkit consultation is a placeholder) |
+| Linux | `SO_PEERCRED` | the uids and gids the product declares; without them, nobody |
 | Windows | SDDL on the pipe + client process path | the helper's own directory |
 
 ### The macOS path fails CLOSED in release
@@ -51,6 +51,23 @@ release path return `Ok`, that test fails.
 The function that must be written to enable release is named in the error
 message itself, so the next person does not have to rediscover it.
 
+### The Linux path refuses every peer until the product declares who may speak
+
+`SO_PEERCRED` says who is on the other end. Who may speak is the product's to
+say, with a `PeerPolicy` on the endpoint:
+
+```rust
+let endpoint = Endpoint::new("/var/run/myapp/helper.sock")
+    .with_peer_policy(PeerPolicy::default().allow_uid(0).allow_gid(app_gid));
+```
+
+A peer gets in when its uid or its gid is in the policy. The gid is the one the
+peer process runs with, as `SO_PEERCRED` reports it, not its supplementary
+groups. Without a policy, `accept` refuses every peer, root included, in debug
+as in release: `AcceptError::PeerRefused`, with a reason that names what to
+declare. `verify_peer` alone has no policy to judge against, so on Linux it
+refuses too. macOS and Windows do not read the policy.
+
 ## Installing
 
 Not on crates.io, on purpose: reach it by git dependency, as the rest of this
@@ -63,8 +80,8 @@ dovetail_privileged_channel = { git = "https://github.com/mateussiqueira/dovetai
 `v0.1.11`, the newest tag, carries the transport, the peer authentication and
 the framing. What came after it is only on `main` for now — the two handshake
 procedures below, the deadline on the server's wait for the `Hello`, the typed
-`RecvError` and `SendError`, and `random_nonce` — so until a tag carries them,
-pin a commit with `rev`.
+`RecvError` and `SendError`, `random_nonce` and `PeerPolicy` — so until a tag
+carries them, pin a commit with `rev`.
 
 ## Using it
 

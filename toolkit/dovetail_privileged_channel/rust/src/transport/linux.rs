@@ -5,10 +5,12 @@ use tokio::net::UnixListener;
 use crate::endpoint::Endpoint;
 use crate::handshake::PeerCheck;
 use crate::peer_auth;
-use crate::transport::{admit, AcceptError, Stream};
+use crate::peer_policy::PeerPolicy;
+use crate::transport::{admit_by_policy, AcceptError, Stream};
 
 pub struct LinuxListener {
     inner: UnixListener,
+    policy: Option<PeerPolicy>,
 }
 
 impl LinuxListener {
@@ -17,12 +19,13 @@ impl LinuxListener {
         prepare_socket_path(&path)?;
         let inner = UnixListener::bind(&path)?;
         harden_socket_permissions(&path)?;
-        Ok(Self { inner })
+        let policy = endpoint.peer_policy().cloned();
+        Ok(Self { inner, policy })
     }
 
     pub async fn accept(&mut self) -> Result<(Stream, PeerCheck), AcceptError> {
         let (stream, _addr) = self.inner.accept().await.map_err(AcceptError::Io)?;
-        admit(stream, peer_auth::verify_peer)
+        admit_by_policy(stream, self.policy.as_ref(), peer_auth::peer_credentials)
     }
 }
 

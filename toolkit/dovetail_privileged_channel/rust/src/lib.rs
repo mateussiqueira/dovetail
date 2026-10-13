@@ -16,6 +16,7 @@ mod handshake_server_tests;
 mod limits;
 mod nonce;
 mod peer_auth;
+mod peer_policy;
 mod transport;
 
 pub use endpoint::Endpoint;
@@ -30,4 +31,5 @@ pub use limits::{
 };
 pub use nonce::random_nonce;
 pub use peer_auth::verify_peer;
+pub use peer_policy::PeerPolicy;
 pub use transport::{bind, AcceptError, Listener, Stream};

@@ -3,6 +3,8 @@ use std::io;
 
 use crate::endpoint::Endpoint;
 use crate::handshake::PeerCheck;
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
+use crate::peer_policy::{judge, PeerCred, PeerPolicy};
 
 #[cfg(all(unix, not(target_os = "macos")))]
 mod linux;
@@ -61,6 +63,15 @@ fn admit<S>(
     Ok((stream, peer))
 }
 
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
+fn admit_by_policy<S>(
+    stream: S,
+    policy: Option<&PeerPolicy>,
+    credentials: impl FnOnce(&S) -> anyhow::Result<PeerCred>,
+) -> Result<(S, PeerCheck), AcceptError> {
+    admit(stream, |s| judge(policy, credentials(s)?))
+}
+
 #[cfg(test)]
 mod tests {
     use tokio::io::{duplex, AsyncReadExt, AsyncWriteExt};
@@ -91,6 +102,36 @@ mod tests {
         let (server, mut client) = duplex(64);
         let (mut stream, peer) = admit(server, |_| Ok(the_app())).unwrap();
         assert_eq!(peer.subject, "uid=501");
+        stream.write_all(b"x").await.unwrap();
+        assert_eq!(client.read_u8().await.unwrap(), b'x');
+    }
+
+    fn the_user<S>(_: &S) -> anyhow::Result<PeerCred> {
+        Ok(PeerCred {
+            pid: 4242,
+            uid: 1000,
+            gid: 1000,
+        })
+    }
+
+    #[tokio::test]
+    async fn without_a_policy_the_peer_is_refused_not_an_io_error_and_disconnected() {
+        let (server, mut client) = duplex(64);
+        let refused = admit_by_policy(server, None, the_user);
+        assert!(
+            matches!(refused, Err(AcceptError::PeerRefused(_))),
+            "got {refused:?}"
+        );
+        let read = client.read(&mut [0; 1]).await.unwrap();
+        assert_eq!(read, 0, "the refused connection was left open");
+    }
+
+    #[tokio::test]
+    async fn a_peer_the_policy_admits_keeps_its_connection() {
+        let (server, mut client) = duplex(64);
+        let policy = PeerPolicy::default().allow_uid(1000);
+        let (mut stream, peer) = admit_by_policy(server, Some(&policy), the_user).unwrap();
+        assert_eq!(peer.subject, "pid=4242 uid=1000 gid=1000");
         stream.write_all(b"x").await.unwrap();
         assert_eq!(client.read_u8().await.unwrap(), b'x');
     }
