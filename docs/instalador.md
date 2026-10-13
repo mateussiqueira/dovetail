@@ -2,12 +2,6 @@
 
 # Installing dovetail: the SDK outside the monorepo
 
-> **Context for anyone arriving through the public repository.** This document
-> mentions `product/`, which is the private app where the toolkit is
-> exercised, and it does not exist in this repository. The mechanism described
-> belongs to the toolkit and holds for any app; only the example's path
-> belongs to another tree.
-
 The goal: a desktop app, on any machine, gets the pipeline, the runtime and
 the bridge mechanism with one `curl` and one command — without cloning the
 monorepo and without `path: ../../`.
@@ -43,10 +37,9 @@ framework with one line and one command.
 | `dovetail_platform_channel`, `dovetail_shortcut_channel`, `dovetail_updater`, `dovetail_form_validation`, `dovetail_process_runner` — the barrel's runtime | `dovetail_bundler`, `dovetail_signer`, `dovetail_cli` — they live **only inside the binary** (the [barrel's](../toolkit/dovetail/README.md) decision) |
 | `dovetail_rust_core` — the Dart↔Rust joint belongs to the framework, not to the monorepo | the product — the SDK knows about no product at all |
 
-The product's bridge package is the **fixture** of the bridge mechanism: the
-SDK template reproduces what it is, and Phase 4's acceptance criterion is that
-`bridge init` generates something that passes `core_coverage_test` against the
-same crate.
+The bridge template carries the mechanism and no product's content: Phase 4's
+acceptance criterion is that what `bridge init` generates against a real crate
+passes `core_coverage_test`.
 
 ## The phases
 
@@ -70,8 +63,7 @@ previous one proves out. You can stop at any of them with value in hand.
 4. **`dovetail bridge`.** `bridge init --core <crate> --name <name>`
    generates the `ffiPlugin` (3 OSs) with the crate by configurable path and
    the SDK's `dovetail_rust_core`. Acceptance: what it generates against a
-   real crate passes `core_coverage_test` — the reproduced bridge matches the
-   versioned one.
+   real crate passes `core_coverage_test`.
 5. **End-to-end proof.** The [gate-linux Dockerfile](ci.md) becomes the
    stage: a clean container installs, starts a minimal app and runs doctor +
    test + build with no clone at all.
@@ -119,15 +111,15 @@ dovetail bridge init --core <crate> --name <name>
 `--core` is the product crate's directory; the crate's name is read from its
 `Cargo.toml`, never guessed. What comes out is the `ffiPlugin` for all three
 OSs, with the SDK's `dovetail_rust_core` on both sides — the Dart in the
-pubspec, the crate in the `Cargo.toml`. The template reproduces the fixture's
-mechanics and deliberately leaves out what belongs to the product: the
+pubspec, the crate in the `Cargo.toml`. The template carries the mechanics
+and deliberately leaves out what belongs to the product: the
 forwarders in `rust/src/api/`, the generated Dart, and the `example/`.
 
 The shape gate comes with it: the generated project's `core_coverage_test`
 reads the crate's `handle.rs` and the calls under `rust/src/api/`, and refuses
 when the core has grown a method that no forwarder exposes. Phase 4's
-acceptance criterion is exactly that: the generated bridge, fed the same
-`api/` as the versioned one, passes the same gate.
+acceptance criterion is exactly that: the generated bridge, fed an `api/`
+that forwards every public method of the core, passes that gate.
 
 ## The end-to-end proof
 
@@ -161,7 +153,7 @@ in what order, is in the [roadmap](roadmap.md).
 
 ## Out of scope
 
-Distributing the product app, and changing the toolkit/product split.
+Distributing an app, which belongs to whoever builds it.
 
 Publishing to pub.dev **was** out of scope and no longer is: the ten packages
 are published, and that is now the ordinary route for a consumer. The signed

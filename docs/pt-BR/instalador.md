@@ -2,11 +2,6 @@
 
 # Instalar o dovetail: o SDK fora do monorepo
 
-> **Contexto para quem chega pelo repositório público.** Este documento cita
-> `product/`, que é o app privado onde o toolkit é exercitado, e não existe
-> neste repositório. O mecanismo descrito é do toolkit e vale para qualquer
-> app; só o caminho do exemplo é de outra árvore.
-
 O objetivo: um app desktop, em qualquer máquina, ganha a esteira, o runtime e
 o mecanismo de bridge com um `curl` e um comando — sem clonar o monorepo e sem
 `path: ../../`.
@@ -40,12 +35,11 @@ framework com uma linha e um comando.
 | entra | fica de fora |
 |---|---|
 | `dovetail_platform_channel`, `dovetail_shortcut_channel`, `dovetail_updater`, `dovetail_form_validation`, `dovetail_process_runner` — o runtime do barril | `dovetail_bundler`, `dovetail_signer`, `dovetail_cli` — vivem **só dentro do binário** (decisão do [barril](../../toolkit/dovetail/README.md)) |
-| `dovetail_rust_core` — a junta Dart↔Rust é do framework, não do monorepo | o `product/` — o SDK não conhece produto nenhum |
+| `dovetail_rust_core` — a junta Dart↔Rust é do framework, não do monorepo | o produto — o SDK não conhece produto nenhum |
 
-O `product/desktop_core_bridge` é o **fixture** do mecanismo de bridge: o
-template do SDK reproduz o que ele é, e o critério de aceite da Fase 4 é o
-`bridge init` gerar algo que passa no `core_coverage_test` contra o mesmo
-crate.
+O template do bridge carrega o mecanismo e nenhum conteúdo de produto: o
+critério de aceite da Fase 4 é o que o `bridge init` gera contra um crate de
+verdade passar no `core_coverage_test`.
 
 ## As fases
 
@@ -66,9 +60,8 @@ prova. Dá para parar em qualquer uma com valor.
    diretório).
 4. **`dovetail bridge`.** `bridge init --core <crate> --name <nome>` gera o
    plugin `ffiPlugin` (3 SOs) com o crate por path configurável e o
-   `dovetail_rust_core` do SDK. Aceite: gerado contra o `example-rust` passa no
-   `core_coverage_test` — o `desktop_core_bridge` reproduzido bate com o
-   versionado.
+   `dovetail_rust_core` do SDK. Aceite: gerado contra um crate de verdade passa
+   no `core_coverage_test`.
 5. **Prova fim-a-fim.** O [gate-linux Dockerfile](ci.md) vira o palco: um
    container limpo instala, inicia um app mínimo e roda doctor + test + build
    sem clone nenhum.
@@ -115,15 +108,15 @@ dovetail bridge init --core <crate> --name <nome>
 O `--core` é o diretório do crate do produto; o nome do crate é lido do
 `Cargo.toml` dele, nunca adivinhado. O gerado é o plugin `ffiPlugin` dos três
 SOs, com o `dovetail_rust_core` do SDK nos dois lados — o Dart no pubspec, o crate no
-`Cargo.toml`. O template reproduz a mecânica do fixture
-(`product/desktop_core_bridge`) e deixa de fora, de propósito, o que é do
-produto: os repasses em `rust/src/api/`, o Dart gerado e o `example/`.
+`Cargo.toml`. O template carrega a mecânica e deixa de fora, de propósito, o
+que é do produto: os repasses em `rust/src/api/`, o Dart gerado e o
+`example/`.
 
 O portão de forma vem junto: o `core_coverage_test` do gerado lê o `handle.rs`
 do crate e as chamadas em `rust/src/api/`, e recusa quando o núcleo cresceu um
 método que nenhum repasse expõe. O critério de aceite da Fase 4 é exatamente
-esse: o gerado contra o `example-rust`, alimentado com o mesmo `api/` do
-versionado, passa no mesmo portão.
+esse: o gerado, alimentado com um `api/` que repassa todo método público do
+núcleo, passa nesse portão.
 
 ## A prova fim-a-fim
 
@@ -157,7 +150,7 @@ aberto e em ordem está no [roadmap](roadmap.md).
 
 ## Fora de escopo
 
-Distribuir o app de produto, e mudar a divisão toolkit/product.
+Distribuir um app, que é de quem o constrói.
 
 Publicar no pub.dev **estava** fora de escopo e não está mais: os dez pacotes
 estão publicados, e essa passou a ser a rota comum de um consumidor. O canal

@@ -87,7 +87,7 @@ update:
   password-env: DOVETAIL_UPDATE_KEY_PASSWORD
   base-url: https://cdn.example.com/releases
   manifest: dist/latest.json
-  endpoint: https://api.example.com/desktop-version/check/{{target}}
+  endpoint: https://api.example.com/update/check/{{target}}
   public-key: |
     untrusted comment: minisign public key 1234567890ABCDEF
     RWQhww+7hfwEkazwMrOqcOeYRd+myNTpeJJP4bRWbnbMXV3T8ZSFPajp
