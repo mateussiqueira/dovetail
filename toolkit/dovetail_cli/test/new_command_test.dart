@@ -168,16 +168,23 @@ void main() {
       );
     });
 
-    test('the pubspec should depend on flutter, the runtime and the bridge, '
-        'and on nothing else', () async {
+    test('the pubspec should depend on flutter, the runtime, the bridge and '
+        'weave_di from pub.dev, and on nothing else', () async {
       await run(<String>['demo', '--no-create']);
 
       final YamlMap pubspec =
           loadYaml(read(p.join('demo', 'pubspec.yaml'))) as YamlMap;
+      final YamlMap dependencies = pubspec['dependencies'] as YamlMap;
       expect(
-        (pubspec['dependencies'] as YamlMap).keys,
-        unorderedEquals(<String>['flutter', 'dovetail', 'core_bridge']),
+        dependencies.keys,
+        unorderedEquals(<String>[
+          'flutter',
+          'dovetail',
+          'core_bridge',
+          'weave_di',
+        ]),
       );
+      expect(dependencies['weave_di'], '^3.4.1');
       expect(
         read(p.join('demo', 'pubspec.yaml')),
         contains('path: core_bridge'),
@@ -253,7 +260,7 @@ void main() {
     });
 
     test('the generated code should import only flutter, the runtime, the '
-        'bridge and itself', () async {
+        'bridge, weave_di and itself', () async {
       await run(<String>['demo', '--no-create']);
 
       final RegExp packageImport = RegExp(
@@ -282,6 +289,7 @@ void main() {
             'flutter_test',
             'dovetail',
             'core_bridge',
+            'weave_di',
             'demo',
           ]),
         ),

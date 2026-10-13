@@ -270,6 +270,8 @@ final class NewCommand extends Command<int> {
 
   static final RegExp _namePattern = RegExp(r'^[a-zA-Z][a-zA-Z0-9_]*$');
 
+  static const String _weaveDi = '^3.4.1';
+
   /// Uma recusa so, com tudo o que faltou. Com uma falta e a mensagem de
   /// sempre; com mais, a manchete conta e o corpo lista cada uma com a sua
   /// saida — para uma corrida mostrar todos os consertos, nao um por corrida.
@@ -368,6 +370,7 @@ dependencies:
     path: "${dovetailPath.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"
   core_bridge:
     path: core_bridge
+  weave_di: $_weaveDi
 
 dev_dependencies:
   flutter_test:
