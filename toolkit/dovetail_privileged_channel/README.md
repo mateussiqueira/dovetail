@@ -62,9 +62,9 @@ dovetail_privileged_channel = { git = "https://github.com/mateussiqueira/dovetai
 
 `v0.1.11`, the newest tag, carries the transport, the peer authentication and
 the framing. What came after it is only on `main` for now — the two handshake
-procedures below, the deadline on the server's wait for the `Hello`, and the
-typed `RecvError` and `SendError` — so until a tag carries them, pin a commit
-with `rev`.
+procedures below, the deadline on the server's wait for the `Hello`, the typed
+`RecvError` and `SendError`, and `random_nonce` — so until a tag carries them,
+pin a commit with `rev`.
 
 ## Using it
 
@@ -72,7 +72,8 @@ The helper's side:
 
 ```rust
 use dovetail_privileged_channel::{
-    bind, framer, server_handshake, Endpoint, ServerConfig, PROTOCOL_MAJOR, PROTOCOL_MINOR,
+    bind, framer, random_nonce, server_handshake, Endpoint, ServerConfig, PROTOCOL_MAJOR,
+    PROTOCOL_MINOR,
 };
 
 let endpoint = Endpoint::new("/var/run/myapp/helper.sock");
@@ -89,6 +90,7 @@ let config = ServerConfig {
     helper_version: "1.4.0".into(),
     peer_check: peer,
 };
+let nonce = random_nonce()?;
 let shake = server_handshake::<MeuComando, MeuResultado, _>(&mut framed, config, nonce).await?;
 if !shake.accepted {
     return Ok(()); // the refusal already went out on the wire
@@ -111,7 +113,9 @@ server's own `proto_minor`, and comes back as `accepted: false`, which is what
 the `if` above is for.
 
 The app's side is `client_handshake`. Both take the 16-byte nonce from the
-caller:
+caller, and `random_nonce` draws one from the system's generator: `/dev/urandom`,
+or `BCryptGenRandom` on Windows. When the generator fails it returns the error,
+never a weaker nonce:
 
 ```rust
 let stream = tokio::net::UnixStream::connect("/var/run/myapp/helper.sock").await?;
@@ -121,6 +125,7 @@ let config = ClientConfig {
     client_minor: PROTOCOL_MINOR,
     client_version: "1.4.0".into(),
 };
+let nonce = random_nonce()?;
 let shake = client_handshake::<MeuComando, MeuResultado, _>(&mut framed, config, nonce).await?;
 ```
 
