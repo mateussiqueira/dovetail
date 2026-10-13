@@ -3,7 +3,7 @@ use tokio::net::windows::named_pipe::ServerOptions;
 use crate::endpoint::Endpoint;
 use crate::handshake::PeerCheck;
 use crate::peer_auth;
-use crate::transport::{admit, AcceptError, Stream};
+use crate::transport::{admit, take_connected, AcceptError, Stream};
 
 pub struct WindowsListener {
     pending: Option<Stream>,
@@ -26,12 +26,9 @@ impl WindowsListener {
                 .map_err(|err| AcceptError::Io(std::io::Error::other(err)))?;
             self.pending = Some(instance);
         }
-        let pendente = self.pending.as_mut().expect("instancia pendente");
-
-        pendente.connect().await.map_err(AcceptError::Io)?;
-
-        let conn = self.pending.take().expect("instancia conectada");
-
+        let pendente = self.pending.as_ref().expect("instancia pendente");
+        let outcome = pendente.connect().await;
+        let conn = take_connected(&mut self.pending, outcome)?;
         admit(conn, peer_auth::verify_peer)
     }
 }
