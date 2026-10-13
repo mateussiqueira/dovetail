@@ -5,9 +5,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::time::timeout;
 
 use dovetail_privileged_channel::{
-    framer, recv_frame, send_frame, ErrorBody, ErrorCode, Frame, Framer, Hello, PeerCheck,
-    RecvError, Request, RespPayload, Response, ServerHello, HANDSHAKE_TIMEOUT_MS, IDLE_TIMEOUT_MS,
-    PROTOCOL_MAJOR, PROTOCOL_MINOR,
+    framer, recv_frame, send_frame, server_handshake, ErrorCode, Frame, PeerCheck, Request,
+    RespPayload, Response, ServerConfig, IDLE_TIMEOUT_MS, PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
 
 use crate::DaemonApp;
@@ -32,62 +31,23 @@ where
 {
     let mut framed = framer(stream);
 
-    let hello = match read_hello::<A::Command, A::Reply, S>(&mut framed).await {
-        Ok(h) => h,
-        Err(reject) => {
-            let sh = ServerHello {
-                accepted: false,
-                proto_major: PROTOCOL_MAJOR,
-                proto_minor: PROTOCOL_MINOR,
-                helper_version: A::VERSION.to_string(),
-                nonce,
-                peer_check: peer.clone(),
-                reject: Some(reject),
-            };
-            let _ = send_frame(&mut framed, &Frame::<A::Command, A::Reply>::ServerHello(sh)).await;
-            return Ok(());
-        }
+    let config = ServerConfig {
+        server_major: PROTOCOL_MAJOR,
+        server_minor: PROTOCOL_MINOR,
+        helper_version: A::VERSION.to_string(),
+        peer_check: peer.clone(),
     };
-
-    if hello.proto_major != PROTOCOL_MAJOR {
-        let sh = ServerHello {
-            accepted: false,
-            proto_major: PROTOCOL_MAJOR,
-            proto_minor: PROTOCOL_MINOR,
-            helper_version: A::VERSION.to_string(),
-            nonce,
-            peer_check: peer.clone(),
-            reject: Some(ErrorBody::new(
-                ErrorCode::version_unsupported(),
-                format!(
-                    "protocolo major {} nao suportado (helper fala {})",
-                    hello.proto_major, PROTOCOL_MAJOR
-                ),
-            )),
-        };
-        send_frame(&mut framed, &Frame::<A::Command, A::Reply>::ServerHello(sh)).await?;
+    let shake = server_handshake::<A::Command, A::Reply, S>(&mut framed, config, nonce).await?;
+    if !shake.accepted {
         return Ok(());
     }
-
-    let negotiated_minor = hello.proto_minor.min(PROTOCOL_MINOR);
     tracing::info!(
-        client_version = %hello.client_version,
+        client_version = %shake.client_hello.client_version,
         peer_method = %peer.method,
         peer_subject = %peer.subject,
-        proto = format!("{}.{}", PROTOCOL_MAJOR, negotiated_minor),
+        proto = format!("{}.{}", PROTOCOL_MAJOR, shake.negotiated_minor),
         "handshake aceito"
     );
-
-    let sh = ServerHello {
-        accepted: true,
-        proto_major: PROTOCOL_MAJOR,
-        proto_minor: negotiated_minor,
-        helper_version: A::VERSION.to_string(),
-        nonce,
-        peer_check: peer,
-        reject: None,
-    };
-    send_frame(&mut framed, &Frame::<A::Command, A::Reply>::ServerHello(sh)).await?;
 
     loop {
         let next = timeout(
@@ -144,64 +104,6 @@ where
     Ok(())
 }
 
-async fn read_hello<C, R, S>(framed: &mut Framer<S>) -> Result<Hello, ErrorBody>
-where
-    C: serde::de::DeserializeOwned,
-    R: serde::de::DeserializeOwned,
-    S: AsyncRead + AsyncWrite + Unpin + Send,
-{
-    let next = timeout(
-        Duration::from_millis(HANDSHAKE_TIMEOUT_MS),
-        recv_frame::<C, R, S>(framed),
-    )
-    .await;
-    let frame = match next {
-        Err(_) => {
-            return Err(ErrorBody::new(
-                ErrorCode::handshake_required(),
-                "handshake nao recebido dentro do prazo",
-            ))
-        }
-        Ok(Ok(None)) => {
-            return Err(ErrorBody::new(
-                ErrorCode::handshake_required(),
-                "conexao fechada antes do handshake",
-            ))
-        }
-        Ok(Err(RecvError::TooLarge)) => {
-            return Err(ErrorBody::new(
-                ErrorCode::frame_too_large(),
-                "frame de handshake acima do teto",
-            ))
-        }
-        Ok(Err(RecvError::Malformed(_))) => {
-            return Err(ErrorBody::new(
-                ErrorCode::malformed_frame(),
-                "frame de handshake malformado",
-            ))
-        }
-        Ok(Err(_)) => {
-            return Err(ErrorBody::new(
-                ErrorCode::handshake_required(),
-                "conexao interrompida antes do handshake",
-            ))
-        }
-        Ok(Ok(Some(frame))) => frame,
-    };
-
-    match frame {
-        Frame::Hello(h) => Ok(h),
-        Frame::Request(_) => Err(ErrorBody::new(
-            ErrorCode::handshake_required(),
-            "Request recebido antes do Hello",
-        )),
-        _ => Err(ErrorBody::new(
-            ErrorCode::malformed_frame(),
-            "primeiro frame deve ser Hello",
-        )),
-    }
-}
-
 fn fresh_nonce() -> [u8; 16] {
     let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -210,43 +112,4 @@ fn fresh_nonce() -> [u8; 16] {
     let mut n = [0u8; 16];
     n[..16].copy_from_slice(&nanos.to_le_bytes());
     n
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use tokio::io::{duplex, AsyncWriteExt};
-
-    async fn rejeicao_de(bytes: &[u8]) -> ErrorBody {
-        let (mut cliente, servidor) = duplex(256 * 1024);
-        let mut framed = framer(servidor);
-        cliente.write_all(bytes).await.unwrap();
-        drop(cliente);
-        read_hello::<(), (), _>(&mut framed).await.unwrap_err()
-    }
-
-    fn com_cabecalho(corpo: &[u8], tamanho: u32) -> Vec<u8> {
-        let mut v = tamanho.to_be_bytes().to_vec();
-        v.extend_from_slice(corpo);
-        v
-    }
-
-    #[tokio::test]
-    async fn hello_acima_do_teto_e_recusado_com_frame_too_large() {
-        let r = rejeicao_de(&com_cabecalho(&[], u32::MAX)).await;
-        assert_eq!(r.code, ErrorCode::frame_too_large());
-    }
-
-    #[tokio::test]
-    async fn hello_com_json_quebrado_e_recusado_com_malformed_frame() {
-        let corpo = b"{ isso nao e json";
-        let r = rejeicao_de(&com_cabecalho(corpo, corpo.len() as u32)).await;
-        assert_eq!(r.code, ErrorCode::malformed_frame());
-    }
-
-    #[tokio::test]
-    async fn hello_cortado_no_meio_pede_handshake() {
-        let r = rejeicao_de(&com_cabecalho(b"{\"x\"", 100)).await;
-        assert_eq!(r.code, ErrorCode::handshake_required());
-    }
 }
