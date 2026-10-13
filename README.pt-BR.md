@@ -26,7 +26,7 @@ universal entre Intel e Apple Silicon. Instalou, rodou, sobreviveu a reinício,
 desinstalou sem sobra. Foi isso que tirou o projeto do alfa.
 
 O que está provado, e medido em vez de lembrado:
-**1513 testes Dart declarados, 44 pulados**, mais as crates Rust. O
+**1514 testes Dart declarados, 44 pulados**, mais as crates Rust. O
 `dart tool/verify.dart` compara essa frase com o que as suítes acabaram de
 reportar e falha quando discordam — então um README que exagera a própria
 cobertura não consegue ser commitado. Os pulados estão nomeados em

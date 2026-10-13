@@ -26,7 +26,7 @@ universal across Intel and Apple Silicon. Installed, ran, survived a restart,
 uninstalled without residue. That is what moved this out of alpha.
 
 What is proven, and measured rather than remembered:
-**1513 testes Dart declarados, 44 pulados**, plus the Rust crates. `dart tool/verify.dart`
+**1514 testes Dart declarados, 44 pulados**, plus the Rust crates. `dart tool/verify.dart`
 compares that sentence against what the suites just reported and fails when
 they disagree, so a README that overstates its own coverage cannot be
 committed. The skipped ones are named in `tool/skip_baseline.json`, with the
@@ -61,7 +61,7 @@ Measured on 2026-10-12 at `c2bc5bb`. Beta, as above; this section says, layer by
 | privileged side | `dovetail_privileged_helper`, `dovetail_privileged_channel`, `dovetail_privileged_daemon` | framing, handshake and service lifecycle, in tests |
 | support | `dovetail_http_client`, `dovetail_screenshots` | the suites, on that same machine |
 
-**Counted.** 1513 Dart tests are declared in `tool/skip_baseline.json`, 44 of them skipped, each with its reason; that baseline last changed on 2026-10-13. 141 Rust test functions sit in five crates, counted from the source rather than from a run. Coverage is not measured.
+**Counted.** 1514 Dart tests are declared in `tool/skip_baseline.json`, 44 of them skipped, each with its reason; that baseline last changed on 2026-10-13. 141 Rust test functions sit in five crates, counted from the source rather than from a run. Coverage is not measured.
 
 **Peer authentication** is the part of the privileged channel that is not finished. Who may speak is the product's to declare, in a `PeerPolicy` that a daemon built on `dovetail_privileged_daemon` takes from `DaemonApp::peer_policy`. On macOS a peer gets in when the code running in its process satisfies the policy's code requirement, checked with `SecCodeCheckValidity` once, at accept: a process that connects and then execs a program the requirement admits passes, and nothing checks the connection again. A release socket is still reachable only by the helper's owner. Without a requirement, a release build refuses every peer and a debug build accepts any local process on a world-writable socket. On Linux a peer gets in only when its uid or its gid is in the policy; with one, every local user reaches the socket and the policy decides, and without one, every peer is refused. On Windows the client's directory has to be the helper's.
 
