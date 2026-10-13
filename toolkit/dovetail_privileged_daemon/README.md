@@ -18,7 +18,7 @@ together, so a consumer reaches both through the same git tag.
 | run-mode parsing (`--service`, `--install`, `--cleanup`, …) | `mode.rs` |
 | the stable exit codes | `exit_codes.rs` |
 | rotating file + stderr tracing (4 MiB → `.old`) | `logging.rs` |
-| the accept loop with backoff, `prepare()` before bind | `server.rs` |
+| the accept loop with backoff, `prepare()` and the app's peer policy before bind | `server.rs` |
 | the framed request loop, handshake, validation, dispatch | `connection.rs` |
 | OS service registration (SCM / launchd / stub) | `service/` |
 
@@ -41,6 +41,7 @@ pub trait DaemonApp: Default + Send + Sync + 'static {
 
     fn command_timeout(cmd: &Self::Command) -> std::time::Duration;
     fn validate(cmd: &Self::Command) -> Result<(), String>;
+    fn peer_policy() -> Option<PeerPolicy> { None }
 
     async fn prepare(&self) -> anyhow::Result<()> { Ok(()) }
     async fn dispatch(&self, cmd: &Self::Command) -> RespPayload<Self::Reply>;
@@ -52,6 +53,21 @@ pub trait DaemonApp: Default + Send + Sync + 'static {
 inside the server startup — anything that must run once before the daemon binds
 its socket. `cleanup()` is the uninstall-time path. `dispatch()` is the one
 place a validated command becomes a reply.
+
+`peer_policy()` says who may speak to the daemon. The daemon hands it to the
+channel's `Endpoint::with_peer_policy` before it binds, and the channel applies
+it: on Linux a peer gets in when its uid or its gid is in the policy. The
+default is `None`, and with it a Linux helper refuses every peer, root
+included, so a product that runs there declares one:
+
+```rust
+fn peer_policy() -> Option<PeerPolicy> {
+    Some(PeerPolicy::default().allow_uid(0).allow_gid(APP_GID))
+}
+```
+
+`PeerPolicy` is re-exported here, next to `RespPayload`. macOS and Windows do
+not read it yet.
 
 The app's `main` is a single call:
 
