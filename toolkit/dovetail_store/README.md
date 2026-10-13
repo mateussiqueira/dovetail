@@ -1,6 +1,28 @@
 # dovetail_store
 
-> A write that a dying process cannot leave half done.
+> A key-value store for desktop apps, and a write that a dying process cannot
+> leave half done.
+
+## The store
+
+`KeyValueStore` keeps a JSON object in one file and writes it through
+`AtomicFile` on every `set` and `remove`. The map in memory changes only after
+the write succeeds, so a value JSON cannot carry leaves both as they were.
+
+```dart
+final KeyValueStore store = KeyValueStore.open('$supportDirectory/prefs.json');
+store.set('theme', 'dark');
+final Object? theme = store.get('theme');
+```
+
+A file that is not a JSON object is refused with a `FormatException`, instead
+of being read as empty and overwritten by the next `set`.
+
+The proof is a real process: a child opens the store, starts a `set` whose
+value blocks in `toJson` once the first entries are written, and is killed
+with `SIGKILL`. The store reopens with its old content.
+
+## The write
 
 `AtomicFile` replaces the content of a file without a moment in which the file
 on disk is neither the old version nor the new one:
