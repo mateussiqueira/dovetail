@@ -3,12 +3,6 @@ set -euo pipefail
 
 # Roda o alvo `test` N vezes e conta quantas voltaram verdes.
 #
-# Existe porque "o portão é confiável" não é uma coisa que se afirme: uma
-# corrida verde não distingue um portão determinístico de um que falha uma vez
-# em duas. Este repositório mediu 1 vermelho em 2 — `product/vpn_desktop`
-# reportando FAILED com zero testes rodados, e `dovetail_signer` caindo no
-# nested_code_folder_test, os dois passando sozinhos logo depois.
-#
 # A saída é uma linha só, comparável entre corridas e entre máquinas:
 #
 #   10/10 green

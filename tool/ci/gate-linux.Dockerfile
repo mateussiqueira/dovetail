@@ -11,13 +11,11 @@
 #   curl -fsSL -o flutter_linux.tar.xz \
 #     "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz"
 #
-# Construir e rodar (o repo e os irmãos ficam montados em /work):
+# Construir e rodar (o repo fica montado em /work):
 #
 #   docker build --platform linux/amd64 -f tool/ci/gate-linux.Dockerfile -t dovetail-gate-linux .
 #   docker run --platform linux/amd64 --name dovetail-gate-run \
 #     -v <repo>:/work/dovetail \
-#     -v <example-rust>:/work/example-rust:ro \
-#     -v <example-design-system>:/work/example-design-system:ro \
 #     dovetail-gate-linux bash -c \
 #       "dart tool/verify.dart doctor && dart tool/verify.dart fast \
 #        && dart tool/verify.dart test && dart tool/verify.dart rust --only toolkit \

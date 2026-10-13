@@ -2,20 +2,12 @@
 // exercitar o `probe` e o updater do app contra um host de verdade — sem o
 // host de verdade. Só `dart:io`, como os outros scripts de tool/.
 //
-//   dart tool/serve_dist.dart --root product/vpn_desktop/dist \
-//     --cert tls/srv.crt --key tls/srv.key [--port 8443]
-//
 // https e obrigatório de propósito: o fetcher, o `probe`, o `ManifestWriter`
 // e o `UpdateConfig` recusam http em quatro camadas, e um servidor local que
 // falasse http provaria um caminho que o cliente nunca percorre. O
 // certificado sai de tool/ci/prove_update.sh (CA privada + folha para
 // localhost); o cliente confia nela com `probe --ca <ca.crt>`, que ADICIONA
 // uma raiz e mantém a verificação de cadeia e de hostname.
-//
-// Uma única conveniência, anunciada no log: `GET /desktop-version/check/<os>`
-// devolve `<root>/latest.json` — é a forma do endpoint que o app instalado
-// consulta (`.../check/{{target}}`), e um servidor que só respondesse
-// `/latest.json` não serviria ao app.
 //
 // Fora disso ele é burro de propósito: serve o arquivo que existe no caminho
 // pedido, e 404 no resto. Houve um atalho aqui — qualquer
@@ -61,7 +53,7 @@ Future<void> main(List<String> arguments) async {
   stdout.writeln(
     'serving $root at https://localhost:${server.port} (loopback only)',
   );
-  stdout.writeln('  /desktop-version/check/<os> -> latest.json');
+  stdout.writeln('  /<any>/check/<os>             -> latest.json');
   stdout.writeln('  everything else               -> the file at that path');
 
   await for (final HttpRequest request in server) {
@@ -100,9 +92,7 @@ File? _resolve(String root, String path) {
     return null;
   }
 
-  if (segments.length == 3 &&
-      segments[0] == 'desktop-version' &&
-      segments[1] == 'check') {
+  if (segments.length >= 2 && segments[segments.length - 2] == 'check') {
     final File manifest = File('$root/latest.json');
     return manifest.existsSync() ? manifest : null;
   }

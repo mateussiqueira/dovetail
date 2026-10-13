@@ -5,9 +5,6 @@
 // by people, and shipped. Re-typing them into a new format by hand is how
 // a translation quietly loses a word.
 //
-//   dart run tool/import_locales.dart            # writes the ARB files
-//   dart run tool/import_locales.dart --check    # fails if they would change
-//
 // The tool refuses rather than guesses. Anything it cannot carry over
 // without changing what the string says is reported and nothing is written.
 import 'dart:convert';
@@ -75,19 +72,19 @@ void main(List<String> arguments) {
 
 int _run(List<String> arguments) {
   final bool check = arguments.contains('--check');
-  final String from =
-      _option(arguments, '--from') ??
-      '../example-rust/frontend/src/i18n/locales';
-  final String to =
-      _option(arguments, '--to') ?? 'product/vpn_desktop/lib/l10n';
+  final String? from = _option(arguments, '--from');
+  final String? to = _option(arguments, '--to');
+  if (from == null || to == null) {
+    stderr.writeln(
+      'usage: dart run tool/import_locales.dart --from <i18next locales dir> '
+      '--to <the app lib/l10n> [--check]',
+    );
+    return 64;
+  }
 
   final Directory source = Directory(from);
   if (!source.existsSync()) {
     stderr.writeln('no locale source at ${source.absolute.path}');
-    stderr.writeln(
-      'this reads the React frontend of example-rust, which is a sibling '
-      'checkout. Pass --from if yours lives elsewhere.',
-    );
     return 2;
   }
 
