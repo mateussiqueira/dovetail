@@ -50,9 +50,9 @@ void main() {
   late Directory weave;
   setUp(() {
     weave = Directory.systemTemp.createTempSync('dovetail_weave');
-    File(
-      p.join(weave.path, 'pubspec.yaml'),
-    ).writeAsStringSync('name: weave_di\nversion: 3.3.0\n');
+    File(p.join(weave.path, 'pubspec.yaml')).writeAsStringSync(
+      'name: weave_di\nversion: 3.3.0\nenvironment:\n  sdk: ^3.0.0\n',
+    );
   });
   tearDown(() => weave.deleteSync(recursive: true));
 
@@ -408,40 +408,19 @@ void main() {
           markTestSkipped('flutter is not installed');
           return;
         }
-        // Este e o unico teste que resolve o pubspec de verdade, e o template
-        // importa `package:weave_di/weave_di.dart` — o fixture dos outros
-        // testes tem pubspec e nao tem lib, entao aqui ele nao serve.
-        //
-        // Exigido por variavel, nunca sondado: uma sonda acharia o checkout
-        // nesta maquina e nao no runner, e o baseline passaria a descrever
-        // uma maquina em vez de um estado. Explicito, o skip e o mesmo nos
-        // dois lugares — que e a propriedade que faz o baseline valer.
-        final String weaveReal =
-            Platform.environment['DOVETAIL_WEAVE_PATH']?.trim() ?? '';
-        if (weaveReal.isEmpty ||
-            !File(p.join(weaveReal, 'lib', 'weave_di.dart')).existsSync()) {
-          markTestSkipped(
-            r'set $DOVETAIL_WEAVE_PATH to a weave_di checkout to resolve the '
-            'scaffold for real; the repository is private, so the gate cannot '
-            'assume one',
-          );
-          return;
-        }
-        expect(
-          await runner.run(<String>[
-            'new',
-            '--root',
-            root.path,
-            '--dovetail-path',
-            dovetailPath,
-            '--weave-path',
-            weaveReal,
-            'demo',
-          ]),
-          0,
-        );
+        expect(await run(<String>['demo']), 0);
 
         final String demo = p.join(root.path, 'demo');
+        File(p.join(demo, 'pubspec_overrides.yaml')).writeAsStringSync(
+          <String>[
+            'dependency_overrides:',
+            for (final Directory package in Directory(
+              p.join(repoRoot(), 'toolkit'),
+            ).listSync().whereType<Directory>())
+              if (File(p.join(package.path, 'pubspec.yaml')).existsSync())
+                "  ${p.basename(package.path)}:\n    path: '${package.path}'",
+          ].join('\n'),
+        );
         final ProcessResult pubGet = Process.runSync('flutter', <String>[
           'pub',
           'get',
