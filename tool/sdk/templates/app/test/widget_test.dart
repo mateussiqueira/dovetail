@@ -4,13 +4,14 @@ import 'package:weave_di/weave_di.dart';
 
 import 'package:{{name}}/main.dart';
 import 'package:{{name}}/main/di/root_module.dart';
+import 'package:{{name}}/presentation/presenters/welcome/welcome_presenter.dart';
 import 'package:{{name}}/presentation/ui/pages/home_page.dart';
 
 void main() {
-  testWidgets('the app should render the home page from the container', (
-    WidgetTester tester,
-  ) async {
+  testWidgets('a started session should render the home page from the '
+      'container', (WidgetTester tester) async {
     await (WeaveModuleRegistry()..register(rootModule())).installAll();
+    WeaveContainerAdapter.global.get<WelcomePresenter>().start();
 
     await tester.pumpWidget(const {{camel_name}}App());
     await tester.pump();
