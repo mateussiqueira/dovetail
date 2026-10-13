@@ -66,8 +66,10 @@ fn peer_policy() -> Option<PeerPolicy> {
 }
 ```
 
-`PeerPolicy` is re-exported here, next to `RespPayload`. macOS and Windows do
-not read it yet.
+`PeerPolicy` is re-exported here, next to `RespPayload`. On macOS the channel
+reads the code requirement in it instead, set with `require_code`, and checks
+each peer's code against it once, when the connection is accepted; without
+one a release helper refuses every peer. Windows does not read it yet.
 
 The app's `main` is a single call:
 

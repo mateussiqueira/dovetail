@@ -30,26 +30,55 @@ command.
 
 | Platform | Mechanism | Verified against |
 | --- | --- | --- |
-| macOS | `getpeereid` + code signature | *not implemented — see below* |
+| macOS | `LOCAL_PEERTOKEN` + code signature | the code requirement the product declares; without it, nobody in release |
 | Linux | `SO_PEERCRED` | the uids and gids the product declares; without them, nobody |
 | Windows | SDDL on the pipe + client process path | the helper's own directory |
 
-### The macOS path fails CLOSED in release
+### The macOS path checks the peer's code against the product's requirement
 
-This is deliberate and it is carried, not softened.
+Who may speak is the product's to say here too, as a code requirement in the
+same `PeerPolicy`:
 
-In **debug**, the peer is accepted by uid and the crate **logs a warning** that
-no code signature was checked — the socket is `0666` in a `0755` directory, by
-design, so a developer build is reachable by the app.
+```rust
+let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                   and certificate leaf[subject.OU] = \"TEAMID\"";
+let endpoint = Endpoint::new("/var/run/myapp/helper.sock")
+    .with_peer_policy(PeerPolicy::default().require_code(requirement));
+```
 
-In **release**, `verify_peer` **refuses every peer**: the code signature check
-against the product's `SecRequirement` does not exist yet, and accepting an
-unverified peer on a channel that runs as root is worse than having no channel
-at all. `cargo test --release` asserts this refusal — if someone ever makes the
-release path return `Ok`, that test fails.
+On `accept` the listener reads the peer's audit token (`LOCAL_PEERTOKEN`), asks
+the system for the code running in that process
+(`SecCodeCopyGuestWithAttributes`) and checks it against the requirement
+(`SecCodeCheckValidity`). Code that does not satisfy it, a requirement that
+does not parse and a peer that is already gone are refused with
+`AcceptError::PeerRefused`, in debug as in release.
 
-The function that must be written to enable release is named in the error
-message itself, so the next person does not have to rediscover it.
+What that proves is narrow, and it should be read before relying on it:
+
+- The check runs once per connection, at `accept`, and `LOCAL_PEERTOKEN`
+  describes the peer as it is when asked, not as it was when it connected.
+  Measured here: a process connected, forked, and exec'd `/bin/sleep`; at
+  `accept` the token named sleep, which a requirement for sleep admits, and
+  the forked child then sent a request on that connection. Nothing after
+  `accept` checks again, so a process can pass the check by exec'ing a
+  program the requirement admits and leave the connection to another
+  process, forked or handed the descriptor.
+- A requirement does not change the socket's modes. A release socket is still
+  `0600` in a `0700` directory, so only the helper's owner reaches it, and an
+  app that runs as another user cannot connect yet.
+- A requirement is only as strong as what it names. A build signed ad hoc has
+  no certificate to anchor to, and anyone can sign a program ad hoc with any
+  identifier, so `identifier "..."` alone lets in whoever asks; pin the app's
+  `cdhash`, computed when the app is built, or anchor to a Developer ID team.
+
+Without a requirement nothing is checked, and the build profile decides, as
+before. In **debug** the peer is accepted by uid and the crate **logs a
+warning** that no code signature was checked; the socket is `0666` in a `0755`
+directory, so a developer build is reachable by the app. In **release** every
+peer is **refused**, on a `0600` socket in a `0700` directory: accepting an
+unchecked peer on a channel that runs as root is worse than having no channel
+at all. `cargo test --release` asserts this refusal, and `verify_peer`, which
+has no requirement to check against, follows the same two rules.
 
 ### The Linux path refuses every peer until the product declares who may speak
 
@@ -66,7 +95,8 @@ peer process runs with, as `SO_PEERCRED` reports it, not its supplementary
 groups. Without a policy, `accept` refuses every peer, root included, in debug
 as in release: `AcceptError::PeerRefused`, with a reason that names what to
 declare. `verify_peer` alone has no policy to judge against, so on Linux it
-refuses too. macOS and Windows do not read the policy.
+refuses too. macOS reads only the policy's code requirement, above, and
+Windows does not read the policy.
 
 The policy is also what lets the right peer reach the socket. With one, the
 socket is `0666` in a `0755` directory: every local user can connect, and the
