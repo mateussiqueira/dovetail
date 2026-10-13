@@ -50,6 +50,26 @@ pub(crate) fn judge(policy: Option<&PeerPolicy>, peer: PeerCred) -> anyhow::Resu
     })
 }
 
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
+pub(crate) struct SocketModes {
+    pub(crate) directory: u32,
+    pub(crate) socket: u32,
+}
+
+#[cfg(any(test, all(unix, not(target_os = "macos"))))]
+pub(crate) fn socket_modes(policy: Option<&PeerPolicy>) -> SocketModes {
+    match policy {
+        Some(_) => SocketModes {
+            directory: 0o755,
+            socket: 0o666,
+        },
+        None => SocketModes {
+            directory: 0o700,
+            socket: 0o600,
+        },
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -97,5 +117,20 @@ mod tests {
         let policy = PeerPolicy::default().allow_gid(1000);
         assert!(policy.admits(4321, 1000));
         assert!(!policy.admits(1000, 4321));
+    }
+
+    #[test]
+    fn without_a_policy_only_the_owner_reaches_the_socket() {
+        let modes = socket_modes(None);
+        assert_eq!(modes.directory, 0o700);
+        assert_eq!(modes.socket, 0o600);
+    }
+
+    #[test]
+    fn with_a_policy_every_local_user_reaches_the_socket_and_the_policy_decides() {
+        let policy = PeerPolicy::default().allow_gid(1000);
+        let modes = socket_modes(Some(&policy));
+        assert_eq!(modes.directory, 0o755);
+        assert_eq!(modes.socket, 0o666);
     }
 }
