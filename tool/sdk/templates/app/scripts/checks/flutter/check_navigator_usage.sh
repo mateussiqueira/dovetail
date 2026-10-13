@@ -1,13 +1,12 @@
 #!/bin/bash
 # Bloqueia uso direto de Navigator no código do app.
-# Regra: usar WeaveNavigation (context.pushRoute/popRoute/etc).
 # Exceção: mixins de dialog/snackbar podem usar Navigator diretamente.
 # Uso: ./check_navigator_usage.sh [diretório]
 
 DIR="${1:-lib}"
 VIOLATIONS=0
 
-echo "🔍 Verificando uso direto de Navigator (deve usar Weave)..."
+echo "🔍 Verificando uso direto de Navigator (deve passar por um mixin)..."
 
 for file in $(find "$DIR" -name "*.dart" -not -path "*/build/*" -not -path "*/.dart_tool/*" -not -path "*/mixins/*" 2>/dev/null); do
   while IFS= read -r match; do
@@ -33,7 +32,7 @@ done
 if [ "$VIOLATIONS" -gt 0 ]; then
   echo ""
   echo "🚨 $VIOLATIONS uso(s) direto(s) de Navigator detectado(s)"
-  echo "💡 Use context.pushRoute() / context.popRoute() (Weave)"
+  echo "💡 Navegue por um mixin de presentation/mixins/, o único lugar isento"
   exit 1
 else
   echo "✅ Nenhum uso direto de Navigator encontrado"

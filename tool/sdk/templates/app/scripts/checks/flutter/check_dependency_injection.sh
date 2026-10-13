@@ -1,12 +1,5 @@
 #!/bin/bash
 # Verifica se as dependências estão injetadas corretamente.
-# Regra: a camada de apresentação recebe dependências via construtor — nunca
-# instancia estado (presenter/controller) nem infraestrutura concreta. Quem
-# monta o grafo é o container Weave, nos módulos de main/di/.
-#
-# Adaptado do check do mobile: lá a lista era Dio/FlutterSecureStorage/
-# WireguardChannel. Aqui o alvo são os holders de estado e adaptadores
-# concretos do próprio app — a regra vale sem conhecer o produto.
 # Uso: ./check_dependency_injection.sh [diretório]
 
 DIR="${1:-lib}"
@@ -29,19 +22,6 @@ for file in $(find "$DIR/presentation" -name "*.dart" -not -name "*_test.dart" -
     VIOLATIONS=$((VIOLATIONS + 1))
   fi
 done
-
-# Factories resolvem do container — é onde a composição acontece.
-FACTORIES_DIR="$DIR/main/factories"
-if [ -d "$FACTORIES_DIR" ]; then
-  for factory in $(find "$FACTORIES_DIR" -name "*.dart" -not -path "*/build/*" 2>/dev/null); do
-    head -1 "$factory" 2>/dev/null | grep -qE '^export ' && continue
-
-    FACTORY_NAME=$(basename "$factory" .dart)
-    if grep -qE 'c\.get<' "$factory" 2>/dev/null; then
-      echo "✅ $FACTORY_NAME resolve dependências do container corretamente"
-    fi
-  done
-fi
 
 if [ "$VIOLATIONS" -gt 0 ]; then
   echo ""

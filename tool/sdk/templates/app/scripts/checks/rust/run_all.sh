@@ -3,8 +3,6 @@
 #
 # Por padrão só olha o que EU alterei desde a base. Para varrer o projeto
 # inteiro (medir dívida, não barrar push):  ESCOPO_TUDO=1 ./run_all.sh
-#
-# Adaptado do example-rust (que varria crates/, app-tauri/, frontend/src).
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FALHOU=0

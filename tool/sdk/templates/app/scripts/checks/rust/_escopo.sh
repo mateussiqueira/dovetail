@@ -4,11 +4,6 @@
 # Por padrão só o que EU alterei desde a base — o legado do repositório não
 # reprova nada. Com ESCOPO_TUDO=1, varre tudo (medir dívida, não barrar push).
 #
-# Adaptado do example-rust: lá o escopo era crates/, app-tauri/ e
-# frontend/src; aqui o Rust mora em core/ (o núcleo) e core_bridge/ (o
-# repasse FFI). Com ESCOPO_TUDO=1 a raiz é o cwd, então o gate roda também
-# em projeto recém-gerado, antes do primeiro commit.
-#
 # Onde o Rust mora. O default e o layout do scaffold; o dovetail aponta para
 # as crates dele. Uma fonte, dois consumidores — copiar este arquivo criaria
 # duas verdades que divergem no primeiro conserto.

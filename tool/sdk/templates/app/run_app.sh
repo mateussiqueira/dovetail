@@ -1,10 +1,6 @@
 #!/bin/bash
 # Gate de conformidade para rodar o app desktop.
 #
-# O mobile rodava o mesmo portão antes de subir o app, mais o flavor da marca;
-# o desktop não tem flavor — o que vale é o mesmo gate, nas duas linguagens:
-# a suite Flutter (convenção do app) e a suite Rust (core + bridge).
-#
 # Uso: ./run_app.sh            roda o gate e sobe o app no macOS
 #      ./run_app.sh --check    só o gate, sem subir o app
 #      ./run_app.sh --dart-define=FOO=bar   argumentos vão para o flutter run
