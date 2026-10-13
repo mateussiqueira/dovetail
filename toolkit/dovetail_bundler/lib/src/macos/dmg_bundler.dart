@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dovetail_bundler/src/bundle_failure.dart';
 import 'package:dovetail_bundler/src/macos/bundle_architectures.dart';
+import 'package:dovetail_bundler/src/macos/disk_image_format.dart';
 import 'package:dovetail_bundler/src/macos/minimum_system_version.dart';
 import 'package:dovetail_process_runner/dovetail_process_runner.dart';
 import 'package:dovetail_bundler/src/spec/bundle_spec.dart';
@@ -13,11 +14,13 @@ final class DmgBundler {
     required this.runner,
     this.hdiutil = 'hdiutil',
     this.requiredArchitectures = const <TargetArch>{},
+    this.format = DiskImageFormat.lzma,
   });
 
   final ProcessRunner runner;
   final String hdiutil;
   final Set<TargetArch> requiredArchitectures;
+  final DiskImageFormat format;
 
   List<String> argumentsFor(
     BundleSpec spec,
@@ -33,7 +36,7 @@ final class DmgBundler {
     source ?? spec.appDirectory,
     '-ov',
     '-format',
-    'UDZO',
+    format.hdiutilName,
     destination,
   ];
 
@@ -84,10 +87,20 @@ final class DmgBundler {
     // Before hdiutil, not after: a dmg that exists is a dmg somebody uploads,
     // and the floor it carries is the only thing that stops an old Mac from
     // launching a binary it cannot run.
-    MinimumSystemVersion.enforce(
+    final String floor = MinimumSystemVersion.enforce(
       bundlePath: spec.appDirectory,
       declared: spec.minimumSystemVersion,
     );
+    if (!format.opensOn(floor)) {
+      throw BundleFailure(
+        'the bundle runs on macOS $floor, and a ${format.hdiutilName} image '
+        'opens only on macOS ${format.oldestMacosName} and later.',
+        remedy:
+            'Raise MACOSX_DEPLOYMENT_TARGET to ${format.oldestMacosName}, the '
+            'floor Flutter itself declares, or wrap it with '
+            'DiskImageFormat.zlib, which every macOS opens.',
+      );
+    }
 
     Directory(spec.outputDirectory).createSync(recursive: true);
     final String destination = p.join(spec.outputDirectory, fileNameFor(spec));
