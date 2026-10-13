@@ -120,7 +120,7 @@ with `cargo test -- --list` in each crate, and can age.
 | `toolkit/dovetail_screenshots` | 10 Dart | the capture mechanism, bounded frames, loaded icon fonts |
 | `toolkit/dovetail_http_client` | 35 Rust | typed calls, safe routes, and the keychain round trip |
 | `toolkit/dovetail_privileged_channel` | 51 Rust | the handshake, the framing, and who may speak |
-| `toolkit/dovetail_privileged_daemon` | 16 Rust | the service lifecycle on three platforms, and an accept loop a refused peer cannot stall |
+| `toolkit/dovetail_privileged_daemon` | 24 Rust | the service lifecycle on three platforms, an accept loop a refused peer cannot stall, and what each opening of a connection puts on the wire |
 
 ## Getting started
 
