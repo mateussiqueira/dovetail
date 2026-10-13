@@ -1,12 +1,12 @@
+use std::io;
 use std::sync::Arc;
 use std::time::Duration;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::time::timeout;
 
 use dovetail_privileged_channel::{
-    framer, recv_frame, send_frame, server_handshake, ErrorCode, Frame, PeerCheck, Request,
-    RespPayload, Response, ServerConfig, IDLE_TIMEOUT_MS, PROTOCOL_MAJOR, PROTOCOL_MINOR,
+    framer, random_nonce, recv_frame, send_frame, server_handshake, ErrorCode, Frame, PeerCheck,
+    Request, RespPayload, Response, ServerConfig, IDLE_TIMEOUT_MS, PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
 
 use crate::DaemonApp;
@@ -16,7 +16,22 @@ where
     A: DaemonApp,
     S: AsyncRead + AsyncWrite + Unpin + Send,
 {
-    handle_conn_with_nonce(stream, peer, app, fresh_nonce()).await
+    handle_conn_with_generator(stream, peer, app, random_nonce).await
+}
+
+pub(super) async fn handle_conn_with_generator<A, S>(
+    stream: S,
+    peer: PeerCheck,
+    app: Arc<A>,
+    generator: fn() -> io::Result<[u8; 16]>,
+) -> anyhow::Result<()>
+where
+    A: DaemonApp,
+    S: AsyncRead + AsyncWrite + Unpin + Send,
+{
+    let nonce = generator()
+        .inspect_err(|err| tracing::warn!(?err, "gerador do sistema falhou; conexao fechada"))?;
+    handle_conn_with_nonce(stream, peer, app, nonce).await
 }
 
 pub(super) async fn handle_conn_with_nonce<A, S>(
@@ -102,14 +117,4 @@ where
     }
 
     Ok(())
-}
-
-fn fresh_nonce() -> [u8; 16] {
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    let mut n = [0u8; 16];
-    n[..16].copy_from_slice(&nanos.to_le_bytes());
-    n
 }

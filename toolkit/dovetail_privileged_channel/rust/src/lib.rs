@@ -14,6 +14,7 @@ mod handshake_server;
 #[cfg(test)]
 mod handshake_server_tests;
 mod limits;
+mod nonce;
 mod peer_auth;
 mod transport;
 
@@ -27,5 +28,6 @@ pub use handshake_server::{server_handshake, ServerConfig, ServerHandshakeResult
 pub use limits::{
     HANDSHAKE_TIMEOUT_MS, IDLE_TIMEOUT_MS, MAX_FRAME_BYTES, PROTOCOL_MAJOR, PROTOCOL_MINOR,
 };
+pub use nonce::random_nonce;
 pub use peer_auth::verify_peer;
 pub use transport::{bind, AcceptError, Listener, Stream};

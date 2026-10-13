@@ -1,10 +1,15 @@
+use std::io;
+use std::sync::Arc;
+
 use dovetail_privileged_channel::{
     ErrorCode, Frame, RespPayload, Response, MAX_FRAME_BYTES, PROTOCOL_MAJOR,
 };
+use tokio::io::{duplex, AsyncReadExt, AsyncWriteExt};
 
+use crate::connection::{handle_conn, handle_conn_with_generator};
 use crate::connection_fixture::Then::{HangUp, Wait};
 use crate::connection_fixture::{
-    framed, hello, json, refusal, request, server_hello, shown, wire_after,
+    framed, hello, json, peer, refusal, request, server_hello, shown, wire_after, Echo,
 };
 
 #[tokio::test]
@@ -67,4 +72,34 @@ async fn a_frame_cut_in_the_middle_is_refused() {
     let refused = refusal(code, "conexao interrompida antes do handshake");
     let cut = [&100u32.to_be_bytes()[..], b"{\"t\""].concat();
     assert_eq!(wire_after(cut, HangUp).await, refused);
+}
+
+#[tokio::test]
+async fn each_connection_draws_its_nonce_from_the_system() {
+    let mut nonces = Vec::new();
+    for _ in 0..16 {
+        let (mut client, daemon) = duplex(1024);
+        tokio::spawn(handle_conn(daemon, peer(), Arc::new(Echo)));
+        client.shutdown().await.unwrap();
+        let mut wire = Vec::new();
+        client.read_to_end(&mut wire).await.unwrap();
+        match serde_json::from_slice(&wire[4..]).unwrap() {
+            Frame::<(), ()>::ServerHello(answer) => nonces.push(u128::from_le_bytes(answer.nonce)),
+            other => panic!("expected a ServerHello, got {other:?}"),
+        }
+    }
+    let rising = nonces.windows(2).all(|pair| pair[0] <= pair[1]);
+    assert!(!rising, "nonces that rise like a clock: {nonces:?}");
+}
+
+#[tokio::test]
+async fn a_failing_generator_closes_the_connection_before_the_handshake() {
+    let (mut client, daemon) = duplex(1024);
+    let dry: fn() -> io::Result<[u8; 16]> = || Err(io::Error::other("no entropy"));
+    let connection = handle_conn_with_generator(daemon, peer(), Arc::new(Echo), dry);
+    let served = tokio::spawn(connection);
+    let mut wire = Vec::new();
+    client.read_to_end(&mut wire).await.unwrap();
+    assert_eq!(shown(wire), "", "the daemon answered without a nonce");
+    assert!(served.await.unwrap().is_err());
 }
