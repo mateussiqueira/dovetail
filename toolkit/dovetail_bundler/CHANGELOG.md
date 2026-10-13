@@ -15,6 +15,11 @@ arquivo um buraco de cerca de 1 MiB de zeros que nenhum bloco referencia. O
 conteúdo montado é idêntico em todas as corridas. O updater não baixa o `.dmg`,
 e sim o `.app.tar.gz`.
 
+`BundleThinner` afina um `.app` para uma arquitetura: cada Mach-O universal
+passa pelo `lipo -thin`, no lugar, e um binário que não carrega a fatia pedida
+é recusado antes do primeiro `lipo`. É a peça que deixa o `ship` publicar só
+arm64.
+
 ---
 
 ## 0.1.2 — 2026-09-18
