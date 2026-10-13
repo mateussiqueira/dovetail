@@ -5,6 +5,7 @@ use crate::handshake::PeerCheck;
 pub struct PeerPolicy {
     uids: Vec<u32>,
     gids: Vec<u32>,
+    code: Option<String>,
 }
 
 impl PeerPolicy {
@@ -16,6 +17,15 @@ impl PeerPolicy {
     pub fn allow_gid(mut self, gid: u32) -> Self {
         self.gids.push(gid);
         self
+    }
+
+    pub fn require_code(mut self, requirement: impl Into<String>) -> Self {
+        self.code = Some(requirement.into());
+        self
+    }
+
+    pub fn code_requirement(&self) -> Option<&str> {
+        self.code.as_deref()
     }
 
     pub fn admits(&self, uid: u32, gid: u32) -> bool {
