@@ -26,7 +26,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-product="${PRODUCT:-$repo/product/vpn_desktop}"
+product="${PRODUCT:-}"
 stage="${DOVETAIL_UPDATE_STAGE:-${TMPDIR:-/tmp}/dovetail-update-stage}"
 port="${DOVETAIL_UPDATE_PORT:-8443}"
 cli=(dart "$repo/toolkit/dovetail_cli/bin/dovetail.dart")
@@ -54,6 +54,7 @@ say() { printf '\n== %s\n' "$*"; }
 fail() { echo "FAILED: $*" >&2; exit 1; }
 
 # ---- what the product declares, read once ---------------------------------
+[ -n "$product" ] || fail "set PRODUCT to an app root built with 'dovetail build', for example one 'dovetail new' made"
 [ -f "$product/dovetail.yaml" ] || fail "no dovetail.yaml at $product"
 [ -f "$product/pubspec.yaml" ] || fail "no pubspec.yaml at $product"
 binary="$(awk '/^name:/{print $2; exit}' "$product/pubspec.yaml")"
@@ -63,8 +64,8 @@ built="$product/build/macos/Build/Products/Release/$binary.app"
 
 scalar() { awk -v k="$1:" '$1==k{ $1=""; sub(/^ /,""); print; exit }' "$product/dovetail.yaml"; }
 identifier="$(scalar identifier)"; name="$(scalar name)"; manufacturer="$(scalar manufacturer)"
-targets_line="$(grep -m1 '^targets:' "$product/dovetail.yaml")"
-[ -n "$identifier" ] && [ -n "$name" ] && [ -n "$manufacturer" ] && [ -n "$targets_line" ] \
+targets_block="$(awk '/^targets:/ { found = 1; print; next } found && /^[[:space:]]+- / { print; next } found { exit }' "$product/dovetail.yaml")"
+[ -n "$identifier" ] && [ -n "$name" ] && [ -n "$manufacturer" ] && [ -n "$targets_block" ] \
   || fail "identifier/name/manufacturer/targets not all found in $product/dovetail.yaml"
 
 # ---- a staging root, so nothing in the product is edited ------------------
@@ -91,13 +92,13 @@ say "throwaway minisign pair (never the production key)"
   echo "identifier: $identifier"
   echo "name: $name"
   echo "manufacturer: $manufacturer"
-  echo "$targets_line"
+  echo "$targets_block"
   echo "update:"
   echo "  key: keys/staging.key"
   echo "  unencrypted: true"
   echo "  base-url: https://localhost:$port/releases"
   echo "  manifest: dist/latest.json"
-  echo "  endpoint: https://localhost:$port/desktop-version/check/{{target}}"
+  echo "  endpoint: https://localhost:$port/update/check/{{target}}"
   echo "  public-key: |"
   sed 's/^/    /' keys/staging.pub
   echo "sign:"
@@ -170,9 +171,9 @@ for _ in $(seq 1 50); do
   sleep 0.2
 done
 curl -s --cacert tls/ca.crt "https://localhost:$port/latest.json" -o /dev/null || fail "the local host did not come up (see $stage/tls/server.log)"
-code="$(curl -s --cacert tls/ca.crt -o /dev/null -w '%{http_code}' "https://localhost:$port/desktop-version/check/darwin")"
-[ "$code" = "200" ] || fail "the app's endpoint shape (/desktop-version/check/darwin) answered $code"
-echo "  /latest.json and /desktop-version/check/darwin answer 200"
+code="$(curl -s --cacert tls/ca.crt -o /dev/null -w '%{http_code}' "https://localhost:$port/update/check/darwin")"
+[ "$code" = "200" ] || fail "the app's endpoint shape (/update/check/darwin) answered $code"
+echo "  /latest.json and /update/check/darwin answer 200"
 
 say "probe: without --ca the client must REFUSE the private CA"
 if untrusted="$("${cli[@]}" probe --url "https://localhost:$port/latest.json" --target darwin-universal --timeout 5 2>&1)"; then

@@ -12,15 +12,10 @@ set -euo pipefail
 # guarda o script, e o .gitignore exclui o .xcframework.
 #
 #   tool/build_xcframework.sh [plugin...]
-#
-# Sem argumentos constrói os dois plugins. Com nomes, só os pedidos. Um dev
-# de SPM roda o script depois de mudar Rust; quem fica no CocoaPods nem
-# precisa dele — o cargokit continua reconstruindo dentro do build do Xcode.
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 plugins="
-desktop_core_bridge:$repo_root/product/desktop_core_bridge
 dovetail_shortcut_channel:$repo_root/toolkit/dovetail_shortcut_channel
 "
 
@@ -29,7 +24,7 @@ if [ $# -gt 0 ]; then
   for wanted in "$@"; do
     entry="$(printf '%s\n' "$plugins" | grep "^$wanted:" || true)"
     if [ -z "$entry" ]; then
-      echo "no plugin named $wanted (have: desktop_core_bridge, dovetail_shortcut_channel)" >&2
+      echo "no plugin named $wanted (have: dovetail_shortcut_channel)" >&2
       exit 2
     fi
     selected="$selected$entry

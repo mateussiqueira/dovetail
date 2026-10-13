@@ -24,13 +24,13 @@ say "  which is the mutex dying with its process" "ok"
 
 (guard primary second-launch > /tmp/primary.log 2>&1 &)
 sleep 8
-guard secondary second-launch --quiet myid://pair/9f2c > /tmp/secondary.log
+guard secondary second-launch --quiet example://pair/9f2c > /tmp/secondary.log
 holds "a second launch is told it is secondary" "secondary verdict=secondary" /tmp/secondary.log
 sleep 4
 
 holds "the first launch held the guard" "primary verdict=primary" /tmp/primary.log
 holds "  and received the forwarded launch" "primary took=" /tmp/primary.log
-holds "  with the argument the second one carried" "myid://pair/9f2c" /tmp/primary.log
+holds "  with the argument the second one carried" "example://pair/9f2c" /tmp/primary.log
 holds "  and the flag before it" "--quiet" /tmp/primary.log
 holds "  exactly one launch, not two" "primary drained=1" /tmp/primary.log
 holds "  and released the guard on the way out" "primary released" /tmp/primary.log
