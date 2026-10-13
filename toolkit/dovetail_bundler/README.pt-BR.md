@@ -14,10 +14,11 @@ Por que Dart: é a linguagem da equipe daqui para frente, o `cargokit` que já u
 |---|---|---|
 | Windows, NSIS | **construído aqui**, com ressalva | ordem do script, escape, staging, invocação. Compila no macOS com `unicode: false`; o stub Unicode estoura em `std::bad_alloc` no arm64 |
 | Windows, MSI | **construído aqui** | dois backends: `wix` no Windows, `wixl` em qualquer outro host. O `.wxs` gerado é validado por `xmllint`, o GUID tem golden test, e o MSI produzido é conferido com `msiinfo` e `msiextract` |
-| macOS, `.dmg` | escrito | recusa um `.app` que não carrega as arquiteturas prometidas, antes do `hdiutil`; nomeia o sistema de arquivos (`-fs HFS+`) em vez de herdar o padrão do `hdiutil`, e uma imagem de verdade passa no `hdiutil verify` |
+| macOS, `.dmg` | escrito | recusa um `.app` que não carrega as arquiteturas prometidas, antes do `hdiutil`; nomeia o sistema de arquivos (`-fs HFS+`) em vez de herdar o padrão do `hdiutil`; comprime com LZMA (`ULMO`), a menos que `DiskImageFormat.zlib` peça `UDZO`, e recusa o LZMA para um app cujo piso é anterior ao macOS 10.15, o primeiro que o abre; uma imagem de verdade passa no `hdiutil verify` |
 | macOS, `.pkg` | escrito | o app em `/Applications` pelo `pkgbuild` e pelo `productbuild`, com o plist do launchd e os scripts: o `postinstall` faz `bootout` antes de instalar, o desinstalador desfaz na ordem inversa e esquece o recibo; um helper que o bundle não carrega é recusado antes do `pkgbuild` |
 | macOS, `.pkg` dentro de um `.dmg` | escrito | o download do canal interno: a imagem carrega o pkg e as instruções, provado montando uma que um `hdiutil` de verdade produziu |
 | macOS, `.app.tar.gz` | escrito | o bundle assinado na raiz do tar, sem entradas `._*` (`COPYFILE_DISABLE`); é o que o updater extrai e o manifesto publica — `bundle --macos-format tar` |
+| macOS, `.app` magro | escrito | `BundleThinner` mantém uma fatia de cada Mach-O universal com `lipo -thin`, no lugar, e recusa o arquivo que não a tem; um app universal compilado pelo `clang`, e o app que `DOVETAIL_SAMPLE_APP` aponta, saem `arm64` em todo Mach-O e passam no `codesign --verify --deep --strict` |
 | macOS, `.app` universal | escrito | `UniversalBundle` funde dois builds de arquitetura única, provado com `rustc` e `lipo` de verdade |
 | Linux, `.deb` | escrito | lido pelo `ar` e `tar` do sistema, com modo de arquivo e scripts de manutenção |
 | Linux, `.rpm` | escrito | spec e scriptlets; `rpmbuild` local só conhece `aarch64` |
