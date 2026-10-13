@@ -1,10 +1,4 @@
 //! O atalho global, do lado do Rust.
-//!
-//! As camadas seguem o padrao dos projetos de optimas: `domain` e o
-//! vocabulario (que backend existe, que status um chamador recebe) e nao
-//! depende de ninguem; `infra` toca a biblioteca de hotkey, o ambiente e
-//! a thread do laco de eventos; `presentation` e a superficie `extern "C"`
-//! que o Dart chama. Este arquivo e a fachada.
 mod domain;
 mod infra;
 mod presentation;

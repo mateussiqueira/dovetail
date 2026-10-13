@@ -8,7 +8,7 @@ focus, and reports out loud the sessions where no such chord can be granted.
                        DESC
   s.homepage         = 'https://github.com/mateussiqueira/dovetail'
   s.license          = { :file => '../LICENSE' }
-  s.author           = { 'Example Org' => 'mateus.siqueira@ayzen.one' }
+  s.author           = { 'Dovetail' => 'https://github.com/mateussiqueira/dovetail' }
 
   s.platform         = :osx, '10.15'
   s.source           = { :path => '.' }

@@ -1,8 +1,8 @@
 # {{name}}
 
-> Gerado por `dovetail bridge init` a partir do template do SDK. O mecanismo
-> que este package reproduz é o do `product/desktop_core_bridge`, o fixture —
-> o que o template deliberadamente não traz é o conteúdo do produto.
+> Gerado por `dovetail bridge init` a partir do template do SDK. O template
+> traz o mecanismo e, de propósito, nenhum conteúdo: os repasses são do seu
+> produto.
 
 O canal tipado entre o Flutter e o núcleo Rust de um produto desktop: cada
 função em `rust/src/api/` é um repasse, cada tipo é um espelho, e o package
@@ -66,7 +66,7 @@ recusa o silêncio.
 - `lib/src/rust/*` — gerado, nunca escrito à mão.
 - O `example/` — o app mínimo que exercita a ponte por FFI de verdade.
 - Os outros crates do produto no `Cargo.toml` — só o `--core` entra; se o seu
-  `api` usa mais crates irmãos, declare-os como o fixture faz.
+  `api` usa mais crates, declare-os ao lado dele.
 
 Os caminhos gravados (o crate, o `dovetail_rust_core`) são absolutos: o gerado pode
 morar em qualquer lugar, e é de quem gerou.
