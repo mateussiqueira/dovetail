@@ -5,6 +5,7 @@ import 'package:dovetail_cli/dovetail_cli.dart';
 import 'package:dovetail_cli/src/sdk/sdk_locator.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+import 'package:yaml/yaml.dart';
 
 import 'support/repo_root.dart';
 
@@ -32,29 +33,13 @@ void main() {
   });
 
   void installSdk(String version) {
-    for (final String package in <String>['dovetail', 'weave_di']) {
-      final Directory dir = Directory(
-        p.join(sdkHome.path, 'sdk', version, 'packages', package),
-      )..createSync(recursive: true);
-      File(
-        p.join(dir.path, 'pubspec.yaml'),
-      ).writeAsStringSync('name: $package\nversion: $version\n');
-    }
+    final Directory dir = Directory(
+      p.join(sdkHome.path, 'sdk', version, 'packages', 'dovetail'),
+    )..createSync(recursive: true);
+    File(
+      p.join(dir.path, 'pubspec.yaml'),
+    ).writeAsStringSync('name: dovetail\nversion: $version\n');
   }
-
-  // weave_di mora noutro repositorio, privado, e o portao nao pode depender de
-  // um checkout dele: um teste que so passa na maquina que tem o repo ao lado
-  // e exatamente o que este marco esta removendo. O fixture e um pacote de
-  // verdade — pubspec com nome — porque o comando confere o pubspec.yaml antes
-  // de aceitar o caminho.
-  late Directory weave;
-  setUp(() {
-    weave = Directory.systemTemp.createTempSync('dovetail_weave');
-    File(p.join(weave.path, 'pubspec.yaml')).writeAsStringSync(
-      'name: weave_di\nversion: 3.3.0\nenvironment:\n  sdk: ^3.0.0\n',
-    );
-  });
-  tearDown(() => weave.deleteSync(recursive: true));
 
   Future<int?> run(List<String> extra) => runner.run(<String>[
     'new',
@@ -62,8 +47,6 @@ void main() {
     root.path,
     '--dovetail-path',
     dovetailPath,
-    '--weave-path',
-    weave.path,
     ...extra,
   ]);
 
@@ -185,14 +168,20 @@ void main() {
       );
     });
 
-    test('the pubspec should wire weave_di and the bridge', () async {
+    test('the pubspec should depend on flutter, the runtime and the bridge, '
+        'and on nothing else', () async {
       await run(<String>['demo', '--no-create']);
 
-      final String pubspec = read(p.join('demo', 'pubspec.yaml'));
-      expect(pubspec, contains('weave_di:'));
-      expect(pubspec, contains('path: "${weave.path}"'));
-      expect(pubspec, contains('core_bridge:'));
-      expect(pubspec, contains('path: core_bridge'));
+      final YamlMap pubspec =
+          loadYaml(read(p.join('demo', 'pubspec.yaml'))) as YamlMap;
+      expect(
+        (pubspec['dependencies'] as YamlMap).keys,
+        unorderedEquals(<String>['flutter', 'dovetail', 'core_bridge']),
+      );
+      expect(
+        read(p.join('demo', 'pubspec.yaml')),
+        contains('path: core_bridge'),
+      );
     });
 
     test(
@@ -257,55 +246,46 @@ void main() {
     test('the pubspec should carry no git dependency at all', () async {
       await run(<String>['demo', '--no-create']);
 
-      // weave_di era `git: url: git@weave-di.github.com:...` — um alias de SSH
-      // do ~/.ssh/config de uma maquina so, herdado por TODO projeto gerado.
-      // Nada aqui pode voltar a depender de git: um path que nao resolve falha
-      // dizendo o caminho, um host que o DNS nao conhece falha dizendo nada.
       final String pubspec = read(p.join('demo', 'pubspec.yaml'));
       expect(pubspec, isNot(contains('git:')));
       expect(pubspec, isNot(contains('git@')));
       expect(pubspec, isNot(contains('ref:')));
     });
 
-    test('without weave_di anywhere it should refuse, naming the ways '
-        'out', () async {
-      // Ambiente vazio de proposito: com `DOVETAIL_WEAVE_PATH` exportada no
-      // host, um comando que lesse `Platform.environment` acharia o checkout e
-      // este teste passaria a nao provar nada — foi o que aconteceu.
-      final CommandRunner<int> bare = CommandRunner<int>('dovetail', 'test')
-        ..addCommand(
-          NewCommand(
-            sdkLocator: SdkLocator(home: sdkHome.path),
-            environment: const <String, String>{},
-          ),
-        );
+    test('the generated code should import only flutter, the runtime, the '
+        'bridge and itself', () async {
+      await run(<String>['demo', '--no-create']);
 
-      await expectLater(
-        bare.run(<String>[
-          'new',
-          '--root',
-          root.path,
-          '--dovetail-path',
-          dovetailPath,
-          'demo',
-          '--no-create',
-        ]),
-        throwsA(
-          isA<UsageException>().having(
-            (UsageException e) => '${e.message}${e.usage}',
-            'names weave_di, the flag, the variable and the SDK',
-            allOf(
-              contains('weave_di'),
-              contains('--weave-path'),
-              contains(r'$DOVETAIL_WEAVE_PATH'),
-              contains('self-install'),
-            ),
-          ),
+      final RegExp packageImport = RegExp(
+        r"^import 'package:(\w+)/",
+        multiLine: true,
+      );
+      final Set<String> imported = <String>{
+        for (final String area in <String>['lib', 'test'])
+          for (final File file
+              in Directory(p.join(root.path, 'demo', area))
+                  .listSync(recursive: true)
+                  .whereType<File>()
+                  .where((File each) => each.path.endsWith('.dart')))
+            for (final RegExpMatch match in packageImport.allMatches(
+              file.readAsStringSync(),
+            ))
+              match.group(1)!,
+      };
+
+      expect(imported, contains('dovetail'));
+      expect(
+        imported,
+        everyElement(
+          isIn(<String>[
+            'flutter',
+            'flutter_test',
+            'dovetail',
+            'core_bridge',
+            'demo',
+          ]),
         ),
       );
-      // E recusa ANTES de escrever: um scaffold pela metade e pior do que
-      // nenhum, porque o proximo `new` recusa dizendo que o diretorio existe.
-      expect(Directory(p.join(root.path, 'demo')).existsSync(), isFalse);
     });
 
     test('the pubspec should depend on the real dovetail by path', () async {
@@ -500,19 +480,10 @@ void main() {
       expect(exists(p.join('demo', 'pubspec.yaml')), false);
     });
 
-    test('everything missing at once should be ONE refusal naming all four, '
-        'not four runs', () async {
-      // Ambiente vazio e SDK vazio, raiz fora do repo, templates apontados
-      // para lugar nenhum: o barril, o weave_di, o template do app e o do
-      // bridge faltam ao mesmo tempo. Antes, cada corrida mostrava UMA falta,
-      // e a pessoa descobria a proxima so depois de consertar a anterior.
+    test('everything missing at once should be ONE refusal naming all three, '
+        'not three runs', () async {
       final CommandRunner<int> bare = CommandRunner<int>('dovetail', 'test')
-        ..addCommand(
-          NewCommand(
-            sdkLocator: SdkLocator(home: sdkHome.path),
-            environment: const <String, String>{},
-          ),
-        );
+        ..addCommand(NewCommand(sdkLocator: SdkLocator(home: sdkHome.path)));
 
       await expectLater(
         bare.run(<String>[
@@ -530,16 +501,14 @@ void main() {
               .having(
                 (UsageException error) => error.message,
                 'counts them',
-                contains('4 things'),
+                contains('3 things'),
               )
               .having(
                 (UsageException error) => error.usage,
-                'names every one of the four with its way out',
+                'names every one of the three with its way out',
                 allOf(<Matcher>[
                   contains('dovetail library'),
                   contains('--dovetail-path'),
-                  contains('weave_di'),
-                  contains('--weave-path'),
                   contains('app template'),
                   contains('--template'),
                   contains('bridge template'),
