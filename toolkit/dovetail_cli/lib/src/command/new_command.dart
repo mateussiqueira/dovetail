@@ -12,18 +12,8 @@ import 'package:dovetail_cli/src/sdk/sdk_locator.dart';
 import 'package:dovetail_cli/src/sdk/sdk_overrides.dart';
 import 'package:path/path.dart' as p;
 
-/// Scaffolds a dovetail desktop project from the SDK's app template: the
-/// clean-arch Flutter tree wired by Weave, the Rust core, the FFI bridge that
-/// passes it through, and the two check suites that keep the conventions.
-///
-/// Unlike [InitCommand], which reads an existing project and writes
-/// `dovetail.yaml`, this command creates the project from scratch: a
-/// `pubspec.yaml` with the dovetail, weave_di and bridge path dependencies,
-/// the template tree under `lib/`, `core/` and `core_bridge/`, and a
-/// `dovetail.yaml` with the defaults that `dovetail doctor` expects.
 final class NewCommand extends Command<int> {
-  NewCommand({this._sdkLocator, Map<String, String>? environment})
-    : _environment = environment ?? Platform.environment {
+  NewCommand({this._sdkLocator}) {
     argParser
       ..addOption(
         'root',
@@ -42,12 +32,6 @@ final class NewCommand extends Command<int> {
         help:
             'path dependency for the dovetail library in pubspec.yaml; '
             'when omitted, the repo is computed, then the installed SDK',
-      )
-      ..addOption(
-        'weave-path',
-        help:
-            'path dependency for weave_di; when omitted, the installed SDK. '
-            r'Also read from $DOVETAIL_WEAVE_PATH',
       )
       ..addOption(
         'template',
@@ -77,7 +61,6 @@ final class NewCommand extends Command<int> {
   }
 
   final SdkLocator? _sdkLocator;
-  final Map<String, String> _environment;
 
   @override
   String get name => 'new';
@@ -114,11 +97,6 @@ final class NewCommand extends Command<int> {
         ? SdkOverrides.requireSdk(_sdkLocator ?? SdkLocator(), usage)
         : null;
 
-    // As quatro coisas que o scaffold aponta — barril, weave_di, template do
-    // app e template do bridge — sao localizadas ANTES de qualquer byte ser
-    // escrito, e recusadas JUNTAS. Uma por vez, cada corrida mostrava uma
-    // falta, a pessoa consertava, e a proxima corrida mostrava a seguinte:
-    // quatro rodadas para descobrir o que uma so poderia ter dito.
     final List<(String, String)> refusals = <(String, String)>[];
 
     String? resolvedPath;
@@ -145,39 +123,6 @@ final class NewCommand extends Command<int> {
         ));
       }
       resolvedPath = computed;
-    }
-
-    // O `weave_di` segue exatamente a mesma regra do barril, e por um motivo
-    // que custou caro: ele era uma dependencia `git` com a url
-    // `git@weave-di.github.com:` — um alias de SSH que existe no
-    // `~/.ssh/config` de uma maquina so. Todo projeto que este comando gerou
-    // herdava isso, entao o `flutter pub get` de qualquer outra pessoa morria
-    // num host que o DNS nao resolve. O repositorio e privado, entao trocar
-    // pela url https tambem nao resolveria para quem esta de fora: o caminho
-    // certo e o mesmo dos outros pacotes do runtime — viajar dentro do SDK.
-    String? resolvedWeavePath;
-    if (useSdk) {
-      // Placeholder, como o do barril: o pubspec_overrides.yaml sombreia, e
-      // `SdkOverrides.render` ja emite uma linha para cada pacote que o SDK
-      // carrega — inclusive este, sem precisar saber o nome dele.
-      resolvedWeavePath = 'packages/weave_di';
-    } else {
-      final String? computedWeave =
-          _packageAt(argResults?.option('weave-path')) ??
-          _packageAt(_environment['DOVETAIL_WEAVE_PATH']) ??
-          _sdkPackagePath('weave_di');
-      if (computedWeave == null) {
-        refusals.add((
-          'weave_di could not be located from $projectRoot.',
-          'The template uses it for DI and routing, the repository is '
-              'private, and a scaffold whose path dependency points nowhere '
-              'fails on its first flutter pub get. Point at a checkout with '
-              '--weave-path <dir with pubspec.yaml>, set '
-              r'$DOVETAIL_WEAVE_PATH, or install the SDK '
-              '(dovetail self-install), which carries it.',
-        ));
-      }
-      resolvedWeavePath = computedWeave;
     }
 
     // Os templates resolvem como o bridge: explícito, depois o SDK, depois o
@@ -210,12 +155,7 @@ final class NewCommand extends Command<int> {
       ));
     }
 
-    // Um `if` so, para o analisador promover os quatro de uma vez: depois
-    // dele nenhum e nulo, e `refusals` tem exatamente o que faltou.
-    if (resolvedPath == null ||
-        resolvedWeavePath == null ||
-        templateRoot == null ||
-        bridge == null) {
+    if (resolvedPath == null || templateRoot == null || bridge == null) {
       throw _refuseTogether(refusals);
     }
 
@@ -252,7 +192,7 @@ final class NewCommand extends Command<int> {
       },
     );
 
-    _writePubspec(projectRoot, projectName, resolvedPath, resolvedWeavePath);
+    _writePubspec(projectRoot, projectName, resolvedPath);
     _writeDovetailYaml(projectRoot, id, projectName);
     if (sdk != null) {
       _writeSdkOverrides(projectRoot, sdk);
@@ -394,24 +334,6 @@ final class NewCommand extends Command<int> {
         : projectRoot;
   }
 
-  /// [candidate] se ele for mesmo um pacote, e `null` caso contrário.
-  ///
-  /// Duas armadilhas, e as duas ja morderam. Uma variavel de ambiente exportada
-  /// vazia (`DOVETAIL_WEAVE_PATH=`) chega como `''`, que nao e null e passaria
-  /// por um `??`: o scaffold sairia com `path: ""`. E um caminho digitado
-  /// errado so falharia no `flutter pub get` do consumidor — tarde demais,
-  /// porque a promessa deste comando e justamente que o scaffold resolve.
-  static String? _packageAt(String? candidate) {
-    final String path = candidate?.trim() ?? '';
-    if (path.isEmpty) {
-      return null;
-    }
-    if (!File(p.join(path, 'pubspec.yaml')).existsSync()) {
-      return null;
-    }
-    return p.normalize(p.absolute(path));
-  }
-
   /// Um pacote do SDK instalado, em caminho absoluto — o gerado pode morar
   /// em qualquer lugar, e o SDK é de quem gerou, não portátil.
   String? _sdkPackagePath(String package) {
@@ -426,12 +348,7 @@ final class NewCommand extends Command<int> {
     return p.normalize(p.absolute(packageRoot));
   }
 
-  void _writePubspec(
-    String projectRoot,
-    String name,
-    String dovetailPath,
-    String weavePath,
-  ) {
+  void _writePubspec(String projectRoot, String name, String dovetailPath) {
     final File file = File(p.join(projectRoot, 'pubspec.yaml'));
     file.writeAsStringSync('''
 name: $name
@@ -451,8 +368,6 @@ dependencies:
     path: "${dovetailPath.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"
   core_bridge:
     path: core_bridge
-  weave_di:
-    path: "${weavePath.replaceAll('\\', '\\\\').replaceAll('"', '\\"')}"
 
 dev_dependencies:
   flutter_test:
