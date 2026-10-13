@@ -124,7 +124,7 @@ A esteira inteira é um binário. Nada do que ela faz precisa da fonte dela.
 | --- | --- |
 | `dovetail init` | lê o projeto e escreve o `dovetail.yaml` |
 | `dovetail doctor` | este host consegue construir o que foi declarado? |
-| `dovetail new` | gera um projeto novo, já ligado ao runtime |
+| `dovetail new` | gera um projeto novo, já ligado ao runtime, com o [weave_di](https://pub.dev/packages/weave_di) para DI e rotas |
 | `dovetail bridge` | gera o plugin FFI que fala com o núcleo Rust |
 | `dovetail build` | compila o app Flutter com os defines da config |
 | `dovetail bundle` | empacota: `.app`, `.dmg`, `.msi`, `.deb`, `.rpm`, AppImage |

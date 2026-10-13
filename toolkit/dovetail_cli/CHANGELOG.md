@@ -2,14 +2,15 @@
 
 ## Não publicado
 
-`new` deixa de depender de um pacote de injeção de dependência e rotas que mora
-num repositório privado: o template compõe o app com funções-fábrica e com o
-`MaterialApp.routes` do próprio Flutter, e um projeto gerado resolve só com o
-toolkit. Saem a opção e a variável de ambiente que apontavam para aquele
-pacote, e o parâmetro `environment` de `NewCommand`, que só existia para ler a
-variável. O teste do scaffold de verdade, que pulava sempre por depender do
-repositório privado, agora roda: `flutter pub get`, `flutter test` e `doctor`
-no projeto gerado.
+`new` deixa de procurar o pacote de DI e rotas num checkout, numa variável de
+ambiente ou no SDK: o pubspec gerado pede o
+[`weave_di`](https://pub.dev/packages/weave_di) ao pub.dev (`^3.4.1`, MIT desde
+a 3.4.0) como qualquer outra dependência. Saem a opção e a variável que
+apontavam para o checkout, e o parâmetro `environment` de `NewCommand`, que só
+existia para ler a variável. O template compõe com o `weave_di` — módulos,
+rotas e um guard de sessão de exemplo — e o teste do scaffold de verdade, que
+pulava sempre por depender do checkout, agora roda: `flutter pub get`,
+`flutter test` e `doctor` no projeto gerado.
 
 ---
 

@@ -167,7 +167,7 @@ The whole pipeline is one binary. Nothing it does needs its own source.
 | --- | --- |
 | `dovetail init` | reads the project and writes `dovetail.yaml` |
 | `dovetail doctor` | can this host build what was declared? |
-| `dovetail new` | scaffolds a new project, already wired to the runtime |
+| `dovetail new` | scaffolds a new project, already wired to the runtime, with [weave_di](https://pub.dev/packages/weave_di) for DI and routing |
 | `dovetail bridge` | generates the FFI plugin that talks to the Rust core |
 | `dovetail build` | compiles the Flutter app with the defines from the config |
 | `dovetail bundle` | packages it: `.app`, `.dmg`, `.msi`, `.deb`, `.rpm`, AppImage |

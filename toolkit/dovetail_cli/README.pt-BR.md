@@ -609,7 +609,7 @@ demo/
 ├── lib/               clean-arch: data → domain → infra →
 │   ├── data/            presentation → main, com presenters em
 │   ├── domain/          interface + impl (change_notifier_*), montados
-│   ├── infra/           por fábricas simples e MaterialApp.routes
+│   ├── infra/           por módulos, rotas e um guard do weave_di
 │   ├── main/
 │   ├── presentation/
 │   └── shared/
@@ -641,9 +641,10 @@ widget que o `new` escreve exercita de verdade o runtime do próprio dovetail �
 um smoke que só renderiza o app provaria o Flutter, não o SDK que o scaffold
 prometeu ligar.
 
-O scaffold não depende de nada fora do toolkit: o pubspec lista `flutter`,
-`dovetail` e a ponte, e o código que ele escreve só importa esses e ele
-mesmo — há testes prendendo as duas coisas.
+O pubspec do scaffold lista `flutter`, `dovetail`, a ponte e o
+[`weave_di`](https://pub.dev/packages/weave_di) do pub.dev — DI, rotas e guards
+do template — e o código que ele escreve só importa esses e ele mesmo; há
+testes prendendo as duas coisas. Nada nele aponta para um checkout local.
 
 Nenhum `pubspec.yaml` que este comando escreve carrega `git:` — há teste
 prendendo isso.
