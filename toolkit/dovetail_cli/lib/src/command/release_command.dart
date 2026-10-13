@@ -118,15 +118,6 @@ final class ReleaseCommand extends Command<int> {
         'field accepts.',
   );
 
-  /// `--public-key` como caminho OU como a chave em si.
-  ///
-  /// As duas formas porque as duas aparecem: numa maquina de release a chave
-  /// publica e um arquivo ao lado da secreta, e num runner ela chega por
-  /// secret, como texto. Um caminho relativo resolve contra a RAIZ do projeto
-  /// primeiro, como `--artifact`, `update.key` e `update.manifest` ja fazem —
-  /// `release --root product/x --public-key keys/update.pub` da raiz do repo
-  /// lia "keys/update.pub" contra o cwd, nao achava, e tratava o TEXTO do
-  /// caminho como a chave.
   static String? _publicKeyOption(ArgResults args, String? root) {
     final String? given = args.option('public-key')?.trim();
     if (given == null || given.isEmpty) {

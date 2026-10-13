@@ -13,8 +13,6 @@ export 'package:dovetail_platform_channel/src/display/display_probe.dart';
 // nomeia), e a assinatura dela carrega `ScreenRetriever?` e `Display` — tipos
 // do plugin screen_retriever, que nenhum consumidor declara. Quem importava so
 // o barril do dovetail e tocava nela recebia "Undefined class 'Display'".
-// Ninguem fora deste pacote a usava: zero ocorrencias em product/, nos
-// templates e nos outros pacotes do toolkit.
 export 'package:dovetail_platform_channel/src/instance/forwarded_launch.dart';
 export 'package:dovetail_platform_channel/src/instance/single_instance.dart';
 export 'package:dovetail_platform_channel/src/instance/single_instance_verdict.dart';

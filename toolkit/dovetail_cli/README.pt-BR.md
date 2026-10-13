@@ -606,10 +606,10 @@ do SDK (`tool/sdk/templates/app`), e não um `lib/main.dart` solto:
 
 ```
 demo/
-├── lib/               clean-arch (o layout que o time mobile
-│   ├── data/            usa): data → domain → infra → presentation
-│   ├── domain/          → main, com presenters em interface + impl
-│   ├── infra/           change_notifier_*, DI e rotas pelo weave_di
+├── lib/               clean-arch: data → domain → infra →
+│   ├── data/            presentation → main, com presenters em
+│   ├── domain/          interface + impl (change_notifier_*), montados
+│   ├── infra/           por fábricas simples e MaterialApp.routes
 │   ├── main/
 │   ├── presentation/
 │   └── shared/
@@ -618,9 +618,9 @@ demo/
 │                       que o `bridge init` usa — com um repasse de exemplo e
 │                       o portão de cobertura que recusa núcleo crescido sem
 │                       repasse
-├── scripts/checks/    as duas suites de conformidade do time, adaptadas:
-│   ├── flutter/         a do mobile (camadas, nomenclatura, Weave, tamanho),
-│   └── rust/            a do desktop (comentários, inglês, tamanho, URLs)
+├── scripts/checks/    duas suites de conformidade:
+│   ├── flutter/         camadas, nomenclatura, injeção, navegação, tamanho
+│   └── rust/            comentários, inglês, tamanho, URLs
 ├── .githooks/         pre-commit e pre-push rodando o gate
 ├── run_app.sh         gate das duas suites + flutter run -d macos
 └── Makefile           quality, codegen, tests, run, hooks, build
@@ -641,19 +641,9 @@ widget que o `new` escreve exercita de verdade o runtime do próprio dovetail �
 um smoke que só renderiza o app provaria o Flutter, não o SDK que o scaffold
 prometeu ligar.
 
-O `weave_di` — DI e rotas do template — resolve pela mesma regra, e por um
-motivo que vale escrever: ele era uma dependência `git` com a url
-`git@weave-di.github.com:`, um **alias de SSH** que existe no `~/.ssh/config`
-de uma máquina só. Todo projeto que este comando gerou herdava isso, então o
-primeiro `flutter pub get` de qualquer outra pessoa morria num host que o DNS
-não resolve. O pacote agora está publicado no pub.dev sob MIT,
-então a rota comum é uma versão hospedada; a cópia no SDK continua, para
-instalação offline. A ordem é `--weave-path`, depois `$DOVETAIL_WEAVE_PATH`,
-depois o SDK instalado; sem nenhuma das três o comando recusa **antes de
-escrever qualquer byte**, porque scaffold pela metade é pior do que nenhum. Um
-caminho que existe mas não tem `pubspec.yaml` conta como ausente, e uma
-variável exportada vazia também — as duas produziriam um `path:` que só falha
-lá na frente.
+O scaffold não depende de nada fora do toolkit: o pubspec lista `flutter`,
+`dovetail` e a ponte, e o código que ele escreve só importa esses e ele
+mesmo — há testes prendendo as duas coisas.
 
 Nenhum `pubspec.yaml` que este comando escreve carrega `git:` — há teste
 prendendo isso.
