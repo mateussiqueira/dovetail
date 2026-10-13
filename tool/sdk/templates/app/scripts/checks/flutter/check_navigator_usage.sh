@@ -6,7 +6,7 @@
 DIR="${1:-lib}"
 VIOLATIONS=0
 
-echo "🔍 Verificando uso direto de Navigator (deve passar por um mixin)..."
+echo "🔍 Verificando uso direto de Navigator (deve usar a navegação do weave_di)..."
 
 for file in $(find "$DIR" -name "*.dart" -not -path "*/build/*" -not -path "*/.dart_tool/*" -not -path "*/mixins/*" 2>/dev/null); do
   while IFS= read -r match; do
@@ -32,7 +32,7 @@ done
 if [ "$VIOLATIONS" -gt 0 ]; then
   echo ""
   echo "🚨 $VIOLATIONS uso(s) direto(s) de Navigator detectado(s)"
-  echo "💡 Navegue por um mixin de presentation/mixins/, o único lugar isento"
+  echo "💡 Use context.pushRoute() / context.replaceRoute() do weave_di; só mixins usam Navigator"
   exit 1
 else
   echo "✅ Nenhum uso direto de Navigator encontrado"

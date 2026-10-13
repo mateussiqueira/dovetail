@@ -624,7 +624,7 @@ demo/
 ├── lib/               clean architecture: data → domain → infra →
 │   ├── data/            presentation → main, with presenters as
 │   ├── domain/          interface + impl (change_notifier_*), composed
-│   ├── infra/           by plain factories and MaterialApp.routes
+│   ├── infra/           by weave_di modules, routes and a guard
 │   ├── main/
 │   ├── presentation/
 │   └── shared/
@@ -656,9 +656,10 @@ nowhere lies on the first `flutter pub get`. The widget test `new` writes
 genuinely exercises dovetail's own runtime — a smoke test that only renders the
 app would prove Flutter, not the SDK the scaffold promised to wire in.
 
-The scaffold depends on nothing outside the toolkit: its pubspec lists
-`flutter`, `dovetail` and the bridge, and the code it writes imports only
-those and itself — there are tests pinning both.
+The scaffold's pubspec lists `flutter`, `dovetail`, the bridge and
+[`weave_di`](https://pub.dev/packages/weave_di) from pub.dev — the template's
+DI, routes and guards — and the code it writes imports only those and itself;
+there are tests pinning both. Nothing in it points at a local checkout.
 
 No `pubspec.yaml` this command writes carries `git:` — there is a test pinning
 that.
