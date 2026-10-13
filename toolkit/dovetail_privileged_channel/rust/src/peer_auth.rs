@@ -152,6 +152,11 @@ fn codesign_subject_placeholder(uid: libc::uid_t) -> anyhow::Result<String> {
 
 #[cfg(all(unix, not(target_os = "macos")))]
 pub fn verify_peer(conn: &Stream) -> anyhow::Result<PeerCheck> {
+    crate::peer_policy::judge(None, peer_credentials(conn)?)
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+pub(crate) fn peer_credentials(conn: &Stream) -> anyhow::Result<crate::peer_policy::PeerCred> {
     use std::os::unix::io::AsRawFd;
 
     let fd = conn.as_raw_fd();
@@ -176,27 +181,11 @@ pub fn verify_peer(conn: &Stream) -> anyhow::Result<PeerCheck> {
         anyhow::bail!("SO_PEERCRED falhou: {}", std::io::Error::last_os_error());
     }
 
-    let subject = polkit_authorize_placeholder(&cred)?;
-
-    tracing::info!(
-        pid = cred.pid,
-        uid = cred.uid,
-        gid = cred.gid,
-        %subject,
-        "peer autenticado (linux)"
-    );
-    Ok(PeerCheck {
-        method: "peercred+polkit".to_string(),
-        subject,
+    Ok(crate::peer_policy::PeerCred {
+        pid: cred.pid,
+        uid: cred.uid,
+        gid: cred.gid,
     })
-}
-
-#[cfg(all(unix, not(target_os = "macos")))]
-fn polkit_authorize_placeholder(cred: &libc::ucred) -> anyhow::Result<String> {
-    Ok(format!(
-        "pid={} uid={} (polkit nao consultado - DEV)",
-        cred.pid, cred.uid
-    ))
 }
 
 #[cfg(all(test, target_os = "macos"))]

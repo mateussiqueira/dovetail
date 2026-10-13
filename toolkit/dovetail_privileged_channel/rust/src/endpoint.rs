@@ -1,19 +1,32 @@
 use std::path::PathBuf;
 
+use crate::peer_policy::PeerPolicy;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Endpoint {
     address: String,
+    peer_policy: Option<PeerPolicy>,
 }
 
 impl Endpoint {
     pub fn new(address: impl Into<String>) -> Self {
         Self {
             address: address.into(),
+            peer_policy: None,
         }
+    }
+
+    pub fn with_peer_policy(mut self, policy: PeerPolicy) -> Self {
+        self.peer_policy = Some(policy);
+        self
     }
 
     pub fn address(&self) -> &str {
         &self.address
+    }
+
+    pub fn peer_policy(&self) -> Option<&PeerPolicy> {
+        self.peer_policy.as_ref()
     }
 
     #[cfg(unix)]
@@ -37,6 +50,15 @@ mod testes {
     fn guarda_o_endereco_como_recebido() {
         let e = Endpoint::new("/var/run/app/helper.sock");
         assert_eq!(e.address(), "/var/run/app/helper.sock");
+    }
+
+    #[test]
+    fn the_endpoint_has_no_peer_policy_until_one_is_declared() {
+        let policy = PeerPolicy::default().allow_uid(1000);
+        let bare = Endpoint::new("/var/run/app/helper.sock");
+        assert_eq!(bare.peer_policy(), None);
+        let declared = bare.with_peer_policy(policy.clone());
+        assert_eq!(declared.peer_policy(), Some(&policy));
     }
 
     #[cfg(unix)]
