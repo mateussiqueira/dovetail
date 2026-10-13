@@ -1,4 +1,8 @@
 mod connection;
+#[cfg(test)]
+mod connection_fixture;
+#[cfg(test)]
+mod connection_tests;
 pub mod exit_codes;
 mod logging;
 mod mode;

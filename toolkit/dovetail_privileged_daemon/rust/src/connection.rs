@@ -17,6 +17,19 @@ where
     A: DaemonApp,
     S: AsyncRead + AsyncWrite + Unpin + Send,
 {
+    handle_conn_with_nonce(stream, peer, app, fresh_nonce()).await
+}
+
+pub(super) async fn handle_conn_with_nonce<A, S>(
+    stream: S,
+    peer: PeerCheck,
+    app: Arc<A>,
+    nonce: [u8; 16],
+) -> anyhow::Result<()>
+where
+    A: DaemonApp,
+    S: AsyncRead + AsyncWrite + Unpin + Send,
+{
     let mut framed = framer(stream);
 
     let hello = match read_hello::<A::Command, A::Reply, S>(&mut framed).await {
@@ -27,7 +40,7 @@ where
                 proto_major: PROTOCOL_MAJOR,
                 proto_minor: PROTOCOL_MINOR,
                 helper_version: A::VERSION.to_string(),
-                nonce: fresh_nonce(),
+                nonce,
                 peer_check: peer.clone(),
                 reject: Some(reject),
             };
@@ -42,7 +55,7 @@ where
             proto_major: PROTOCOL_MAJOR,
             proto_minor: PROTOCOL_MINOR,
             helper_version: A::VERSION.to_string(),
-            nonce: fresh_nonce(),
+            nonce,
             peer_check: peer.clone(),
             reject: Some(ErrorBody::new(
                 ErrorCode::version_unsupported(),
@@ -70,7 +83,7 @@ where
         proto_major: PROTOCOL_MAJOR,
         proto_minor: negotiated_minor,
         helper_version: A::VERSION.to_string(),
-        nonce: fresh_nonce(),
+        nonce,
         peer_check: peer,
         reject: None,
     };
