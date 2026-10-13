@@ -22,6 +22,8 @@ them is not listed here.
 | the path to **production**: milestones, acceptance criteria, and what is blocked outside the code | [roadmap-producao.md](roadmap-producao.md) |
 | run the **whole** pipeline with no production key, host or Developer ID, using stand-ins that honour the same contract | [release-simulado.md](release-simulado.md) |
 | hand an artefact to a **real end user**: what the release channel requires, what `ship` and `doctor` refuse before a build, and what the updater does when a download is corrupted or a manifest lies | [release-channel.md](release-channel.md) |
+| know what dovetail defends, against whom, and the gaps already known | [threat-model.md](threat-model.md) |
+| report a vulnerability, and what is in scope | [`../SECURITY.md`](../SECURITY.md) |
 | contribute, and what helps most at this point | [`../CONTRIBUTING.md`](../CONTRIBUTING.md) |
 
 ## The pipeline

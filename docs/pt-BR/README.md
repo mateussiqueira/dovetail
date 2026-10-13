@@ -22,6 +22,8 @@ algum deles não é citado aqui.
 | o caminho até **produção**: marcos, critérios de aceite e o que está bloqueado fora do código | [roadmap-producao.md](roadmap-producao.md) |
 | rodar a esteira **inteira** sem chave de produção, host nem Developer ID, com substitutos que seguem o mesmo contrato | [release-simulado.md](release-simulado.md) |
 | entregar um artefato a um **usuário final de verdade**: o que o canal de release exige, o que `ship` e `doctor` recusam antes de um build, e o que o updater faz quando um download corrompe ou um manifesto mente | [release-channel.md](release-channel.md) |
+| saber o que o dovetail defende, contra quem, e os furos já conhecidos | [threat-model.md](threat-model.md) |
+| relatar uma vulnerabilidade, e o que está no escopo | [`../SECURITY.pt-BR.md`](../../SECURITY.pt-BR.md) |
 | contribuir, e o que ajuda mais neste momento | [`../CONTRIBUTING.pt-BR.md`](../../CONTRIBUTING.pt-BR.md) |
 
 ## A esteira
