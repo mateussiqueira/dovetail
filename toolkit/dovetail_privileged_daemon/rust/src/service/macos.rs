@@ -177,6 +177,11 @@ fn plist_para<A: DaemonApp>(exe: &Path) -> String {
 <dict>
     <key>Label</key>
     <string>{label}</string>
+    <key>MachServices</key>
+    <dict>
+        <key>{label}</key>
+        <true/>
+    </dict>
     <key>ProgramArguments</key>
     <array>
         <string>{}</string>
@@ -268,6 +273,16 @@ mod testes {
         let texto = plist_para::<TestApp>(Path::new("/x"));
         assert!(texto.contains("<key>KeepAlive</key>\n    <true/>"));
         assert!(texto.contains("<key>RunAtLoad</key>\n    <true/>"));
+    }
+
+    #[test]
+    fn the_plist_declares_the_label_as_the_mach_service_the_daemon_serves() {
+        let text = plist_para::<TestApp>(Path::new("/x"));
+        let service = format!(
+            "<key>MachServices</key>\n    <dict>\n        <key>{}</key>\n        <true/>",
+            TestApp::IDENTITY.macos_label
+        );
+        assert!(text.contains(&service), "{text}");
     }
 
     #[test]

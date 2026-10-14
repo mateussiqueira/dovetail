@@ -36,6 +36,24 @@ void main() {
       expect(plist, contains('<string>com.example.demo.helper</string>'));
     });
 
+    test('should declare the label as the XPC mach service', () {
+      final String plist = DaemonEmbedder.plistFor(
+        label: 'com.example.demo.helper',
+        program: 'demo-helper',
+      );
+
+      expect(
+        plist,
+        contains(
+          '    <key>MachServices</key>\n'
+          '    <dict>\n'
+          '        <key>com.example.demo.helper</key>\n'
+          '        <true/>\n'
+          '    </dict>',
+        ),
+      );
+    });
+
     test('should point at the binary by a path relative to the bundle', () {
       // Absoluto aponta para a máquina que construiu, e o daemon não sobe na
       // máquina que instala.

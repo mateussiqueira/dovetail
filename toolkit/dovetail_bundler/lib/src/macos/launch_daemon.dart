@@ -70,20 +70,6 @@ final class LaunchDaemon {
             'would end the string and leave the rest of the path to the shell.',
       );
     }
-
-    // Sem MachServices o launchd nao tem cliente para quem iniciar o job sob
-    // demanda: um daemon que nao sobe no load e nao e mantido vivo fica
-    // carregado e nunca roda. O plist que este toolkit escreve nao declara
-    // MachServices, entao um dos dois tem de ser verdadeiro.
-    if (!runAtLoad && !keepAlive) {
-      throw const BundleFailure(
-        'the daemon neither runs at load nor is kept alive.',
-        remedy:
-            'A property list with no MachServices gives launchd no client to '
-            'start the job for, so it would install and never connect. Set '
-            'run-at-load or keep-alive to true.',
-      );
-    }
   }
 
   /// O nome pelo qual o launchd conhece o daemon: vai no `<key>Label</key>` e
@@ -139,6 +125,11 @@ final class LaunchDaemon {
     '<dict>',
     '\t<key>Label</key>',
     '\t<string>${XmlText.content(label)}</string>',
+    '\t<key>MachServices</key>',
+    '\t<dict>',
+    '\t\t<key>${XmlText.content(label)}</key>',
+    '\t\t<true/>',
+    '\t</dict>',
     '\t<key>ProgramArguments</key>',
     '\t<array>',
     '\t\t<string>${XmlText.content(installedExecutablePath)}</string>',

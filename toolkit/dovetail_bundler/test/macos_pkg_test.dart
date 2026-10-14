@@ -106,7 +106,7 @@ void main() {
       );
     });
 
-    test('omits KeepAlive when it is false, and refuses neither', () {
+    test('omits KeepAlive when it is false', () {
       expect(
         LaunchDaemon(
           label: 'com.example.demo.helper',
@@ -115,15 +115,32 @@ void main() {
         ).render(),
         isNot(contains('KeepAlive')),
       );
+    });
+
+    test('declares the label as the XPC mach service the daemon serves', () {
+      final String plist = _daemon().render();
       expect(
-        () => LaunchDaemon(
-          label: 'com.example.demo.helper',
-          program: 'demo-helper',
-          runAtLoad: false,
-          keepAlive: false,
+        plist,
+        contains(
+          '\t<key>MachServices</key>\n'
+          '\t<dict>\n'
+          '\t\t<key>com.example.demo.helper</key>\n'
+          '\t\t<true/>\n'
+          '\t</dict>',
         ),
-        throwsA(isA<BundleFailure>()),
       );
+    });
+
+    test('lets launchd start on demand a daemon that neither runs at load '
+        'nor is kept alive', () {
+      final String plist = LaunchDaemon(
+        label: 'com.example.demo.helper',
+        program: 'demo-helper',
+        runAtLoad: false,
+        keepAlive: false,
+      ).render();
+      expect(plist, contains('<key>RunAtLoad</key>\n\t<false/>'));
+      expect(plist, contains('<key>MachServices</key>'));
     });
 
     test('escapes the XML of an argument instead of breaking the plist', () {
