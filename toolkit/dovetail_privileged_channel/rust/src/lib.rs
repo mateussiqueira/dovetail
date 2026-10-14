@@ -28,6 +28,10 @@ mod xpc_connection;
 mod xpc_connection_tests;
 #[cfg(target_os = "macos")]
 mod xpc_ffi;
+#[cfg(target_os = "macos")]
+mod xpc_listener;
+#[cfg(all(test, target_os = "macos"))]
+mod xpc_tests;
 
 pub use endpoint::Endpoint;
 pub use envelope::{ErrorBody, ErrorCode, Request, RespPayload, Response};
@@ -45,3 +49,5 @@ pub use peer_policy::PeerPolicy;
 pub use transport::{bind, AcceptError, Listener, Stream};
 #[cfg(target_os = "macos")]
 pub use xpc_connection::XpcConnection;
+#[cfg(target_os = "macos")]
+pub use xpc_listener::XpcListener;
