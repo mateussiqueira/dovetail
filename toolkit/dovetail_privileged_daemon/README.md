@@ -66,10 +66,15 @@ fn peer_policy() -> Option<PeerPolicy> {
 }
 ```
 
-`PeerPolicy` is re-exported here, next to `RespPayload`. On macOS the channel
-reads the code requirement in it instead, set with `require_code`, and checks
-each peer's code against it once, when the connection is accepted; without
-one a release helper refuses every peer. Windows does not read it yet.
+`PeerPolicy` is re-exported here, next to `RespPayload`. On macOS 12 and later
+the daemon serves an XPC mach service named after its launchd label, and the
+system checks the code of the sender of every message against a code
+requirement. The requirement is data the product supplies, not a constant in
+this crate: the `--peer-requirement <requirement>` argument in the launchd
+property list (the `arguments` of the macOS service in `dovetail.yaml`) wins,
+and `require_code` in the policy is the fallback. An ad hoc app pins its
+`cdhash`; a Developer ID app anchors to its team. With neither, the daemon does
+not start on macOS. Windows does not read the policy yet.
 
 The app's `main` is a single call:
 
