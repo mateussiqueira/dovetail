@@ -7,8 +7,8 @@ import 'package:dovetail_updater/src/update_failure.dart';
 import 'package:path/path.dart' as p;
 
 enum WindowsInstallMode {
-  passive(<String>['/P', '/R']),
-  quiet(<String>['/S', '/R']),
+  passive(<String>['/S']),
+  quiet(<String>['/S']),
   interactive(<String>[]);
 
   const WindowsInstallMode(this.nsisArguments);

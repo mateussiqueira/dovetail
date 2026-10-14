@@ -265,8 +265,8 @@ void main() {
         mode: mode,
       ).argumentsFor('.exe', 'C:/t/setup.exe');
 
-      expect(flagsFor(WindowsInstallMode.passive), <String>['/P', '/R']);
-      expect(flagsFor(WindowsInstallMode.quiet), <String>['/S', '/R']);
+      expect(flagsFor(WindowsInstallMode.passive), <String>['/S']);
+      expect(flagsFor(WindowsInstallMode.quiet), <String>['/S']);
       expect(flagsFor(WindowsInstallMode.interactive), isEmpty);
     });
 

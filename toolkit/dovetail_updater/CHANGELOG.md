@@ -12,6 +12,16 @@ O caminho do `.exe` (NSIS, lançado e nunca aguardado) **continua** deixando o
 arquivo, de propósito e agora com teste: o instalador ainda o lê depois de este
 processo ter retornado.
 
+O modo `passive` do `WindowsInstaller` deixou de prometer progresso e
+reabertura a um instalador NSIS. Ele passava `/P /R`, e o `quiet` passava
+`/S /R`, mas o script que o `dovetail_bundler` gera não lê a linha de comando,
+e o NSIS ignora em silêncio o que o script não trata: o passivo abria o
+assistente inteiro depois de o `CheckIfAppIsRunning` encerrar o app, e o `/R`
+nunca reabriu nada. Agora `passive` e `quiet` passam só `/S`, e `interactive`
+não passa nada; o `.msi` não muda. Reabrir o app depois da troca fica com quem
+aplica a atualização. Um teste do `dovetail_cli` renderiza o script e falha
+quando o updater passar uma flag que o script não trata.
+
 ## 0.1.1 — 2026-09-09
 
 Nada no código mudou. A 0.1.0 foi publicada com o README em português e com
