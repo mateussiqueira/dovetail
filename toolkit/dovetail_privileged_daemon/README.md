@@ -70,9 +70,14 @@ fn peer_policy() -> Option<PeerPolicy> {
 the daemon serves an XPC mach service named after its launchd label, and the
 system checks the code of the sender of every message against a code
 requirement. The requirement is data the product supplies, not a constant in
-this crate: the `--peer-requirement <requirement>` argument in the launchd
-property list (the `arguments` of the macOS service in `dovetail.yaml`) wins,
-and `require_code` in the policy is the fallback. An ad hoc app pins its
+this crate. `require_code` in the policy is the one compiled into the daemon.
+The `--peer-requirement <requirement>` argument in the launchd property list
+(the `arguments` of the macOS service in `dovetail.yaml`) replaces it only when
+`/Library/LaunchDaemons/<label>.plist` belongs to `root:wheel` and neither the
+group nor others can write it, which is the system route the installer
+package takes. A property list inside the app bundle can be rewritten by
+whoever can write the app, so on that route the argument is ignored and the
+compiled requirement is served. An ad hoc app pins its
 `cdhash`. A Developer ID app names all three of
 `anchor apple generic and identifier "<app id>" and certificate leaf[subject.OU] = "<team id>"`:
 the anchor alone admits any Developer ID program and the identifier alone is

@@ -7,7 +7,8 @@ mod windows;
 
 #[cfg(target_os = "macos")]
 pub(crate) use macos::{
-    query_status, register_service, repair_service, run_service, stop_service, unregister_service,
+    plist_path, query_status, register_service, repair_service, run_service, stop_service,
+    unregister_service,
 };
 #[cfg(not(any(windows, target_os = "macos")))]
 pub(crate) use stub::{
