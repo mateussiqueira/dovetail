@@ -73,8 +73,13 @@ requirement. The requirement is data the product supplies, not a constant in
 this crate: the `--peer-requirement <requirement>` argument in the launchd
 property list (the `arguments` of the macOS service in `dovetail.yaml`) wins,
 and `require_code` in the policy is the fallback. An ad hoc app pins its
-`cdhash`; a Developer ID app anchors to its team. With neither, the daemon does
-not start on macOS. Windows does not read the policy yet.
+`cdhash`. A Developer ID app names all three of
+`anchor apple generic and identifier "<app id>" and certificate leaf[subject.OU] = "<team id>"`:
+the anchor alone admits any Developer ID program and the identifier alone is
+chosen by whoever signs. The daemon does not start on macOS without a
+requirement, nor with a weak one: `always`, an empty string, an identifier
+alone, the anchor alone, or any clause widened by `or` or `!`. Windows does
+not read the policy yet.
 
 The app's `main` is a single call:
 
