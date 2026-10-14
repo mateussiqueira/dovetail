@@ -2,7 +2,13 @@ use std::future::Future;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use dovetail_privileged_channel::{bind, AcceptError, Endpoint, PeerCheck};
+#[cfg(not(target_os = "macos"))]
+use dovetail_privileged_channel::bind;
+#[cfg(any(test, not(target_os = "macos")))]
+use dovetail_privileged_channel::Endpoint;
+use dovetail_privileged_channel::{AcceptError, PeerCheck};
+#[cfg(target_os = "macos")]
+use dovetail_privileged_channel::{PeerPolicy, XpcListener};
 use futures::{stream, Stream, StreamExt};
 
 use crate::connection::handle_conn;
@@ -18,12 +24,9 @@ where
 {
     app.prepare().await?;
 
-    let listener = bind(&endpoint::<A>()).await?;
+    let incoming = incoming::<A>().await?;
     tracing::info!("helper ouvindo no transporte local do SO");
 
-    let incoming = stream::unfold(listener, |mut listener| async move {
-        Some((listener.accept().await, listener))
-    });
     accept_loop(
         incoming,
         shutdown,
@@ -42,6 +45,47 @@ where
     Ok(())
 }
 
+#[cfg(not(target_os = "macos"))]
+async fn incoming<A: DaemonApp>() -> anyhow::Result<
+    impl Stream<Item = Result<(dovetail_privileged_channel::Stream, PeerCheck), AcceptError>>,
+> {
+    let listener = bind(&endpoint::<A>()).await?;
+    Ok(stream::unfold(listener, |mut listener| async move {
+        Some((listener.accept().await, listener))
+    }))
+}
+
+#[cfg(target_os = "macos")]
+async fn incoming<A: DaemonApp>() -> anyhow::Result<
+    impl Stream<Item = Result<(dovetail_privileged_channel::XpcConnection, PeerCheck), AcceptError>>,
+> {
+    let requirement = xpc_requirement(A::peer_policy())?;
+    let listener = XpcListener::mach_service(A::IDENTITY.macos_label, &requirement)?;
+    Ok(stream::unfold(listener, |mut listener| async move {
+        let conn = listener.accept().await?;
+        let peer = PeerCheck {
+            method: "xpc+codesign".into(),
+            subject: format!("pid={}", conn.pid()),
+        };
+        Some((Ok((conn, peer)), listener))
+    }))
+}
+
+#[cfg(target_os = "macos")]
+fn xpc_requirement(policy: Option<PeerPolicy>) -> anyhow::Result<String> {
+    policy
+        .as_ref()
+        .and_then(PeerPolicy::code_requirement)
+        .map(str::to_string)
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "no macOS o daemon atende por XPC e exige o requisito de assinatura do app \
+                 (PeerPolicy::require_code)"
+            )
+        })
+}
+
+#[cfg(any(test, not(target_os = "macos")))]
 fn endpoint<A: DaemonApp>() -> Endpoint {
     let endpoint = Endpoint::new(A::ENDPOINT);
     match A::peer_policy() {
@@ -152,6 +196,26 @@ mod tests {
     fn the_policy_the_app_declares_reaches_the_endpoint() {
         let declared = PeerPolicy::default().allow_uid(0).allow_gid(27);
         assert_eq!(endpoint::<Guarded>().peer_policy(), Some(&declared));
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_the_daemon_serves_xpc_under_the_requirement_the_app_declares() {
+        let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
+        assert_eq!(xpc_requirement(Some(policy)).unwrap(), "cdhash H\"00\"");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_a_policy_without_a_code_requirement_does_not_start_the_daemon() {
+        let refused = xpc_requirement(Guarded::peer_policy()).unwrap_err();
+        assert!(refused.to_string().contains("require_code"), "{refused}");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_an_app_without_a_policy_does_not_start_the_daemon() {
+        assert!(xpc_requirement(Echo::peer_policy()).is_err());
     }
 
     const FIRST_BACKOFF: Duration = Duration::from_millis(100);
