@@ -82,9 +82,12 @@ compiled requirement is served. An ad hoc app pins its
 `anchor apple generic and identifier "<app id>" and certificate leaf[subject.OU] = "<team id>"`:
 the anchor alone admits any Developer ID program and the identifier alone is
 chosen by whoever signs. The daemon does not start on macOS without a
-requirement, nor with a weak one: `always`, an empty string, an identifier
-alone, the anchor alone, or any clause widened by `or` or `!`. Windows does
-not read the policy yet.
+requirement, and it refuses the common weak shapes it can spot in the text:
+`always`, an empty string, an identifier alone, the anchor alone, or a clause
+widened by `or` or `!`. The check reads the requirement as text, not as
+compiled by the Security framework, so it is a guard against mistakes, not a
+proof of strength: write the requirement in one of the two forms above. Windows
+does not read the policy yet.
 
 The app's `main` is a single call:
 
