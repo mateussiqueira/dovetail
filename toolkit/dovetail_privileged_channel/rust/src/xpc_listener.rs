@@ -39,16 +39,16 @@ struct Accepting {
 impl XpcListener {
     pub fn mach_service(name: &str, requirement: &str) -> anyhow::Result<Self> {
         let requirement = Some(CString::new(requirement)?);
-        Ok(Self::listen(Some(CString::new(name)?), requirement))
+        Self::listen(Some(CString::new(name)?), requirement)
     }
 
     #[cfg(test)]
     pub(crate) fn anonymous(requirement: Option<&str>) -> Self {
         let requirement = requirement.map(|r| CString::new(r).expect("requisito sem NUL"));
-        Self::listen(None, requirement)
+        Self::listen(None, requirement).expect("o modo anonimo aceita qualquer requisito")
     }
 
-    fn listen(service: Option<CString>, requirement: Option<CString>) -> Self {
+    fn listen(service: Option<CString>, requirement: Option<CString>) -> anyhow::Result<Self> {
         let (tx, incoming) = mpsc::unbounded_channel();
         let accepting = Box::new(Accepting {
             peers: Mutex::new(Some(tx)),
@@ -70,7 +70,11 @@ impl XpcListener {
                 xpc_ffi::free_boxed::<Sink<Vec<u8>>>,
             )
         };
-        Self { raw, incoming }
+        anyhow::ensure!(
+            !raw.is_null(),
+            "o shim XPC recusou um servico nomeado sem requisito de assinatura"
+        );
+        Ok(Self { raw, incoming })
     }
 
     pub async fn accept(&mut self) -> Option<XpcConnection> {

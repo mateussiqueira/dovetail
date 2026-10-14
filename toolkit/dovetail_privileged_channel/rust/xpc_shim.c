@@ -11,6 +11,7 @@ static void dt_route(xpc_connection_t conn, void *ctx, dt_bytes_fn on_bytes, dt_
     xpc_connection_set_finalizer_f(conn, on_free);
     xpc_connection_set_event_handler(conn, ^(xpc_object_t event) {
         if (xpc_get_type(event) != XPC_TYPE_DICTIONARY) {
+            if (event == XPC_ERROR_PEER_CODE_SIGNING_REQUIREMENT) xpc_connection_cancel(conn);
             on_bytes(ctx, NULL, 0);
             return;
         }
@@ -23,6 +24,10 @@ static void dt_route(xpc_connection_t conn, void *ctx, dt_bytes_fn on_bytes, dt_
 xpc_connection_t dovetail_xpc_listen(const char *service, const char *requirement, void *ctx,
                                      dt_free_fn ctx_free, dt_peer_fn on_peer, dt_bytes_fn on_bytes,
                                      dt_free_fn peer_free) {
+    if (service && !requirement) {
+        ctx_free(ctx);
+        return NULL;
+    }
     dispatch_queue_t queue = dispatch_queue_create("dovetail.xpc.listener", DISPATCH_QUEUE_SERIAL);
     xpc_connection_t listener = service
         ? xpc_connection_create_mach_service(service, queue, XPC_CONNECTION_MACH_SERVICE_LISTENER)
