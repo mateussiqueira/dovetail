@@ -75,9 +75,11 @@ The `--peer-requirement <requirement>` argument in the launchd property list
 (the `arguments` of the macOS service in `dovetail.yaml`) replaces it only when
 `/Library/LaunchDaemons/<label>.plist` belongs to `root:wheel` and neither the
 group nor others can write it, which is the system route the installer
-package takes. A property list inside the app bundle can be rewritten by
-whoever can write the app, so on that route the argument is ignored and the
-compiled requirement is served. An ad hoc app pins its
+package takes. The daemon reads the argument from the content of that file,
+not from its own command line, so a launch from a property list inside the
+app bundle, which whoever can write the app can rewrite, serves the compiled
+requirement; when the command line carries a requirement the trusted file
+does not, the daemon logs that it ignored it. An ad hoc app pins its
 `cdhash` (one `cdhash` per slice of a universal app, joined by `or`). A
 Developer ID app names all three of
 `anchor apple generic and identifier "<app id>" and certificate leaf[subject.OU] = "<team id>"`:

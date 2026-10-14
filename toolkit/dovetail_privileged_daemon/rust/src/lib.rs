@@ -7,6 +7,10 @@ pub mod exit_codes;
 mod logging;
 mod mode;
 #[cfg(target_os = "macos")]
+mod plist_requirement;
+#[cfg(all(test, target_os = "macos"))]
+mod plist_requirement_tests;
+#[cfg(target_os = "macos")]
 mod plist_trust;
 #[cfg(all(test, target_os = "macos"))]
 mod plist_trust_tests;

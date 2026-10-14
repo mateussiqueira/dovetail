@@ -13,7 +13,7 @@ use futures::{stream, Stream, StreamExt};
 
 use crate::connection::handle_conn;
 #[cfg(target_os = "macos")]
-use crate::plist_trust::system_plist_is_trusted;
+use crate::plist_requirement::{argv_is_ignored, requirement_declared_by};
 use crate::refusal_log::RefusalLog;
 #[cfg(target_os = "macos")]
 use crate::requirement_strength::ensure_strong;
@@ -64,8 +64,8 @@ async fn incoming<A: DaemonApp>() -> anyhow::Result<
     impl Stream<Item = Result<(dovetail_privileged_channel::XpcConnection, PeerCheck), AcceptError>>,
 > {
     let system_plist = crate::service::plist_path::<A>();
-    let trusted = system_plist_is_trusted(std::path::Path::new(&system_plist));
-    let requirement = xpc_requirement(std::env::args(), A::peer_policy(), trusted)?;
+    let declared = requirement_declared_by(std::path::Path::new(&system_plist));
+    let requirement = xpc_requirement(std::env::args(), declared, A::peer_policy())?;
     let listener = XpcListener::mach_service(A::IDENTITY.macos_label, &requirement)?;
     Ok(stream::unfold(listener, |mut listener| async move {
         let conn = listener.accept().await?;
@@ -78,16 +78,17 @@ async fn incoming<A: DaemonApp>() -> anyhow::Result<
 }
 
 #[cfg(target_os = "macos")]
-const REQUIREMENT_FLAG: &str = "--peer-requirement";
-
-#[cfg(target_os = "macos")]
 fn xpc_requirement(
-    mut args: impl Iterator<Item = String>,
+    args: impl Iterator<Item = String>,
+    declared: Option<String>,
     policy: Option<PeerPolicy>,
-    plist_trusted: bool,
 ) -> anyhow::Result<String> {
-    let declared = args.find(|arg| arg == REQUIREMENT_FLAG).and(args.next());
-    let declared = declared.filter(|_| plist_trusted);
+    if argv_is_ignored(args, declared.as_deref()) {
+        tracing::warn!(
+            "--peer-requirement da linha de comando ignorado: o requisito vem do conteudo do \
+             plist root:wheel em /Library/LaunchDaemons ou da PeerPolicy compilada"
+        );
+    }
     let requirement = declared
         .or_else(|| {
             policy
@@ -222,21 +223,21 @@ mod tests {
     #[test]
     fn on_macos_the_daemon_serves_xpc_under_the_requirement_the_app_declares() {
         let policy = PeerPolicy::default().require_code(COMPILED);
-        let requirement = xpc_requirement(no_args(), Some(policy), false).unwrap();
+        let requirement = xpc_requirement(no_args(), None, Some(policy)).unwrap();
         assert_eq!(requirement, COMPILED);
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_a_policy_without_a_code_requirement_does_not_start_the_daemon() {
-        let refused = xpc_requirement(no_args(), Guarded::peer_policy(), false).unwrap_err();
+        let refused = xpc_requirement(no_args(), None, Guarded::peer_policy()).unwrap_err();
         assert!(refused.to_string().contains("require_code"), "{refused}");
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_an_app_without_a_policy_does_not_start_the_daemon() {
-        assert!(xpc_requirement(no_args(), Echo::peer_policy(), false).is_err());
+        assert!(xpc_requirement(no_args(), None, Echo::peer_policy()).is_err());
     }
 
     #[cfg(target_os = "macos")]
@@ -259,8 +260,8 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_the_requirement_the_plist_passes_is_the_one_served() {
-        let args = launched_with(&["helper", "--service", "--peer-requirement", FROM_PLIST]);
-        let requirement = xpc_requirement(args, Echo::peer_policy(), true).unwrap();
+        let declared = Some(FROM_PLIST.to_string());
+        let requirement = xpc_requirement(no_args(), declared, Echo::peer_policy()).unwrap();
         assert_eq!(requirement, FROM_PLIST);
     }
 
@@ -268,40 +269,33 @@ mod tests {
     #[test]
     fn on_macos_a_root_owned_system_plist_requirement_wins_over_the_compiled_one() {
         let policy = PeerPolicy::default().require_code(COMPILED);
-        let args = launched_with(&["helper", "--peer-requirement", FROM_PLIST]);
-        let requirement = xpc_requirement(args, Some(policy), true).unwrap();
+        let declared = Some(FROM_PLIST.to_string());
+        let requirement = xpc_requirement(no_args(), declared, Some(policy)).unwrap();
         assert_eq!(requirement, FROM_PLIST);
     }
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn on_macos_a_plist_root_does_not_own_cannot_replace_the_compiled_requirement() {
+    fn on_macos_the_command_line_cannot_replace_the_compiled_requirement() {
         let policy = PeerPolicy::default().require_code(COMPILED);
         let args = launched_with(&["helper", "--peer-requirement", FROM_PLIST]);
-        let requirement = xpc_requirement(args, Some(policy), false).unwrap();
+        let requirement = xpc_requirement(args, None, Some(policy)).unwrap();
         assert_eq!(requirement, COMPILED);
     }
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn on_macos_a_plist_root_does_not_own_alone_does_not_start_the_daemon() {
+    fn on_macos_the_command_line_alone_does_not_start_the_daemon() {
         let args = launched_with(&["helper", "--peer-requirement", FROM_PLIST]);
-        assert!(xpc_requirement(args, Echo::peer_policy(), false).is_err());
+        assert!(xpc_requirement(args, None, Echo::peer_policy()).is_err());
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_a_weak_requirement_does_not_start_the_daemon() {
         let policy = PeerPolicy::default().require_code("anchor apple generic");
-        let refused = xpc_requirement(no_args(), Some(policy), false).unwrap_err();
+        let refused = xpc_requirement(no_args(), None, Some(policy)).unwrap_err();
         assert!(refused.to_string().contains("fraco"), "{refused}");
-    }
-
-    #[cfg(target_os = "macos")]
-    #[test]
-    fn on_macos_a_flag_with_no_value_does_not_start_the_daemon() {
-        let args = launched_with(&["helper", "--peer-requirement"]);
-        assert!(xpc_requirement(args, Echo::peer_policy(), true).is_err());
     }
 
     const FIRST_BACKOFF: Duration = Duration::from_millis(100);
