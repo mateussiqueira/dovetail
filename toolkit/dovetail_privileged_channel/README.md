@@ -43,7 +43,9 @@ requirement from the product's `PeerPolicy`, and the system checks the sender
 of **every message** against it, not the process that was behind the
 connection when it opened. A process that connects, sends and execs a signed
 program gets nothing through from the unsigned one: the message is dropped and
-the connection ends. A forked child gets nothing through either, because it
+the connection ends. The sender must still be running when the daemon
+receives the message: an app that writes and exits at once is refused too, so
+it waits for the reply. A forked child gets nothing through either, because it
 inherits no send right to the service port. A requirement
 that does not parse refuses every peer, and a daemon whose product declares no
 code requirement does not start. The API is from macOS 12, the minimum here.
@@ -74,13 +76,27 @@ The proof runs the attack against a real LaunchDaemon, so it needs root and is
 `#[ignore]`d. It proves the shim alone: the LaunchDaemon is the `xpc_proof`
 example serving `XpcListener` directly, not the privileged daemon with its
 `--peer-requirement` and boot checks. Two copies of the example are signed ad
-hoc, an "app" and an "other". In the main round the requirement pins the app's
-`cdhash`: the app is heard, the other is not, and when the other connects,
-sends, forks and execs the app with no pause between the send and the exec, its
-message is not judged as the app, while the exec'd app is heard. The control
-round pins the other instead and runs the same escalation: the connector's
-message arrives, so the main round's silence is the requirement at work. In
-both rounds the forked child is never heard, and that is Mach, not the
+hoc, an "app" and an "other".
+
+XPC judges each message by the audit token of the process that sent it, and
+that process must still be alive when the daemon receives it. A token names
+one process image: once the sender has exec'd or exited, the system answers
+`ESRCH`, logs "Received message forbidden" and drops the message, whatever
+the requirement says, even one that admits everything. A sender that flushes
+and exits at once is therefore refused too, so every sender in the proof
+stays alive until the test has read what the daemon heard.
+
+In the main round the requirement pins the app's `cdhash`: the live app is
+heard, the live other is not, and when the other connects, sends, forks and
+execs the app, its message is not heard while the exec'd app, kept alive, is.
+The control round pins the other: the live other is heard and the app is not,
+so the main round's silence is the requirement at work. The held round admits
+both images and the daemon does not check in until the connector has sent and
+exec'd: the message sent before the exec never arrives, while a live other
+and the live exec'd app are heard. The system closes the exec race on its
+own: a message outliving its sender's image is refused before any
+requirement can admit it.
+In every round the forked child is never heard, and that is Mach, not the
 requirement: a child of `fork` inherits no send right to the service port.
 Built as your user, run as root, the clients drop back to your uid:
 
@@ -89,6 +105,10 @@ cargo build --example xpc_proof
 cargo test --test xpc_escalation --no-run
 sudo target/debug/deps/xpc_escalation-<hash> --ignored --test-threads=1
 ```
+
+Without root, the same rounds run in your GUI domain if, only on your
+machine, the client drops `MACH_SERVICE_PRIVILEGED` and the test bootstraps
+into `gui/<uid>` instead of `system`.
 
 ### The macOS socket path checks the peer's code once, at accept
 
