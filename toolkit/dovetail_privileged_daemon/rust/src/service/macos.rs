@@ -16,7 +16,7 @@ pub fn run_service<A: DaemonApp>() -> i32 {
     }
 }
 
-fn plist_path<A: DaemonApp>() -> String {
+pub(crate) fn plist_path<A: DaemonApp>() -> String {
     format!("/Library/LaunchDaemons/{}.plist", A::IDENTITY.macos_label)
 }
 

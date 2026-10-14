@@ -6,6 +6,10 @@ mod connection_tests;
 pub mod exit_codes;
 mod logging;
 mod mode;
+#[cfg(target_os = "macos")]
+mod plist_trust;
+#[cfg(all(test, target_os = "macos"))]
+mod plist_trust_tests;
 mod refusal_log;
 #[cfg(target_os = "macos")]
 mod requirement_strength;

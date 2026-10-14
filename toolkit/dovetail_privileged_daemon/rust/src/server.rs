@@ -12,6 +12,8 @@ use dovetail_privileged_channel::{PeerPolicy, XpcListener};
 use futures::{stream, Stream, StreamExt};
 
 use crate::connection::handle_conn;
+#[cfg(target_os = "macos")]
+use crate::plist_trust::system_plist_is_trusted;
 use crate::refusal_log::RefusalLog;
 #[cfg(target_os = "macos")]
 use crate::requirement_strength::ensure_strong;
@@ -61,7 +63,9 @@ async fn incoming<A: DaemonApp>() -> anyhow::Result<
 async fn incoming<A: DaemonApp>() -> anyhow::Result<
     impl Stream<Item = Result<(dovetail_privileged_channel::XpcConnection, PeerCheck), AcceptError>>,
 > {
-    let requirement = xpc_requirement(std::env::args(), A::peer_policy())?;
+    let system_plist = crate::service::plist_path::<A>();
+    let trusted = system_plist_is_trusted(std::path::Path::new(&system_plist));
+    let requirement = xpc_requirement(std::env::args(), A::peer_policy(), trusted)?;
     let listener = XpcListener::mach_service(A::IDENTITY.macos_label, &requirement)?;
     Ok(stream::unfold(listener, |mut listener| async move {
         let conn = listener.accept().await?;
@@ -80,8 +84,10 @@ const REQUIREMENT_FLAG: &str = "--peer-requirement";
 fn xpc_requirement(
     mut args: impl Iterator<Item = String>,
     policy: Option<PeerPolicy>,
+    plist_trusted: bool,
 ) -> anyhow::Result<String> {
     let declared = args.find(|arg| arg == REQUIREMENT_FLAG).and(args.next());
+    let declared = declared.filter(|_| plist_trusted);
     let requirement = declared
         .or_else(|| {
             policy
@@ -216,21 +222,21 @@ mod tests {
     #[test]
     fn on_macos_the_daemon_serves_xpc_under_the_requirement_the_app_declares() {
         let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
-        let requirement = xpc_requirement(no_args(), Some(policy)).unwrap();
+        let requirement = xpc_requirement(no_args(), Some(policy), false).unwrap();
         assert_eq!(requirement, "cdhash H\"00\"");
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_a_policy_without_a_code_requirement_does_not_start_the_daemon() {
-        let refused = xpc_requirement(no_args(), Guarded::peer_policy()).unwrap_err();
+        let refused = xpc_requirement(no_args(), Guarded::peer_policy(), false).unwrap_err();
         assert!(refused.to_string().contains("require_code"), "{refused}");
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_an_app_without_a_policy_does_not_start_the_daemon() {
-        assert!(xpc_requirement(no_args(), Echo::peer_policy()).is_err());
+        assert!(xpc_requirement(no_args(), Echo::peer_policy(), false).is_err());
     }
 
     #[cfg(target_os = "macos")]
@@ -253,24 +259,40 @@ mod tests {
             "--peer-requirement",
             "cdhash H\"ab\"",
         ]);
-        let requirement = xpc_requirement(args, Echo::peer_policy()).unwrap();
+        let requirement = xpc_requirement(args, Echo::peer_policy(), true).unwrap();
         assert_eq!(requirement, "cdhash H\"ab\"");
     }
 
     #[cfg(target_os = "macos")]
     #[test]
-    fn on_macos_the_plist_requirement_wins_over_the_one_compiled_in() {
+    fn on_macos_a_root_owned_system_plist_requirement_wins_over_the_compiled_one() {
         let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
         let args = launched_with(&["helper", "--peer-requirement", "cdhash H\"ab\""]);
-        let requirement = xpc_requirement(args, Some(policy)).unwrap();
+        let requirement = xpc_requirement(args, Some(policy), true).unwrap();
         assert_eq!(requirement, "cdhash H\"ab\"");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_a_plist_root_does_not_own_cannot_replace_the_compiled_requirement() {
+        let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
+        let args = launched_with(&["helper", "--peer-requirement", "cdhash H\"ab\""]);
+        let requirement = xpc_requirement(args, Some(policy), false).unwrap();
+        assert_eq!(requirement, "cdhash H\"00\"");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_a_plist_root_does_not_own_alone_does_not_start_the_daemon() {
+        let args = launched_with(&["helper", "--peer-requirement", "cdhash H\"ab\""]);
+        assert!(xpc_requirement(args, Echo::peer_policy(), false).is_err());
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_a_weak_requirement_does_not_start_the_daemon() {
         let policy = PeerPolicy::default().require_code("anchor apple generic");
-        let refused = xpc_requirement(no_args(), Some(policy)).unwrap_err();
+        let refused = xpc_requirement(no_args(), Some(policy), false).unwrap_err();
         assert!(refused.to_string().contains("fraco"), "{refused}");
     }
 
@@ -278,7 +300,7 @@ mod tests {
     #[test]
     fn on_macos_a_flag_with_no_value_does_not_start_the_daemon() {
         let args = launched_with(&["helper", "--peer-requirement"]);
-        assert!(xpc_requirement(args, Echo::peer_policy()).is_err());
+        assert!(xpc_requirement(args, Echo::peer_policy(), true).is_err());
     }
 
     const FIRST_BACKOFF: Duration = Duration::from_millis(100);
