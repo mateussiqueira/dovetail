@@ -2,6 +2,12 @@
 mod macos;
 #[cfg(not(any(windows, target_os = "macos")))]
 mod stub;
+#[cfg(test)]
+mod systemd;
+#[cfg(test)]
+mod systemd_fixture;
+#[cfg(test)]
+mod systemd_tests;
 #[cfg(windows)]
 mod windows;
 
