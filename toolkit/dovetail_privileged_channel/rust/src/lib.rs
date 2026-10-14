@@ -31,6 +31,8 @@ mod xpc_ffi;
 #[cfg(target_os = "macos")]
 mod xpc_listener;
 #[cfg(all(test, target_os = "macos"))]
+mod xpc_stream_tests;
+#[cfg(all(test, target_os = "macos"))]
 mod xpc_tests;
 
 pub use endpoint::Endpoint;
