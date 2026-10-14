@@ -28,6 +28,11 @@ impl XpcConnection {
         ))
     }
 
+    #[cfg(test)]
+    pub(crate) fn to_endpoint(endpoint: XpcObject) -> Self {
+        Self::open(ptr::null(), endpoint, 0)
+    }
+
     fn open(service: *const c_char, endpoint: XpcObject, flags: u64) -> Self {
         let (tx, inbound) = mpsc::unbounded_channel();
         let raw = unsafe {
