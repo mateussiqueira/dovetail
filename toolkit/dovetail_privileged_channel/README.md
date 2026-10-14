@@ -41,9 +41,10 @@ The daemon listens on an XPC mach service named after its launchd label
 (`XpcConnection::mach_service`). The listener gives each peer the code
 requirement from the product's `PeerPolicy`, and the system checks the sender
 of **every message** against it, not the process that was behind the
-connection when it opened. A process that connects, forks and execs a signed
-program, or hands the connection to another process, gets nothing through from
-the unsigned one: the message is dropped and the connection ends. A requirement
+connection when it opened. A process that connects, sends and execs a signed
+program gets nothing through from the unsigned one: the message is dropped and
+the connection ends. A forked child gets nothing through either, because it
+inherits no send right to the service port. A requirement
 that does not parse refuses every peer, and a daemon whose product declares no
 code requirement does not start. The API is from macOS 12, the minimum here.
 
@@ -60,16 +61,23 @@ let shake = client_handshake::<MeuComando, MeuResultado, _>(&mut framed, config,
 The launchd property list has to declare the service under `MachServices`.
 
 The proof runs the attack against a real LaunchDaemon, so it needs root and is
-`#[ignore]`d: an ad hoc "app" whose `cdhash` the requirement pins, and an
-"other" signed under another identifier. The app is heard; the other is not;
-and when the other connects, forks and execs the app, neither its message before
-the exec nor the forked child's command reaches the daemon, while the exec'd app
-is heard. Built as your user, run as root, the clients drop back to your uid:
+`#[ignore]`d. It proves the shim alone: the LaunchDaemon is the `xpc_proof`
+example serving `XpcListener` directly, not the privileged daemon with its
+`--peer-requirement` and boot checks. Two copies of the example are signed ad
+hoc, an "app" and an "other". In the main round the requirement pins the app's
+`cdhash`: the app is heard, the other is not, and when the other connects,
+sends, forks and execs the app with no pause between the send and the exec, its
+message is not judged as the app, while the exec'd app is heard. The control
+round pins the other instead and runs the same escalation: the connector's
+message arrives, so the main round's silence is the requirement at work. In
+both rounds the forked child is never heard, and that is Mach, not the
+requirement: a child of `fork` inherits no send right to the service port.
+Built as your user, run as root, the clients drop back to your uid:
 
 ```sh
 cargo build --example xpc_proof
 cargo test --test xpc_escalation --no-run
-sudo target/debug/deps/xpc_escalation-<hash> --ignored
+sudo target/debug/deps/xpc_escalation-<hash> --ignored --test-threads=1
 ```
 
 ### The macOS socket path checks the peer's code once, at accept

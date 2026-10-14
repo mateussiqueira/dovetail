@@ -65,6 +65,10 @@ impl XpcConnection {
         unsafe { xpc_ffi::dovetail_xpc_send(self.raw, bytes.as_ptr(), bytes.len()) };
     }
 
+    pub fn flush(&self) {
+        unsafe { xpc_ffi::dovetail_xpc_flush(self.raw) };
+    }
+
     pub fn pid(&self) -> i32 {
         unsafe { xpc_connection_get_pid(self.raw) }
     }

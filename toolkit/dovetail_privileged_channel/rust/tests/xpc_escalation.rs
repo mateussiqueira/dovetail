@@ -6,15 +6,17 @@ use std::process::Command;
 use std::time::Duration;
 
 const LABEL: &str = "com.example.dovetail.xpcproof";
+const CONTROL: &str = "com.example.dovetail.xpcproof.control";
 
 struct Proof {
+    label: &'static str,
     dir: PathBuf,
     plist: PathBuf,
 }
 
 impl Proof {
-    fn start() -> Self {
-        let dir = std::env::temp_dir().join(format!("dovetail-xpc-proof-{}", std::process::id()));
+    fn start(label: &'static str, pinned: &str) -> Self {
+        let dir = std::env::temp_dir().join(format!("{label}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let example = std::env::current_exe()
             .unwrap()
@@ -29,16 +31,18 @@ impl Proof {
         );
         let app = signed_copy(&example, &dir.join("app"), "com.example.dovetail.app");
         signed_copy(&example, &dir.join("other"), "com.example.dovetail.other");
-        let requirement = format!("cdhash H\"{}\"", cdhash(&app));
-        let plist = dir.join(format!("{LABEL}.plist"));
-        std::fs::write(
-            &plist,
-            property_list(&app, &requirement, &dir.join("served.log")),
-        )
-        .unwrap();
+        let requirement = format!("cdhash H\"{}\"", cdhash(&dir.join(pinned)));
+        let plist = dir.join(format!("{label}.plist"));
+        let log = dir.join("served.log");
+        std::fs::write(&plist, property_list(label, &app, &requirement, &log)).unwrap();
         launchctl(&["bootstrap", "system", plist.to_str().unwrap()]);
         std::thread::sleep(Duration::from_secs(1));
-        Self { dir, plist }
+        Self { label, dir, plist }
+    }
+
+    fn escalate(&self) {
+        let signed = self.dir.join("app");
+        self.run("other", &["escalate", self.label, signed.to_str().unwrap()]);
     }
 
     fn run(&self, program: &str, args: &[&str]) {
@@ -59,7 +63,7 @@ impl Proof {
 
 impl Drop for Proof {
     fn drop(&mut self) {
-        launchctl(&["bootout", &format!("system/{LABEL}")]);
+        launchctl(&["bootout", &format!("system/{}", self.label)]);
         let _ = std::fs::remove_file(&self.plist);
         let _ = std::fs::remove_dir_all(&self.dir);
     }
@@ -91,11 +95,11 @@ fn cdhash(program: &Path) -> String {
     line.trim_start_matches("CDHash=").to_string()
 }
 
-fn property_list(app: &Path, requirement: &str, log: &Path) -> String {
+fn property_list(label: &str, app: &Path, requirement: &str, log: &Path) -> String {
     let strings = [
         app.to_str().unwrap(),
         "serve",
-        LABEL,
+        label,
         requirement,
         log.to_str().unwrap(),
     ]
@@ -108,8 +112,8 @@ fn property_list(app: &Path, requirement: &str, log: &Path) -> String {
     .join("");
     format!(
         "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<plist version=\"1.0\"><dict>\
-         <key>Label</key><string>{LABEL}</string>\
-         <key>MachServices</key><dict><key>{LABEL}</key><true/></dict>\
+         <key>Label</key><string>{label}</string>\
+         <key>MachServices</key><dict><key>{label}</key><true/></dict>\
          <key>ProgramArguments</key><array>{strings}</array>\
          </dict></plist>\n"
     )
@@ -121,12 +125,11 @@ fn launchctl(args: &[&str]) {
 
 #[test]
 #[ignore = "needs root: bootstraps a LaunchDaemon; run with sudo, see the channel README"]
-fn the_reviewer_escalation_is_refused_and_only_the_signed_app_is_heard() {
-    let proof = Proof::start();
+fn the_shim_alone_refuses_the_reviewer_escalation_and_hears_only_the_signed_app() {
+    let proof = Proof::start(LABEL, "app");
     proof.run("app", &["send", LABEL, "app-hello"]);
     proof.run("other", &["send", LABEL, "other-hello"]);
-    let signed = proof.dir.join("app");
-    proof.run("other", &["escalate", LABEL, signed.to_str().unwrap()]);
+    proof.escalate();
     let served = proof.served();
     assert!(
         served.contains("app-hello"),
@@ -142,10 +145,26 @@ fn the_reviewer_escalation_is_refused_and_only_the_signed_app_is_heard() {
     );
     assert!(
         !served.contains("before-exec"),
-        "the connector was heard before its exec"
+        "the connector's message, racing its exec, was judged as the signed app"
     );
     assert!(
         !served.contains("child-command"),
         "the forked child commanded the daemon"
+    );
+}
+
+#[test]
+#[ignore = "needs root: bootstraps a LaunchDaemon; run with sudo, see the channel README"]
+fn the_shim_alone_control_hears_the_connector_it_admits_and_never_the_forked_child() {
+    let proof = Proof::start(CONTROL, "other");
+    proof.escalate();
+    let served = proof.served();
+    assert!(
+        served.contains("before-exec"),
+        "under a requirement that admits the connector its message must arrive: {served:?}"
+    );
+    assert!(
+        !served.contains("child-command"),
+        "the forked child was heard even though fork leaves it no send right to the service"
     );
 }

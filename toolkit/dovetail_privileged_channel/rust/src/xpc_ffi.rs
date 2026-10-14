@@ -17,6 +17,7 @@ extern "C" {
         ctx_free: FreeFn,
     ) -> XpcObject;
     pub(crate) fn dovetail_xpc_send(conn: XpcObject, bytes: *const u8, len: usize);
+    pub(crate) fn dovetail_xpc_flush(conn: XpcObject);
     pub(crate) fn xpc_release(object: XpcObject);
     pub(crate) fn xpc_connection_cancel(conn: XpcObject);
 }

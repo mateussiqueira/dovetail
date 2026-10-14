@@ -70,3 +70,12 @@ void dovetail_xpc_send(xpc_connection_t conn, const void *bytes, size_t len) {
     xpc_connection_send_message(conn, message);
     xpc_release(message);
 }
+
+void dovetail_xpc_flush(xpc_connection_t conn) {
+    dispatch_semaphore_t sent = dispatch_semaphore_create(0);
+    xpc_connection_send_barrier(conn, ^{
+        dispatch_semaphore_signal(sent);
+    });
+    dispatch_semaphore_wait(sent, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
+    dispatch_release(sent);
+}

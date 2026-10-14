@@ -1,11 +1,5 @@
 #[cfg(target_os = "macos")]
-use std::time::Duration;
-
-#[cfg(target_os = "macos")]
 use dovetail_privileged_channel::{XpcConnection, XpcListener};
-
-#[cfg(target_os = "macos")]
-const SETTLE: Duration = Duration::from_millis(500);
 
 fn main() {
     #[cfg(target_os = "macos")]
@@ -51,7 +45,7 @@ async fn serve(label: &str, requirement: &str, log: &str) {
 fn send(label: &str, text: &str) {
     let conn = XpcConnection::mach_service(label).unwrap();
     conn.send(text.as_bytes());
-    std::thread::sleep(SETTLE);
+    conn.flush();
 }
 
 #[cfg(target_os = "macos")]
@@ -60,12 +54,11 @@ fn escalate(label: &str, signed: &str) {
 
     let conn = XpcConnection::mach_service(label).unwrap();
     conn.send(b"before-exec");
-    std::thread::sleep(SETTLE);
+    conn.flush();
     match unsafe { libc::fork() } {
         0 => {
-            std::thread::sleep(SETTLE);
             conn.send(b"child-command");
-            std::thread::sleep(SETTLE);
+            conn.flush();
             unsafe { libc::_exit(0) };
         }
         child if child > 0 => {
