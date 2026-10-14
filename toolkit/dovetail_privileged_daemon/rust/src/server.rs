@@ -64,7 +64,7 @@ async fn incoming<A: DaemonApp>() -> anyhow::Result<
     impl Stream<Item = Result<(dovetail_privileged_channel::XpcConnection, PeerCheck), AcceptError>>,
 > {
     let system_plist = crate::service::plist_path::<A>();
-    let declared = requirement_declared_by(std::path::Path::new(&system_plist));
+    let declared = requirement_declared_by(std::path::Path::new(&system_plist))?;
     let requirement = xpc_requirement(std::env::args(), declared, A::peer_policy())?;
     let listener = XpcListener::mach_service(A::IDENTITY.macos_label, &requirement)?;
     Ok(stream::unfold(listener, |mut listener| async move {
