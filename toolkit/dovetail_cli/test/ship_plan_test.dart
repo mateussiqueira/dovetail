@@ -152,11 +152,36 @@ void main() {
     test('a single macos arch should not claim to be universal', () {
       expect(labelsOf(planFor('darwin-aarch64')), <String>[
         'build macos',
+        'thin darwin-aarch64',
         'sign darwin-aarch64',
         'bundle darwin-aarch64',
         'sign dmg darwin-aarch64',
         'archive darwin-aarch64',
       ]);
+    });
+
+    test('a single macos arch should be thinned before it is signed', () {
+      final List<String> labels = labelsOf(planFor('darwin-aarch64'));
+
+      expect(labels, contains('thin darwin-aarch64'));
+      expect(
+        labels.indexOf('thin darwin-aarch64'),
+        lessThan(labels.indexOf('sign darwin-aarch64')),
+      );
+    });
+
+    test('the thin step should keep the one arch of the built bundle', () {
+      final List<String> arguments = argumentsOf(
+        planFor('darwin-aarch64'),
+        'thin darwin-aarch64',
+      );
+
+      expect(arguments, containsAllInOrder(<String>['--macos-format', 'thin']));
+      expect(arguments, containsAllInOrder(<String>['--arch', 'arm64']));
+      expect(
+        arguments,
+        contains('build/macos/Build/Products/Release/demo_app.app'),
+      );
     });
 
     test('the archive step should ask bundle for the tar, with the same '
@@ -205,6 +230,7 @@ void main() {
         labelsOf(planFor('darwin-aarch64, windows-x86_64, linux-x86_64')),
         <String>[
           'build macos',
+          'thin darwin-aarch64',
           'sign darwin-aarch64',
           'bundle darwin-aarch64',
           'sign dmg darwin-aarch64',
@@ -228,6 +254,7 @@ void main() {
 
     test('skipping the build should drop only that step', () {
       expect(labelsOf(planFor('darwin-aarch64', build: false)), <String>[
+        'thin darwin-aarch64',
         'sign darwin-aarch64',
         'bundle darwin-aarch64',
         'sign dmg darwin-aarch64',
