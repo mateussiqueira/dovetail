@@ -15,9 +15,25 @@ fn run(args: Vec<String>) {
         .as_slice()
     {
         ["serve", label, requirement, log] => serve(label, requirement, log),
-        ["send", label, text] => send(label, text),
-        ["escalate", label, signed] => escalate(label, signed),
-        other => panic!("uso: serve|send|escalate, recebido {other:?}"),
+        ["serve-after", label, requirement, log, signal] => {
+            wait_for(signal);
+            serve(label, requirement, log)
+        }
+        ["send", label, text, hold] => send(label, text, hold),
+        ["escalate", label, signed, hold] => escalate(label, signed, hold),
+        other => panic!("uso: serve|serve-after|send|escalate, recebido {other:?}"),
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn wait_for(signal: &str) {
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
+    while !std::path::Path::new(signal).exists() {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "sem sinal em {signal}"
+        );
+        std::thread::sleep(std::time::Duration::from_millis(50));
     }
 }
 
@@ -42,14 +58,16 @@ async fn serve(label: &str, requirement: &str, log: &str) {
 }
 
 #[cfg(target_os = "macos")]
-fn send(label: &str, text: &str) {
+fn send(label: &str, text: &str, hold: &str) {
     let conn = XpcConnection::mach_service(label).unwrap();
     conn.send(text.as_bytes());
     conn.flush();
+    wait_for(hold);
+    drop(conn);
 }
 
 #[cfg(target_os = "macos")]
-fn escalate(label: &str, signed: &str) {
+fn escalate(label: &str, signed: &str, hold: &str) {
     use std::os::unix::process::CommandExt;
 
     let conn = XpcConnection::mach_service(label).unwrap();
@@ -59,11 +77,12 @@ fn escalate(label: &str, signed: &str) {
         0 => {
             conn.send(b"child-command");
             conn.flush();
+            wait_for(hold);
             unsafe { libc::_exit(0) };
         }
         child if child > 0 => {
             let err = std::process::Command::new(signed)
-                .args(["send", label, "signed-after-exec"])
+                .args(["send", label, "signed-after-exec", hold])
                 .exec();
             panic!("exec do binario assinado falhou: {err}");
         }
