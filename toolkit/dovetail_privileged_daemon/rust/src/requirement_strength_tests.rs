@@ -3,6 +3,12 @@ use crate::requirement_strength::ensure_strong;
 const TEAM: &str = "anchor apple generic and identifier \"com.example.app\" \
                     and certificate leaf[subject.OU] = \"ABCDE12345\"";
 const CDHASH: &str = "cdhash H\"0123456789abcdef0123456789abcdef01234567\"";
+const OTHER_CDHASH: &str = "cdhash H\"89abcdef0123456789abcdef0123456789abcdef\"";
+const DESIGNATED: &str =
+    "(anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.9] \
+     exists or anchor apple generic and certificate 1[field.1.2.840.113635.100.6.2.6] \
+     exists and certificate leaf[field.1.2.840.113635.100.6.1.13] exists and \
+     certificate leaf[subject.OU] = ABCDE12345) and identifier \"com.example.app\"";
 
 #[test]
 fn always_is_refused() {
@@ -127,5 +133,67 @@ fn a_team_in_another_leaf_field_is_refused() {
 fn a_team_on_the_root_certificate_is_refused() {
     let requirement = "anchor apple generic and identifier \"com.example.app\" \
                        and certificate root[subject.OU] = \"ABCDE12345\"";
+    assert!(ensure_strong(requirement).is_err());
+}
+
+#[test]
+fn an_or_between_comments_is_refused() {
+    let requirement = format!("{CDHASH}/**/or/**/anchor apple generic");
+    assert!(ensure_strong(&requirement).is_err());
+}
+
+#[test]
+fn the_team_field_written_with_a_space_is_accepted() {
+    let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf [subject.OU] = \"ABCDE12345\"";
+    assert!(ensure_strong(requirement).is_ok());
+}
+
+#[test]
+fn the_designated_requirement_codesign_prints_is_accepted() {
+    assert!(ensure_strong(DESIGNATED).is_ok());
+}
+
+#[test]
+fn the_app_store_branch_without_the_identifier_is_refused() {
+    let requirement =
+        "anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.9] exists";
+    assert!(ensure_strong(requirement).is_err());
+}
+
+#[test]
+fn either_slice_of_a_universal_app_pinned_by_cdhash_is_accepted() {
+    let requirement = format!("{CDHASH} or {OTHER_CDHASH}");
+    assert!(ensure_strong(&requirement).is_ok());
+}
+
+#[test]
+fn a_cdhash_or_the_bare_anchor_is_refused() {
+    let requirement = format!("{CDHASH} or anchor apple generic");
+    assert!(ensure_strong(&requirement).is_err());
+}
+
+#[test]
+fn a_pinned_cdhash_joined_to_always_is_refused() {
+    assert!(ensure_strong(&format!("{CDHASH} and always")).is_err());
+}
+
+#[test]
+fn a_pinned_cdhash_joined_to_a_negation_is_refused() {
+    let requirement = format!("{CDHASH} and !identifier \"com.example.other\"");
+    assert!(ensure_strong(&requirement).is_err());
+}
+
+#[test]
+fn the_app_store_marker_required_absent_is_refused() {
+    let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[field.1.2.840.113635.100.6.1.9] absent";
+    assert!(ensure_strong(requirement).is_err());
+}
+
+#[test]
+fn the_app_store_marker_on_an_intermediate_is_refused() {
+    let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate 1[field.1.2.840.113635.100.6.1.9] exists";
     assert!(ensure_strong(requirement).is_err());
 }

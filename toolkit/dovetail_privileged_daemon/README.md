@@ -78,15 +78,19 @@ group nor others can write it, which is the system route the installer
 package takes. A property list inside the app bundle can be rewritten by
 whoever can write the app, so on that route the argument is ignored and the
 compiled requirement is served. An ad hoc app pins its
-`cdhash`. A Developer ID app names all three of
+`cdhash` (one `cdhash` per slice of a universal app, joined by `or`). A
+Developer ID app names all three of
 `anchor apple generic and identifier "<app id>" and certificate leaf[subject.OU] = "<team id>"`:
 the anchor alone admits any Developer ID program and the identifier alone is
 chosen by whoever signs. The daemon does not start on macOS without a
-requirement, and it refuses the common weak shapes it can spot in the text:
-`always`, an empty string, an identifier alone, the anchor alone, or a clause
-widened by `or` or `!`. The check reads the requirement as text, not as
-compiled by the Security framework, so it is a guard against mistakes, not a
-proof of strength: write the requirement in one of the two forms above. Windows
+requirement or with one the Security framework does not compile, and it
+judges the compiled requirement, not its text: every alternative an `or`
+opens must hold a full 20-byte `cdhash`, or the generic Apple anchor, a
+non-empty identifier and a literal equality on the leaf's `subject.OU`
+(the Mac App Store marker on the leaf stands in for the team, so the
+designated requirement `codesign -d -r-` prints passes). `always` and `!`
+are refused anywhere, and a team that only `exists`, is compared with `>=`
+or carries a wildcard does not count. Windows
 does not read the policy yet.
 
 The app's `main` is a single call:

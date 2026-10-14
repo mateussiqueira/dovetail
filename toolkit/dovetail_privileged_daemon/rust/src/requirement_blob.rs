@@ -15,6 +15,10 @@ pub(crate) enum Clause {
         field: Vec<u8>,
         compared: Comparison,
     },
+    LeafExtension {
+        oid: Vec<u8>,
+        compared: Comparison,
+    },
     Other,
 }
 
@@ -90,7 +94,7 @@ impl<'a> Reader<'a> {
 
     fn clause(&mut self, depth: usize) -> anyhow::Result<Clause> {
         anyhow::ensure!(depth < MAX_DEPTH, "requisito aninhado demais");
-        Ok(match self.word()? {
+        let clause = match self.word()? {
             1 => Clause::True,
             2 => Clause::Identifier(self.data()?),
             6 => Clause::And(self.boxed(depth)?, self.boxed(depth)?),
@@ -103,6 +107,10 @@ impl<'a> Reader<'a> {
                 let compared = self.comparison()?;
                 match (op, slot) {
                     (11, 0) => Clause::LeafField { field, compared },
+                    (14, 0) => Clause::LeafExtension {
+                        oid: field,
+                        compared,
+                    },
                     _ => Clause::Other,
                 }
             }
@@ -123,6 +131,7 @@ impl<'a> Reader<'a> {
                 self.comparison().map(|_| Clause::Other)?
             }
             other => anyhow::bail!("opcode {other:#x} desconhecido no requisito"),
-        })
+        };
+        Ok(clause)
     }
 }
