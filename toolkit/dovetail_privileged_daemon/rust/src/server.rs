@@ -221,9 +221,9 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_the_daemon_serves_xpc_under_the_requirement_the_app_declares() {
-        let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
+        let policy = PeerPolicy::default().require_code(COMPILED);
         let requirement = xpc_requirement(no_args(), Some(policy), false).unwrap();
-        assert_eq!(requirement, "cdhash H\"00\"");
+        assert_eq!(requirement, COMPILED);
     }
 
     #[cfg(target_os = "macos")]
@@ -240,6 +240,12 @@ mod tests {
     }
 
     #[cfg(target_os = "macos")]
+    const COMPILED: &str = "cdhash H\"0000000000000000000000000000000000000000\"";
+
+    #[cfg(target_os = "macos")]
+    const FROM_PLIST: &str = "cdhash H\"abababababababababababababababababababab\"";
+
+    #[cfg(target_os = "macos")]
     fn no_args() -> std::vec::IntoIter<String> {
         Vec::new().into_iter()
     }
@@ -253,38 +259,33 @@ mod tests {
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_the_requirement_the_plist_passes_is_the_one_served() {
-        let args = launched_with(&[
-            "helper",
-            "--service",
-            "--peer-requirement",
-            "cdhash H\"ab\"",
-        ]);
+        let args = launched_with(&["helper", "--service", "--peer-requirement", FROM_PLIST]);
         let requirement = xpc_requirement(args, Echo::peer_policy(), true).unwrap();
-        assert_eq!(requirement, "cdhash H\"ab\"");
+        assert_eq!(requirement, FROM_PLIST);
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_a_root_owned_system_plist_requirement_wins_over_the_compiled_one() {
-        let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
-        let args = launched_with(&["helper", "--peer-requirement", "cdhash H\"ab\""]);
+        let policy = PeerPolicy::default().require_code(COMPILED);
+        let args = launched_with(&["helper", "--peer-requirement", FROM_PLIST]);
         let requirement = xpc_requirement(args, Some(policy), true).unwrap();
-        assert_eq!(requirement, "cdhash H\"ab\"");
+        assert_eq!(requirement, FROM_PLIST);
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_a_plist_root_does_not_own_cannot_replace_the_compiled_requirement() {
-        let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
-        let args = launched_with(&["helper", "--peer-requirement", "cdhash H\"ab\""]);
+        let policy = PeerPolicy::default().require_code(COMPILED);
+        let args = launched_with(&["helper", "--peer-requirement", FROM_PLIST]);
         let requirement = xpc_requirement(args, Some(policy), false).unwrap();
-        assert_eq!(requirement, "cdhash H\"00\"");
+        assert_eq!(requirement, COMPILED);
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_a_plist_root_does_not_own_alone_does_not_start_the_daemon() {
-        let args = launched_with(&["helper", "--peer-requirement", "cdhash H\"ab\""]);
+        let args = launched_with(&["helper", "--peer-requirement", FROM_PLIST]);
         assert!(xpc_requirement(args, Echo::peer_policy(), false).is_err());
     }
 
