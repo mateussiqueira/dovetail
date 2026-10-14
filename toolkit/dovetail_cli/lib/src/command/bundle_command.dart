@@ -115,7 +115,7 @@ final class BundleCommand extends Command<int> {
       ..addOption('upgrade-code', help: 'required by --windows-format msi')
       ..addOption(
         'macos-format',
-        allowed: <String>['dmg', 'tar', 'pkg', 'pkg-dmg'],
+        allowed: <String>['dmg', 'tar', 'pkg', 'pkg-dmg', 'thin'],
         defaultsTo: 'dmg',
         help:
             'dmg for the download page of an app with no privileged piece; '
@@ -123,7 +123,9 @@ final class BundleCommand extends Command<int> {
             'it is the only macOS format that runs a postinstall as root; '
             'pkg-dmg wraps that pkg in the dmg a person opens, with the '
             'instructions text the config declares; tar for the updater — the '
-            '.app.tar.gz that installed clients extract and swap in place',
+            '.app.tar.gz that installed clients extract and swap in place; '
+            'thin keeps the one --arch of every Mach-O in the .app, in '
+            'place, so it runs before the app is signed',
       )
       ..addOption('wix', defaultsTo: 'wix')
       ..addMultiOption(
@@ -256,6 +258,13 @@ final class BundleCommand extends Command<int> {
           );
 
     return switch (format) {
+      'thin' =>
+        const BundleThinner(runner: SystemProcessRunner())
+            .thin(
+              bundlePath: spec.appDirectory,
+              architecture: _singleArchitecture(args),
+            )
+            .then((List<String> _) => spec.appDirectory),
       'tar' => AppArchiveBundler(
         runner: const SystemProcessRunner(),
         requiredArchitectures: _architectures(args),
