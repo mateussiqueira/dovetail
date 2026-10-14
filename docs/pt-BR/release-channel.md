@@ -43,6 +43,12 @@ archive darwin-universal   o .app.tar.gz que o updater instala
 release <version>          assina cada artefato com minisign, escreve dist/latest.json
 ```
 
+Quando os alvos de macOS nomeiam uma arquitetura só, `darwin-aarch64` por
+exemplo, um passo `thin darwin-aarch64` roda entre o build e o primeiro sign:
+ele roda `bundle --macos-format thin` no `.app` construído, que mantém no lugar
+essa única fatia de cada Mach-O universal, e a assinatura e o download levam só
+o que esse alvo roda.
+
 Windows (release): `build` → `sign payload` (todo `.exe`/`.dll` sob a saída) →
 `bundle` → `sign` (o instalador). O payload é assinado antes de o instalador
 embrulhá-lo: um instalador que passa pelo SmartScreen e então deposita
