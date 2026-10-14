@@ -20,3 +20,10 @@ test-probe = []
 
 [dependencies]
 global-hotkey = "0.8"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "unwind"
+strip = true
