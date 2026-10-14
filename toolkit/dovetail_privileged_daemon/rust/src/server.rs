@@ -59,7 +59,7 @@ async fn incoming<A: DaemonApp>() -> anyhow::Result<
 async fn incoming<A: DaemonApp>() -> anyhow::Result<
     impl Stream<Item = Result<(dovetail_privileged_channel::XpcConnection, PeerCheck), AcceptError>>,
 > {
-    let requirement = xpc_requirement(A::peer_policy())?;
+    let requirement = xpc_requirement(std::env::args(), A::peer_policy())?;
     let listener = XpcListener::mach_service(A::IDENTITY.macos_label, &requirement)?;
     Ok(stream::unfold(listener, |mut listener| async move {
         let conn = listener.accept().await?;
@@ -72,11 +72,21 @@ async fn incoming<A: DaemonApp>() -> anyhow::Result<
 }
 
 #[cfg(target_os = "macos")]
-fn xpc_requirement(policy: Option<PeerPolicy>) -> anyhow::Result<String> {
-    policy
-        .as_ref()
-        .and_then(PeerPolicy::code_requirement)
-        .map(str::to_string)
+const REQUIREMENT_FLAG: &str = "--peer-requirement";
+
+#[cfg(target_os = "macos")]
+fn xpc_requirement(
+    mut args: impl Iterator<Item = String>,
+    policy: Option<PeerPolicy>,
+) -> anyhow::Result<String> {
+    let declared = args.find(|arg| arg == REQUIREMENT_FLAG).and(args.next());
+    declared
+        .or_else(|| {
+            policy
+                .as_ref()
+                .and_then(PeerPolicy::code_requirement)
+                .map(str::to_string)
+        })
         .ok_or_else(|| {
             anyhow::anyhow!(
                 "no macOS o daemon atende por XPC e exige o requisito de assinatura do app \
@@ -202,20 +212,61 @@ mod tests {
     #[test]
     fn on_macos_the_daemon_serves_xpc_under_the_requirement_the_app_declares() {
         let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
-        assert_eq!(xpc_requirement(Some(policy)).unwrap(), "cdhash H\"00\"");
+        let requirement = xpc_requirement(no_args(), Some(policy)).unwrap();
+        assert_eq!(requirement, "cdhash H\"00\"");
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_a_policy_without_a_code_requirement_does_not_start_the_daemon() {
-        let refused = xpc_requirement(Guarded::peer_policy()).unwrap_err();
+        let refused = xpc_requirement(no_args(), Guarded::peer_policy()).unwrap_err();
         assert!(refused.to_string().contains("require_code"), "{refused}");
     }
 
     #[cfg(target_os = "macos")]
     #[test]
     fn on_macos_an_app_without_a_policy_does_not_start_the_daemon() {
-        assert!(xpc_requirement(Echo::peer_policy()).is_err());
+        assert!(xpc_requirement(no_args(), Echo::peer_policy()).is_err());
+    }
+
+    #[cfg(target_os = "macos")]
+    fn no_args() -> std::vec::IntoIter<String> {
+        Vec::new().into_iter()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn launched_with(args: &[&str]) -> std::vec::IntoIter<String> {
+        let args: Vec<String> = args.iter().map(|arg| arg.to_string()).collect();
+        args.into_iter()
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_the_requirement_the_plist_passes_is_the_one_served() {
+        let args = launched_with(&[
+            "helper",
+            "--service",
+            "--peer-requirement",
+            "cdhash H\"ab\"",
+        ]);
+        let requirement = xpc_requirement(args, Echo::peer_policy()).unwrap();
+        assert_eq!(requirement, "cdhash H\"ab\"");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_the_plist_requirement_wins_over_the_one_compiled_in() {
+        let policy = PeerPolicy::default().require_code("cdhash H\"00\"");
+        let args = launched_with(&["helper", "--peer-requirement", "cdhash H\"ab\""]);
+        let requirement = xpc_requirement(args, Some(policy)).unwrap();
+        assert_eq!(requirement, "cdhash H\"ab\"");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_a_flag_with_no_value_does_not_start_the_daemon() {
+        let args = launched_with(&["helper", "--peer-requirement"]);
+        assert!(xpc_requirement(args, Echo::peer_policy()).is_err());
     }
 
     const FIRST_BACKOFF: Duration = Duration::from_millis(100);
