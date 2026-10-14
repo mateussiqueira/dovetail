@@ -48,6 +48,16 @@ inherits no send right to the service port. A requirement
 that does not parse refuses every peer, and a daemon whose product declares no
 code requirement does not start. The API is from macOS 12, the minimum here.
 
+When a later message from a peer already admitted is refused, the shim
+cancels the connection inside the same event handler, before the Rust side
+hears the end of the stream, and `xpc_connection_cancel` discards every
+message not yet sent (`xpc/connection.h`). A write the daemon issues after
+that point goes nowhere (`a_refused_peer_hears_nothing_the_daemon_writes_back`),
+so the shim keeps no queue of its own to drain. The residue is a reply handed
+to the system in the instant between the runtime refusing the message and the
+handler running: it can still arrive, and it answers a command the peer sent
+while it still satisfied the requirement.
+
 The protocol does not change: `XpcConnection` is `AsyncRead + AsyncWrite`, each
 write leaves as one message, and the framing and the handshake run on it as on
 a socket. The app's side:
