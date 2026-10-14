@@ -57,6 +57,11 @@ final class DaemonEmbedder {
 <dict>
     <key>Label</key>
     <string>${XmlText.content(label)}</string>
+    <key>MachServices</key>
+    <dict>
+        <key>${XmlText.content(label)}</key>
+        <true/>
+    </dict>
     <key>BundleProgram</key>
     <string>$embedded</string>
     <key>ProgramArguments</key>

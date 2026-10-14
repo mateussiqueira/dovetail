@@ -2,6 +2,12 @@
 
 ## Não publicado
 
+O property list do daemon no macOS, nas duas rotas (`LaunchDaemon.render()` e
+`DaemonEmbedder.plistFor()`), declara o `Label` como serviço Mach em
+`MachServices`: é por esse nome que o app abre a conexão XPC com o daemon. Com o
+serviço declarado, o launchd sobe o daemon na primeira conexão, e um daemon com
+`runAtLoad` e `keepAlive` falsos deixa de ser recusado.
+
 O `.dmg` sai em LZMA (`ULMO`) por padrão, e não mais em zlib (`UDZO`). No app de
 exemplo em arm64, a mediana de três corridas caiu de 11,7 MB para 8,3 MB, e o
 universal de 22,7 MB para 16,2 MB. `DiskImageFormat.zlib` devolve o `UDZO`.
