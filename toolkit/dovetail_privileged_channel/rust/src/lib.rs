@@ -22,6 +22,12 @@ mod nonce;
 mod peer_auth;
 mod peer_policy;
 mod transport;
+#[cfg(target_os = "macos")]
+mod xpc_connection;
+#[cfg(all(test, target_os = "macos"))]
+mod xpc_connection_tests;
+#[cfg(target_os = "macos")]
+mod xpc_ffi;
 
 pub use endpoint::Endpoint;
 pub use envelope::{ErrorBody, ErrorCode, Request, RespPayload, Response};
@@ -37,3 +43,5 @@ pub use nonce::random_nonce;
 pub use peer_auth::verify_peer;
 pub use peer_policy::PeerPolicy;
 pub use transport::{bind, AcceptError, Listener, Stream};
+#[cfg(target_os = "macos")]
+pub use xpc_connection::XpcConnection;
