@@ -218,6 +218,22 @@ final class ShipPlan {
           release: releaseBuild,
         ),
       );
+      final ShipStep? thinning = host == 'macos' && arches.length == 1
+          ? ShipStep(
+              label: 'thin $label',
+              command: 'bundle',
+              arguments: _bundleArguments(
+                config: config,
+                version: version,
+                host: host,
+                binary: binary,
+                arches: arches,
+                windowsFormat: windowsFormat,
+                macosFormat: 'thin',
+                release: releaseBuild,
+              ),
+            )
+          : null;
       final ShipStep signing = ShipStep(
         label: 'sign $label',
         command: 'sign',
@@ -356,8 +372,9 @@ final class ShipPlan {
         // nao ha manifesto, entao nao ha archive nem release.
         'macos' =>
           internal
-              ? <ShipStep>[signing, bundling]
+              ? <ShipStep>[?thinning, signing, bundling]
               : <ShipStep>[
+                  ?thinning,
                   signing,
                   bundling,
                   if (macosDownloadFormat == 'dmg') signingContainer,

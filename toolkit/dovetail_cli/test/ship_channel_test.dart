@@ -66,10 +66,11 @@ List<String> argumentsOf(ShipPlan plan, String label) =>
 
 void main() {
   group('the release channel is what it always was', () {
-    test('macos keeps the four steps and the dmg default', () {
+    test('macos keeps its steps and the dmg default', () {
       final ShipPlan plan = planFor('darwin-aarch64');
       expect(labelsOf(plan), <String>[
         'build macos',
+        'thin darwin-aarch64',
         'sign darwin-aarch64',
         'bundle darwin-aarch64',
         'sign dmg darwin-aarch64',
@@ -96,6 +97,7 @@ void main() {
       );
       expect(labelsOf(plan), <String>[
         'build macos',
+        'thin darwin-aarch64',
         'sign darwin-aarch64',
         'bundle darwin-aarch64',
       ]);
@@ -111,6 +113,10 @@ void main() {
         contains('build/macos/Build/Products/Debug/demo_app.app'),
       );
       expect(argumentsOf(plan, 'sign darwin-aarch64'), contains('--ad-hoc'));
+      expect(
+        argumentsOf(plan, 'thin darwin-aarch64'),
+        contains('build/macos/Build/Products/Debug/demo_app.app'),
+      );
       expect(
         argumentsOf(plan, 'bundle darwin-aarch64'),
         contains('build/macos/Build/Products/Debug/demo_app.app'),
