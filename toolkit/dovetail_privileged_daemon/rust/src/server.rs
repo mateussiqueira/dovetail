@@ -13,6 +13,8 @@ use futures::{stream, Stream, StreamExt};
 
 use crate::connection::handle_conn;
 use crate::refusal_log::RefusalLog;
+#[cfg(target_os = "macos")]
+use crate::requirement_strength::ensure_strong;
 use crate::DaemonApp;
 
 const REFUSAL_LOG_WINDOW: Duration = Duration::from_secs(60);
@@ -80,7 +82,7 @@ fn xpc_requirement(
     policy: Option<PeerPolicy>,
 ) -> anyhow::Result<String> {
     let declared = args.find(|arg| arg == REQUIREMENT_FLAG).and(args.next());
-    declared
+    let requirement = declared
         .or_else(|| {
             policy
                 .as_ref()
@@ -92,7 +94,9 @@ fn xpc_requirement(
                 "no macOS o daemon atende por XPC e exige o requisito de assinatura do app \
                  (PeerPolicy::require_code)"
             )
-        })
+        })?;
+    ensure_strong(&requirement)?;
+    Ok(requirement)
 }
 
 #[cfg(any(test, not(target_os = "macos")))]
@@ -260,6 +264,14 @@ mod tests {
         let args = launched_with(&["helper", "--peer-requirement", "cdhash H\"ab\""]);
         let requirement = xpc_requirement(args, Some(policy)).unwrap();
         assert_eq!(requirement, "cdhash H\"ab\"");
+    }
+
+    #[cfg(target_os = "macos")]
+    #[test]
+    fn on_macos_a_weak_requirement_does_not_start_the_daemon() {
+        let policy = PeerPolicy::default().require_code("anchor apple generic");
+        let refused = xpc_requirement(no_args(), Some(policy)).unwrap_err();
+        assert!(refused.to_string().contains("fraco"), "{refused}");
     }
 
     #[cfg(target_os = "macos")]

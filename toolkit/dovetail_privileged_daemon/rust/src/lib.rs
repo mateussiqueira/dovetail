@@ -7,6 +7,10 @@ pub mod exit_codes;
 mod logging;
 mod mode;
 mod refusal_log;
+#[cfg(target_os = "macos")]
+mod requirement_strength;
+#[cfg(all(test, target_os = "macos"))]
+mod requirement_strength_tests;
 mod server;
 mod service;
 
