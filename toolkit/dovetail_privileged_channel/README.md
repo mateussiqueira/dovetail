@@ -117,7 +117,9 @@ same `PeerPolicy`:
 
 ```rust
 let requirement = "anchor apple generic and identifier \"com.example.app\" \
-                   and certificate leaf[subject.OU] = \"TEAMID\"";
+                   and certificate leaf[subject.OU] = \"TEAMID\" \
+                   and certificate 1[field.1.2.840.113635.100.6.2.6] exists \
+                   and certificate leaf[field.1.2.840.113635.100.6.1.13] exists";
 let endpoint = Endpoint::new("/var/run/myapp/helper.sock")
     .with_peer_policy(PeerPolicy::default().require_code(requirement));
 ```

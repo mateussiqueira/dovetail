@@ -3,12 +3,17 @@ use crate::requirement_compile::compile_requirement;
 
 const TEAM_FIELD: &[u8] = b"subject.OU";
 const APP_STORE_OID: &[u8] = &[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x63, 0x64, 0x06, 0x01, 0x09];
+const DEVELOPER_ID_CA_OID: &[u8] = &[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x63, 0x64, 0x06, 0x02, 0x06];
+const DEVELOPER_ID_LEAF_OID: &[u8] = &[0x2a, 0x86, 0x48, 0x86, 0xf7, 0x63, 0x64, 0x06, 0x01, 0x0d];
 
 const PINNED: u8 = 1;
 const ANCHORED: u8 = 2;
 const NAMED: u8 = 4;
 const TEAM: u8 = 8;
 const APP_STORE: u8 = 16;
+const DEVELOPER_ID_CA: u8 = 32;
+const DEVELOPER_ID_LEAF: u8 = 64;
+const DEVELOPER_ID: u8 = TEAM | DEVELOPER_ID_CA | DEVELOPER_ID_LEAF;
 
 pub(crate) fn ensure_strong(requirement: &str) -> anyhow::Result<()> {
     let compiled = compile_requirement(requirement).map_err(|err| {
@@ -18,7 +23,9 @@ pub(crate) fn ensure_strong(requirement: &str) -> anyhow::Result<()> {
         is_strong(&parse(&compiled)?),
         "requisito de assinatura fraco demais para o canal privilegiado: {requirement:?}; \
          cada alternativa do or precisa de cdhash, ou de anchor apple generic, identifier e \
-         certificate leaf[subject.OU] = \"<time>\"; always e ! sao recusados"
+         certificate leaf[subject.OU] = \"<time>\" com os marcadores Developer ID \
+         (certificate 1[field.1.2.840.113635.100.6.2.6] e \
+         certificate leaf[field.1.2.840.113635.100.6.1.13]); always e ! sao recusados"
     );
     Ok(())
 }
@@ -31,7 +38,7 @@ fn is_strong(compiled: &Clause) -> bool {
 }
 
 fn admits_only_the_product(facts: u8) -> bool {
-    let signed_by_the_product = facts & (TEAM | APP_STORE) != 0;
+    let signed_by_the_product = facts & DEVELOPER_ID == DEVELOPER_ID || facts & APP_STORE != 0;
     let identified = facts & (ANCHORED | NAMED) == ANCHORED | NAMED;
     facts & PINNED != 0 || identified && signed_by_the_product
 }
@@ -66,6 +73,14 @@ fn fact(clause: &Clause) -> u8 {
             oid,
             compared: Comparison::Exists,
         } if oid == APP_STORE_OID => APP_STORE,
+        Clause::LeafExtension {
+            oid,
+            compared: Comparison::Exists,
+        } if oid == DEVELOPER_ID_LEAF_OID => DEVELOPER_ID_LEAF,
+        Clause::IntermediateExtension {
+            oid,
+            compared: Comparison::Exists,
+        } if oid == DEVELOPER_ID_CA_OID => DEVELOPER_ID_CA,
         _ => 0,
     }
 }

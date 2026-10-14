@@ -80,18 +80,28 @@ not from its own command line, so a launch from a property list inside the
 app bundle, which whoever can write the app can rewrite, serves the compiled
 requirement; when the command line carries a requirement the trusted file
 does not, the daemon logs that it ignored it. An ad hoc app pins its
-`cdhash` (one `cdhash` per slice of a universal app, joined by `or`). A
-Developer ID app names all three of
-`anchor apple generic and identifier "<app id>" and certificate leaf[subject.OU] = "<team id>"`:
-the anchor alone admits any Developer ID program and the identifier alone is
-chosen by whoever signs. The daemon does not start on macOS without a
-requirement or with one the Security framework does not compile, and it
-judges the compiled requirement, not its text: every alternative an `or`
-opens must hold a full 20-byte `cdhash`, or the generic Apple anchor, a
-non-empty identifier and a literal equality on the leaf's `subject.OU`
-(the Mac App Store marker on the leaf stands in for the team, so the
-designated requirement `codesign -d -r-` prints passes). `always` and `!`
-are refused anywhere, and a team that only `exists`, is compared with `>=`
+`cdhash` (one `cdhash` per slice of a universal app, joined by `or`). The
+daemon does not start on macOS without a requirement or with one the Security
+framework does not compile, and it judges the compiled requirement, not its
+text: every alternative an `or` opens must take one of three forms.
+
+- Pinned: a full 20-byte `cdhash`.
+- Developer ID: `anchor apple generic and identifier "<app id>" and
+  certificate leaf[subject.OU] = "<team id>" and
+  certificate 1[field.1.2.840.113635.100.6.2.6] exists and
+  certificate leaf[field.1.2.840.113635.100.6.1.13] exists`. The two
+  markers name the Developer ID intermediate and a Developer ID Application
+  leaf; without them any Apple Development build signed by any member of the
+  team passes. The anchor alone admits any Apple-signed program and the
+  identifier alone is chosen by whoever signs.
+- Mac App Store: `anchor apple generic and identifier "<app id>" and
+  certificate leaf[field.1.2.840.113635.100.6.1.9] exists`. That leaf marker
+  is only on the certificate Apple re-signs store builds with, so no team
+  member can produce it, and the identifier picks the app among them.
+
+The designated requirement `codesign -d -r-` prints for a Developer ID app
+joins the last two with `or`, so it passes as is. `always` and `!` are
+refused anywhere, and a team that only `exists`, is compared with `>=`
 or carries a wildcard does not count. Windows
 does not read the policy yet.
 

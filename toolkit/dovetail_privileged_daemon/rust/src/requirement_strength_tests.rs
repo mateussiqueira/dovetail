@@ -1,7 +1,11 @@
 use crate::requirement_strength::ensure_strong;
 
+const DEVELOPER_ID: &str = " and certificate 1[field.1.2.840.113635.100.6.2.6] exists \
+                            and certificate leaf[field.1.2.840.113635.100.6.1.13] exists";
 const TEAM: &str = "anchor apple generic and identifier \"com.example.app\" \
-                    and certificate leaf[subject.OU] = \"ABCDE12345\"";
+                    and certificate leaf[subject.OU] = \"ABCDE12345\" \
+                    and certificate 1[field.1.2.840.113635.100.6.2.6] exists \
+                    and certificate leaf[field.1.2.840.113635.100.6.1.13] exists";
 const CDHASH: &str = "cdhash H\"0123456789abcdef0123456789abcdef01234567\"";
 const OTHER_CDHASH: &str = "cdhash H\"89abcdef0123456789abcdef0123456789abcdef\"";
 const DESIGNATED: &str =
@@ -32,8 +36,9 @@ fn the_apple_anchor_alone_is_refused() {
 
 #[test]
 fn an_anchor_and_identifier_without_the_team_is_refused() {
-    let requirement = "anchor apple generic and identifier \"com.example.app\"";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement =
+        format!("anchor apple generic and identifier \"com.example.app\"{DEVELOPER_ID}");
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
@@ -70,30 +75,38 @@ fn an_or_glued_to_the_cdhash_quote_is_refused() {
 
 #[test]
 fn a_team_field_that_only_exists_is_refused() {
-    let requirement = "anchor apple generic and identifier \"com.example.app\" \
-                       and certificate leaf[subject.OU] exists";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.OU] exists{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
 fn a_team_at_least_the_empty_string_is_refused() {
-    let requirement = "anchor apple generic and identifier \"com.example.app\" \
-                       and certificate leaf[subject.OU] >= \"\"";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.OU] >= \"\"{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
 fn a_team_matched_by_a_wildcard_is_refused() {
-    let requirement = "anchor apple generic and identifier \"com.example.app\" \
-                       and certificate leaf[subject.OU] = \"T\"*";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.OU] = \"T\"*{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
 fn the_anchor_spelled_inside_the_identifier_is_refused() {
-    let requirement = "identifier \"anchor apple generic\" \
-                       and certificate leaf[subject.OU] = \"ABCDE12345\"";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "identifier \"anchor apple generic\" \
+                       and certificate leaf[subject.OU] = \"ABCDE12345\"{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
@@ -104,36 +117,46 @@ fn a_short_cdhash_that_does_not_compile_is_refused() {
 
 #[test]
 fn the_anchor_and_team_without_an_identifier_are_refused() {
-    let requirement = "anchor apple generic and certificate leaf[subject.OU] = \"ABCDE12345\"";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "anchor apple generic and certificate leaf[subject.OU] = \"ABCDE12345\"{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
 fn an_empty_identifier_is_refused() {
-    let requirement = "anchor apple generic and identifier \"\" \
-                       and certificate leaf[subject.OU] = \"ABCDE12345\"";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "anchor apple generic and identifier \"\" \
+                       and certificate leaf[subject.OU] = \"ABCDE12345\"{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
 fn an_empty_team_is_refused() {
-    let requirement = "anchor apple generic and identifier \"com.example.app\" \
-                       and certificate leaf[subject.OU] = \"\"";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.OU] = \"\"{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
 fn a_team_in_another_leaf_field_is_refused() {
-    let requirement = "anchor apple generic and identifier \"com.example.app\" \
-                       and certificate leaf[subject.CN] = \"ABCDE12345\"";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.CN] = \"ABCDE12345\"{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
 fn a_team_on_the_root_certificate_is_refused() {
-    let requirement = "anchor apple generic and identifier \"com.example.app\" \
-                       and certificate root[subject.OU] = \"ABCDE12345\"";
-    assert!(ensure_strong(requirement).is_err());
+    let requirement = format!(
+        "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate root[subject.OU] = \"ABCDE12345\"{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_err());
 }
 
 #[test]
@@ -144,9 +167,11 @@ fn an_or_between_comments_is_refused() {
 
 #[test]
 fn the_team_field_written_with_a_space_is_accepted() {
-    let requirement = "anchor apple generic and identifier \"com.example.app\" \
-                       and certificate leaf [subject.OU] = \"ABCDE12345\"";
-    assert!(ensure_strong(requirement).is_ok());
+    let requirement = format!(
+        "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf [subject.OU] = \"ABCDE12345\"{DEVELOPER_ID}"
+    );
+    assert!(ensure_strong(&requirement).is_ok());
 }
 
 #[test]
@@ -196,4 +221,43 @@ fn the_app_store_marker_on_an_intermediate_is_refused() {
     let requirement = "anchor apple generic and identifier \"com.example.app\" \
                        and certificate 1[field.1.2.840.113635.100.6.1.9] exists";
     assert!(ensure_strong(requirement).is_err());
+}
+
+#[test]
+fn a_team_without_the_developer_id_markers_is_refused() {
+    let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.OU] = \"ABCDE12345\"";
+    assert!(ensure_strong(requirement).is_err());
+}
+
+#[test]
+fn a_team_with_only_the_developer_id_leaf_marker_is_refused() {
+    let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.OU] = \"ABCDE12345\" \
+                       and certificate leaf[field.1.2.840.113635.100.6.1.13] exists";
+    assert!(ensure_strong(requirement).is_err());
+}
+
+#[test]
+fn a_team_with_only_the_developer_id_intermediate_marker_is_refused() {
+    let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.OU] = \"ABCDE12345\" \
+                       and certificate 1[field.1.2.840.113635.100.6.2.6] exists";
+    assert!(ensure_strong(requirement).is_err());
+}
+
+#[test]
+fn the_developer_id_intermediate_marker_on_the_leaf_is_refused() {
+    let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[subject.OU] = \"ABCDE12345\" \
+                       and certificate leaf[field.1.2.840.113635.100.6.2.6] exists \
+                       and certificate leaf[field.1.2.840.113635.100.6.1.13] exists";
+    assert!(ensure_strong(requirement).is_err());
+}
+
+#[test]
+fn the_app_store_marker_with_the_anchor_and_identifier_is_accepted() {
+    let requirement = "anchor apple generic and identifier \"com.example.app\" \
+                       and certificate leaf[field.1.2.840.113635.100.6.1.9] exists";
+    assert!(ensure_strong(requirement).is_ok());
 }
