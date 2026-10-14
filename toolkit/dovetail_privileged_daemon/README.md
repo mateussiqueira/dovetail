@@ -20,7 +20,7 @@ together, so a consumer reaches both through the same git tag.
 | rotating file + stderr tracing (4 MiB → `.old`) | `logging.rs` |
 | the accept loop with backoff, `prepare()` and the app's peer policy before bind | `server.rs` |
 | the framed request loop, handshake, validation, dispatch | `connection.rs` |
-| OS service registration (SCM / launchd / stub) | `service/` |
+| OS service registration (SCM / launchd / systemd) | `service/` |
 
 ## The `DaemonApp` seam
 
@@ -105,7 +105,7 @@ fn main() {
 
 `run::<A>()` parses `Mode::from_args()`, initialises tracing into `A::LOG_DIR`
 with `A::LOG_FILTER`, then dispatches: `Service` runs the OS service entry
-(SCM / launchd / stub), `Foreground` runs the loop with a `ctrl_c` shutdown,
+(SCM / launchd / systemd), `Foreground` runs the loop with a `ctrl_c` shutdown,
 `Cleanup` calls `cleanup()`, and `Install`/`Uninstall`/`StopService`/`Repair`/
 `Status` map to the platform service operations. It returns the same exit codes
 the product returned before the extraction.
@@ -115,7 +115,11 @@ the product returned before the extraction.
 `ServiceIdentity` carries the per-platform names the service operations need:
 the Windows SCM name/display/description, the macOS launchd label (plist goes to
 `/Library/LaunchDaemons/<label>.plist`, stdout/stderr to
-`/var/log/<label>.log`), and the Linux unit name.
+`/var/log/<label>.log`), and the Linux unit name. On Linux the service operations
+drive that unit with `systemctl` and never write it: the `.deb` or `.rpm` ships
+it. `--install` is `enable --now`, `--uninstall` is `disable --now`, `--stop`
+leaves it enabled, `--repair` restarts it and `--status` reads its `LoadState`
+and `ActiveState`.
 
 ## Versioning
 
@@ -134,6 +138,7 @@ never drift within a tag.
 
 Written and exercised on macOS arm64. The Windows path is ported from the
 shipping product but is not compiled on the macOS host it is maintained on —
-the same caveat the rest of this repository carries.
+the same caveat the rest of this repository carries. The Linux service operations
+were run once against systemd booted in a container; no gate repeats that run.
 
 Part of [dovetail](https://github.com/mateussiqueira/dovetail). MIT.
