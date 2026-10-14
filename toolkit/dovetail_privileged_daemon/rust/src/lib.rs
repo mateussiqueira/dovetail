@@ -12,6 +12,8 @@ mod plist_trust;
 mod plist_trust_tests;
 mod refusal_log;
 #[cfg(target_os = "macos")]
+mod requirement_blob;
+#[cfg(target_os = "macos")]
 mod requirement_compile;
 #[cfg(target_os = "macos")]
 mod requirement_strength;
