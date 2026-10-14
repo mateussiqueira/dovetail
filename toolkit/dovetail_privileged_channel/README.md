@@ -59,6 +59,19 @@ let shake = client_handshake::<MeuComando, MeuResultado, _>(&mut framed, config,
 
 The launchd property list has to declare the service under `MachServices`.
 
+The proof runs the attack against a real LaunchDaemon, so it needs root and is
+`#[ignore]`d: an ad hoc "app" whose `cdhash` the requirement pins, and an
+"other" signed under another identifier. The app is heard; the other is not;
+and when the other connects, forks and execs the app, neither its message before
+the exec nor the forked child's command reaches the daemon, while the exec'd app
+is heard. Built as your user, run as root, the clients drop back to your uid:
+
+```sh
+cargo build --example xpc_proof
+cargo test --test xpc_escalation --no-run
+sudo target/debug/deps/xpc_escalation-<hash> --ignored
+```
+
 ### The macOS socket path checks the peer's code once, at accept
 
 Who may speak is the product's to say here too, as a code requirement in the
