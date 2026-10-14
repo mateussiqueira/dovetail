@@ -30,6 +30,20 @@ impl Systemd {
             ..Self::showing(show)
         }
     }
+
+    pub(crate) fn as_a_user(show: &'static str) -> Self {
+        Self {
+            root: false,
+            ..Self::showing(show)
+        }
+    }
+
+    pub(crate) fn missing() -> Self {
+        Self {
+            present: false,
+            ..Self::showing(ACTIVE)
+        }
+    }
 }
 
 impl Host for Systemd {
