@@ -19,6 +19,10 @@ pub(crate) enum Clause {
         oid: Vec<u8>,
         compared: Comparison,
     },
+    IntermediateExtension {
+        oid: Vec<u8>,
+        compared: Comparison,
+    },
     Other,
 }
 
@@ -108,6 +112,10 @@ impl<'a> Reader<'a> {
                 match (op, slot) {
                     (11, 0) => Clause::LeafField { field, compared },
                     (14, 0) => Clause::LeafExtension {
+                        oid: field,
+                        compared,
+                    },
+                    (14, 1) => Clause::IntermediateExtension {
                         oid: field,
                         compared,
                     },
