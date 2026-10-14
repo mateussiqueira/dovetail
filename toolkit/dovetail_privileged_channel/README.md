@@ -30,11 +30,36 @@ command.
 
 | Platform | Mechanism | Verified against |
 | --- | --- | --- |
-| macOS | `LOCAL_PEERTOKEN` + code signature | the code requirement the product declares; without it, nobody in release |
+| macOS 12+ | XPC mach service + `xpc_connection_set_peer_code_signing_requirement`, on every message | the code requirement the product declares; without it, the daemon does not start |
 | Linux | `SO_PEERCRED` | the uids and gids the product declares; without them, nobody |
 | Windows | SDDL on the pipe + client process path | the helper's own directory |
 
-### The macOS path checks the peer's code against the product's requirement
+### On macOS the channel is XPC, and every message is checked
+
+The daemon listens on an XPC mach service named after its launchd label
+(`XpcListener::mach_service`), and the app connects to it by that name
+(`XpcConnection::mach_service`). The listener gives each peer the code
+requirement from the product's `PeerPolicy`, and the system checks the sender
+of **every message** against it, not the process that was behind the
+connection when it opened. A process that connects, forks and execs a signed
+program, or hands the connection to another process, gets nothing through from
+the unsigned one: the message is dropped and the connection ends. A requirement
+that does not parse refuses every peer, and a daemon whose product declares no
+code requirement does not start. The API is from macOS 12, the minimum here.
+
+The protocol does not change: `XpcConnection` is `AsyncRead + AsyncWrite`, each
+write leaves as one message, and the framing and the handshake run on it as on
+a socket. The app's side:
+
+```rust
+let conn = XpcConnection::mach_service("com.example.app.helper")?;
+let mut framed = framer(conn);
+let shake = client_handshake::<MeuComando, MeuResultado, _>(&mut framed, config, nonce).await?;
+```
+
+The launchd property list has to declare the service under `MachServices`.
+
+### The macOS socket path checks the peer's code once, at accept
 
 Who may speak is the product's to say here too, as a code requirement in the
 same `PeerPolicy`:
