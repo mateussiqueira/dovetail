@@ -79,7 +79,10 @@ package takes. The daemon reads the argument from the content of that file,
 not from its own command line, so a launch from a property list inside the
 app bundle, which whoever can write the app can rewrite, serves the compiled
 requirement; when the command line carries a requirement the trusted file
-does not, the daemon logs that it ignored it. An ad hoc app pins its
+does not, the daemon logs that it ignored it. A trusted file that names
+`--peer-requirement` with no value after it is malformed, and the daemon does
+not start rather than fall back to the compiled requirement. An ad hoc app
+pins its
 `cdhash` (one `cdhash` per slice of a universal app, joined by `or`). The
 daemon does not start on macOS without a requirement or with one the Security
 framework does not compile, and it judges the compiled requirement, not its
