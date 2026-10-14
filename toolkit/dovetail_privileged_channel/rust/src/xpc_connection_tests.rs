@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use tokio::time::timeout;
 
@@ -18,4 +18,13 @@ async fn a_client_of_a_service_launchd_does_not_know_sees_the_connection_close()
 fn a_service_name_with_a_nul_byte_is_refused_before_it_reaches_launchd() {
     let refused = XpcConnection::mach_service("com.example\0helper");
     assert!(refused.is_err());
+}
+
+#[test]
+fn flushing_returns_once_the_message_has_left_even_with_no_one_listening() {
+    let client = XpcConnection::mach_service("com.example.dovetail.absent").unwrap();
+    client.send(b"hello");
+    let started = Instant::now();
+    client.flush();
+    assert!(started.elapsed() < Duration::from_secs(4));
 }
