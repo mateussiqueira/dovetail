@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_cli/src/doctor/rust_target_probe.dart';
+import 'package:dovetail_cli/src/doctor/tool_executable.dart';
 import 'package:dovetail_cli/src/doctor/tool_probe.dart';
 import 'package:path/path.dart' as p;
 
@@ -30,7 +31,7 @@ final class CommandProbe implements ToolProbe {
 
   @override
   Future<ToolReport> probe() async {
-    final String? resolved = _which(name);
+    final String? resolved = findToolExecutable(name);
     if (resolved == null) {
       return ToolReport(
         name: name,
@@ -124,35 +125,6 @@ final class CommandProbe implements ToolProbe {
         .toList();
     return lines.isEmpty ? 'exit code ${result.exitCode}' : lines.first.trim();
   }
-
-  static String? _which(String name) {
-    if (Platform.isWindows && p.dirname(name) != '.') {
-      return File(name).existsSync() ? name : null;
-    }
-    final ProcessResult found = Process.runSync(
-      Platform.isWindows ? 'where' : 'which',
-      <String>[name],
-    );
-    if (found.exitCode != 0) {
-      return null;
-    }
-    for (final String line in found.stdout.toString().split('\n')) {
-      final String candidate = line.trim();
-      if (candidate.isEmpty) {
-        continue;
-      }
-      if (!Platform.isWindows ||
-          const <String>{
-            '.exe',
-            '.com',
-            '.bat',
-            '.cmd',
-          }.contains(p.extension(candidate).toLowerCase())) {
-        return candidate;
-      }
-    }
-    return null;
-  }
 }
 
 /// The probe that answers the question the NSIS step really asks: can this
@@ -172,7 +144,7 @@ final class NsisProbe implements ToolProbe {
 
   @override
   Future<ToolReport> probe() async {
-    final String? resolved = _which(name);
+    final String? resolved = findToolExecutable(name);
     if (resolved == null) {
       return ToolReport(
         name: name,
@@ -252,8 +224,6 @@ final class NsisProbe implements ToolProbe {
       scratch.deleteSync(recursive: true);
     }
   }
-
-  static String? _which(String name) => CommandProbe._which(name);
 
   static String _detail(ProcessResult result) {
     final String text = result.stderr.toString().trim().isEmpty
