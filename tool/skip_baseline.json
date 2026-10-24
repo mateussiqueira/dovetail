@@ -139,7 +139,7 @@
           "skips": {}
         },
         "test/binary_report_test.dart": {
-          "declared": 14,
+          "declared": 15,
           "skips": {}
         },
         "test/bridge_command_test.dart": {
