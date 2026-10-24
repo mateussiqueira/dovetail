@@ -14,21 +14,32 @@ final class SdkInstaller {
     required this.home,
     this._binDir,
     this._runner = const SystemProcessRunner(),
-  });
+    p.Context? context,
+    Map<String, String>? environment,
+  }) : _context = context ?? p.context,
+       _environment = environment ?? Platform.environment;
 
   final String home;
   final ProcessRunner _runner;
   final String? _binDir;
+  final p.Context _context;
+  final Map<String, String> _environment;
+
+  bool get _isWindows => _context.style == p.Style.windows;
+
+  String get installedBinary =>
+      _context.join(home, 'bin', _isWindows ? 'dovetail.exe' : 'dovetail');
 
   /// Onde o symlink mora: o parâmetro (seam de teste), depois
   /// `$DOVETAIL_BIN_DIR` — o mesmo env que o `tool/sdk/install.sh` respeita,
   /// para os dois instaladores concordarem — e por fim `~/.local/bin`.
   String get binDir =>
       _binDir ??
-      Platform.environment['DOVETAIL_BIN_DIR'] ??
-      p.join(
-        Platform.environment['HOME'] ??
-            Platform.environment['USERPROFILE'] ??
+      _environment['DOVETAIL_BIN_DIR'] ??
+      _context.join(
+        (_isWindows
+                ? _environment['USERPROFILE'] ?? _environment['HOME']
+                : _environment['HOME'] ?? _environment['USERPROFILE']) ??
             home,
         '.local',
         'bin',
@@ -38,7 +49,7 @@ final class SdkInstaller {
   Future<String> extract(File tarball) async {
     Directory(home).createSync(recursive: true);
     final ProcessOutcome outcome = await _runner.run('tar', <String>[
-      '-xzf',
+      _isWindows ? '-xf' : '-xzf',
       tarball.path,
       '-C',
       home,
@@ -51,7 +62,7 @@ final class SdkInstaller {
             'local tar problem, not a corrupted release.',
       );
     }
-    return p.join(home, 'bin', 'dovetail');
+    return installedBinary;
   }
 
   /// Cria (ou troca) o symlink `dovetail` em [binDir] apontando para o
@@ -59,15 +70,15 @@ final class SdkInstaller {
   Link linkBin() {
     Directory(binDir).createSync(recursive: true);
     final Link link = Link(
-      p.join(binDir, Platform.isWindows ? 'dovetail.exe' : 'dovetail'),
+      _context.join(binDir, _isWindows ? 'dovetail.exe' : 'dovetail'),
     );
     if (link.existsSync()) {
       link.deleteSync();
     }
-    link.createSync(p.join(home, 'bin', 'dovetail'));
+    link.createSync(installedBinary);
 
-    final List<String> path = (Platform.environment['PATH'] ?? '').split(
-      Platform.isWindows ? ';' : ':',
+    final List<String> path = (_environment['PATH'] ?? '').split(
+      _isWindows ? ';' : ':',
     );
     if (!path.contains(binDir)) {
       stdout.writeln('  note: $binDir is not in PATH');

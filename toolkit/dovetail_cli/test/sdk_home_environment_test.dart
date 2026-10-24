@@ -106,7 +106,10 @@ void main() {
       extra: <String, String>{'HOME': home},
     );
     expect(result['home'], p.join(home, '.dovetail'));
-    expect(result['bin'], p.join(home, '.local', 'bin'));
+    expect(
+      result['bin'],
+      p.join(Platform.isWindows ? profile : home, '.local', 'bin'),
+    );
   });
 
   test('DOVETAIL_HOME overrides the SDK without moving the user bin', () {

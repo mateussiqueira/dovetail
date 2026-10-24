@@ -34,13 +34,29 @@ void main() {
   tearDownAll(() => root.deleteSync(recursive: true));
 
   test(
-    'the Windows SDK entry is discoverable and runs through its exe link',
-    () {
+    'the Windows ZIP SDK entry is discoverable and preserves literal arguments',
+    () async {
       final String home = p.join(root.path, 'SDK Home');
       final String bin = p.join(root.path, 'User Bin');
-      Directory(p.join(home, 'bin')).createSync(recursive: true);
-      File(executable).copySync(p.join(home, 'bin', 'dovetail'));
-      final Link link = SdkInstaller(home: home, binDir: bin).linkBin();
+      final String payload = p.join(root.path, 'Archive Payload');
+      Directory(p.join(payload, 'bin')).createSync(recursive: true);
+      File(executable).copySync(p.join(payload, 'bin', 'dovetail.exe'));
+      final File archive = File(p.join(root.path, 'sdk.zip'));
+      final ProcessResult packed = Process.runSync('tar', <String>[
+        '-a',
+        '-cf',
+        archive.path,
+        '-C',
+        payload,
+        'bin',
+      ]);
+      expect(packed.exitCode, 0, reason: '${packed.stderr}');
+      expect(archive.readAsBytesSync().take(2), <int>[0x50, 0x4b]);
+      final SdkInstaller installer = SdkInstaller(home: home, binDir: bin);
+      final String installed = await installer.extract(archive);
+      expect(installed, p.join(home, 'bin', 'dovetail.exe'));
+      expect(File(installed).existsSync(), isTrue);
+      final Link link = installer.linkBin();
       final String? found = BinaryReport.findOnPath(
         bin,
         exists: (String path) => File(path).existsSync(),
