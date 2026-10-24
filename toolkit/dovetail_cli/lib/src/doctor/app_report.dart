@@ -14,10 +14,6 @@ final class AppReport {
 
   final List<ProjectNote> notes;
 
-  static final RegExp _versionPattern = RegExp(
-    r'sdk[\\/]+([^\\/]+)[\\/]+packages',
-  );
-
   static AppReport of({required String root, required String home}) {
     final File overrides = File(p.join(root, SdkOverrides.fileName));
     if (!overrides.existsSync()) {
@@ -32,7 +28,9 @@ final class AppReport {
       ]);
     }
 
-    final String? version = _readVersion(overrides);
+    final String? version = SdkOverrides.versionIn(
+      overrides.readAsStringSync(),
+    );
     if (version == null) {
       return AppReport(<ProjectNote>[
         ProjectNote(
@@ -67,7 +65,4 @@ final class AppReport {
       ),
     ]);
   }
-
-  static String? _readVersion(File overrides) =>
-      _versionPattern.firstMatch(overrides.readAsStringSync())?.group(1);
 }

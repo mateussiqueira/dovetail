@@ -115,8 +115,6 @@ final class UpgradeCommand extends Command<int> {
     return lines.sublist(from).join('\n');
   }
 
-  static final RegExp _versionPattern = RegExp(r'sdk/([^/]+)/packages');
-
   /// A versão a que o override atual aponta, lida do primeiro
   /// `sdk/<versão>/packages` no arquivo — 'none' quando o arquivo não existe
   /// ou não aponta para SDK nenhum.
@@ -124,7 +122,6 @@ final class UpgradeCommand extends Command<int> {
     if (!target.existsSync()) {
       return 'none';
     }
-    final Match? match = _versionPattern.firstMatch(target.readAsStringSync());
-    return match?.group(1) ?? 'none';
+    return SdkOverrides.versionIn(target.readAsStringSync()) ?? 'none';
   }
 }

@@ -11,6 +11,13 @@ final class SdkOverrides {
 
   static const String fileName = 'pubspec_overrides.yaml';
 
+  static final RegExp _versionPattern = RegExp(
+    r'sdk[\\/]+([^\\/]+)[\\/]+packages',
+  );
+
+  static String? versionIn(String source) =>
+      _versionPattern.firstMatch(source)?.group(1);
+
   /// Localiza o SDK com [locator], ou recusa nomeando o instalador.
   static SdkInstall requireSdk(SdkLocator locator, String usage) {
     final SdkInstall? sdk = locator.locate();
