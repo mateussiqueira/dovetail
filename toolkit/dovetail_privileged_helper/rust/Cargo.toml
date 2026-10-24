@@ -1,0 +1,13 @@
+[package]
+name = "dovetail_windows_service"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.80"
+publish = false
+
+[lib]
+crate-type = ["rlib", "cdylib"]
+
+[target.'cfg(windows)'.dependencies]
+windows-service = "0.7"
