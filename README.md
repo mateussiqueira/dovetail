@@ -112,7 +112,7 @@ with `cargo test -- --list` in each crate, and can age.
 | `toolkit/dovetail_updater` | 172 Dart | a manifest without a valid signature is refused |
 | `toolkit/dovetail_platform_channel` | 201 Dart | window, tray, single instance, deep links, appearance |
 | `toolkit/dovetail_signer` | 94 Dart | signing refuses what it cannot prove |
-| `toolkit/dovetail_privileged_helper` | 23 Dart | the state a bool collapses, and the refusal paths |
+| `toolkit/dovetail_privileged_helper` | 24 Dart | the state a bool collapses, refusal paths, and one Windows SCM owner |
 | `toolkit/dovetail_shortcut_channel` | 55 Dart | the global shortcut, with and without window focus |
 | `toolkit/dovetail_form_validation` | 29 Dart | validation with no widget in sight |
 | `toolkit/dovetail_process_runner` | 23 Dart | timeout and typed outcome |
