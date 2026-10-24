@@ -21,6 +21,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'format_output.dart';
 import 'package_tool.dart';
 
 const String _baselineFile = 'tool/skip_baseline.json';
@@ -624,15 +625,9 @@ int _format({String? only}) {
   //
   // Os caminhos agora ja vem relativos a raiz, porque o processo roda nela: o
   // prefixo por pacote que existia aqui passaria a duplicar.
-  final List<String> unformatted = const LineSplitter()
-      .convert(checked.stdout.toString())
-      .where((String line) => line.startsWith('Changed '))
-      .map((String line) => line.substring(8))
-      .where(
-        (String path) =>
-            !path.contains('/cargokit/') && !path.contains('/build/'),
-      )
-      .toList();
+  final List<String> unformatted = ownUnformattedPaths(
+    checked.stdout.toString(),
+  );
 
   if (unformatted.isEmpty) {
     return 0;
