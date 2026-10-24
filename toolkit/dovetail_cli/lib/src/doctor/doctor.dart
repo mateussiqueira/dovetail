@@ -170,6 +170,7 @@ final class NsisProbe implements ToolProbe {
     try {
       final String appDir = p.join(scratch.path, 'app');
       Directory(appDir).createSync();
+      File(p.join(appDir, 'probe.exe')).writeAsBytesSync(<int>[0x4d, 0x5a]);
       final Directory plugins = Directory(p.join(scratch.path, 'plugins'))
         ..createSync();
       final BundleSpec spec = BundleSpec(
