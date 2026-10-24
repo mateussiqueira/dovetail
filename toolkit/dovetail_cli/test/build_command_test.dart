@@ -30,6 +30,30 @@ void main() {
     );
   }
 
+  String getHostTarget() => switch (Platform.operatingSystem) {
+    'windows' => 'windows-x86_64',
+    'macos' => 'darwin-aarch64',
+    _ => 'linux-x86_64',
+  };
+
+  File flutterFixture({int exitCode = 0}) {
+    final File recorder =
+        File(
+          p.join(root.path, Platform.isWindows ? 'flutter.bat' : 'flutter'),
+        )..writeAsStringSync(
+          Platform.isWindows
+              ? '@echo off\r\necho %* > "%~dp0args.txt"\r\nexit /b $exitCode\r\n'
+              : '#!/bin/sh\nprintf "%s\\n" "\$@" > "\$(dirname "\$0")/args.txt"\nexit $exitCode\n',
+        );
+    if (!Platform.isWindows) {
+      expect(
+        Process.runSync('chmod', <String>['+x', recorder.path]).exitCode,
+        0,
+      );
+    }
+    return recorder;
+  }
+
   group('the arguments it hands flutter', () {
     test('release should be the default and debug should be explicit', () {
       expect(FlutterBuild.argumentsFor('macos'), <String>[
@@ -185,11 +209,15 @@ void main() {
 
   group('which targets it picks with no --target', () {
     test('a config that declares this host should build it', () async {
-      configure(Platform.isMacOS ? 'darwin-aarch64' : 'linux-x86_64');
+      configure(getHostTarget());
 
-      final int? code = await build(<String>['--flutter', 'true']);
+      final int? code = await build(<String>[
+        '--flutter',
+        flutterFixture().path,
+      ]);
 
       expect(code, 0);
+      expect(File(p.join(root.path, 'args.txt')).existsSync(), isTrue);
     });
 
     test(
@@ -208,10 +236,10 @@ void main() {
     );
 
     test('the yaml public key should reach flutter as a --dart-define', () async {
-      configure(Platform.isMacOS ? 'darwin-aarch64' : 'linux-x86_64');
+      configure(getHostTarget());
       File(p.join(root.path, ConfigLocator.fileName)).writeAsStringSync(
         'identifier: com.example.demo\nname: Demo\nmanufacturer: Example Ltda\n'
-        'targets: [${Platform.isMacOS ? 'darwin-aarch64' : 'linux-x86_64'}]\n'
+        'targets: [${getHostTarget()}]\n'
         'update:\n  key: keys/update.key\n'
         '  base-url: https://cdn.example.com/r\n'
         '  public-key: |\n'
@@ -221,11 +249,7 @@ void main() {
       File(
         p.join(root.path, 'pubspec.yaml'),
       ).writeAsStringSync('name: demo\nversion: 1.2.3+4\n');
-      final File recorder = File(p.join(root.path, 'flutter'))
-        ..writeAsStringSync(
-          '#!/bin/sh\nprintf "%s\\n" "\$@" > "\$(dirname "\$0")/args.txt"\n',
-        );
-      Process.runSync('chmod', <String>['+x', recorder.path]);
+      final File recorder = flutterFixture();
 
       expect(await build(<String>['--flutter', recorder.path]), 0);
 
@@ -243,9 +267,12 @@ void main() {
     });
 
     test('a failing flutter should surface its exit code', () async {
-      configure(Platform.isMacOS ? 'darwin-aarch64' : 'linux-x86_64');
+      configure(getHostTarget());
 
-      expect(await build(<String>['--flutter', 'false']), isNot(0));
+      expect(
+        await build(<String>['--flutter', flutterFixture(exitCode: 19).path]),
+        19,
+      );
     });
   });
 }
