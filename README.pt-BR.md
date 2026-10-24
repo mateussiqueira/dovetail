@@ -112,6 +112,13 @@ dart run bin/dovetail.dart --help
 O binário autocontido, e como instalá-lo, estão no
 [README do `dovetail_cli`](toolkit/dovetail_cli/README.pt-BR.md).
 
+`bash tool/build_sdk.sh --target windows-x64` (ou `windows-arm64` no host
+nativo dessa arquitetura) monta `dovetail-sdk-<versão>-windows-<arq>.zip`
+com `bin/dovetail.exe`, `sdk/<versão>/packages` e `sdk/<versão>/templates`.
+Os demais alvos usam `.tar.gz`. O `.sha256` contém só o hash; a assinatura
+continua exigindo `keys/sdk.key` e minisign. Esse suporte de empacotamento
+não comprova instalação do SDK Windows nem release assinado.
+
 O repositório é um monorepo de pacotes em `toolkit/`. Cada um publica sozinho e
 declara os outros por versão; o `pubspec_overrides.yaml` de cada pacote aponta
 para o vizinho local, então `dart pub get` resolve sem passar pelo pub.dev.
