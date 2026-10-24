@@ -61,12 +61,18 @@ void main() {
       expect(installer.binDir, bin.path);
     });
 
-    test('without a binDir, the default lands under \$HOME/.local/bin', () {
+    test('without a binDir, the default follows the available user home', () {
       final SdkInstaller installer = SdkInstaller(home: home.path);
 
       expect(
         installer.binDir,
-        p.join(Platform.environment['HOME'] ?? home.path, '.local', 'bin'),
+        p.join(
+          Platform.environment['HOME'] ??
+              Platform.environment['USERPROFILE'] ??
+              home.path,
+          '.local',
+          'bin',
+        ),
       );
     });
   });

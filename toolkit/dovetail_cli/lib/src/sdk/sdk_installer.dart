@@ -26,7 +26,13 @@ final class SdkInstaller {
   String get binDir =>
       _binDir ??
       Platform.environment['DOVETAIL_BIN_DIR'] ??
-      p.join(Platform.environment['HOME'] ?? home, '.local', 'bin');
+      p.join(
+        Platform.environment['HOME'] ??
+            Platform.environment['USERPROFILE'] ??
+            home,
+        '.local',
+        'bin',
+      );
 
   /// Desempacota [tarball] no home e devolve o caminho do binário instalado.
   Future<String> extract(File tarball) async {
