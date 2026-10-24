@@ -23,6 +23,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 dovetail_privileged_channel = { path = "../../dovetail_privileged_channel/rust" }
 
 [target.'cfg(windows)'.dependencies]
+dovetail_windows_service = { path = "../../dovetail_privileged_helper/rust" }
 windows-service = "0.7"
 windows-sys = { version = "0.59", features = ["Win32_System_Pipes"] }
 

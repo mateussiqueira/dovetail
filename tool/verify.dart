@@ -76,6 +76,7 @@ const List<String> _crates = <String>[
   'toolkit/dovetail_shortcut_channel/rust',
   'toolkit/dovetail_privileged_channel/rust',
   'toolkit/dovetail_privileged_daemon/rust',
+  'toolkit/dovetail_privileged_helper/rust',
   'toolkit/dovetail_http_client/rust',
 ];
 
@@ -778,6 +779,7 @@ int _cross({String? only}) {
     'toolkit/dovetail_shortcut_channel/rust',
     'toolkit/dovetail_privileged_channel/rust',
     'toolkit/dovetail_privileged_daemon/rust',
+    'toolkit/dovetail_privileged_helper/rust',
   ];
   const List<String> triples = <String>[
     'x86_64-pc-windows-msvc',

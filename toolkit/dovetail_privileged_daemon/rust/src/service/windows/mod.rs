@@ -16,7 +16,6 @@ const ERROR_SERVICE_DOES_NOT_EXIST: i32 = 1060;
 const ERROR_SERVICE_NOT_ACTIVE: i32 = 1062;
 const ERROR_SERVICE_DEPENDENCY_FAIL: i32 = 1068;
 const ERROR_SERVICE_MARKED_FOR_DELETE: i32 = 1072;
-const ERROR_SERVICE_EXISTS: i32 = 1073;
 const ERROR_SERVICE_DEPENDENCY_DELETED: i32 = 1075;
 const ERROR_SERVICE_ALREADY_RUNNING: i32 = 1056;
 
@@ -32,6 +31,7 @@ windows_service::define_windows_service!(ffi_service_main, service_main);
 
 mod control;
 mod install;
+mod registration_failure;
 
 pub use control::{query_status, repair_service, stop_service, unregister_service};
 pub use install::register_service;

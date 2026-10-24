@@ -462,6 +462,10 @@
         "test/registration_guard_test.dart": {
           "declared": 7,
           "skips": {}
+        },
+        "test/windows_service_owner_test.dart": {
+          "declared": 1,
+          "skips": {}
         }
       }
     },
