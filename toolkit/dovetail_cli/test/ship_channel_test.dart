@@ -1,6 +1,8 @@
 import 'package:dovetail_cli/dovetail_cli.dart';
 import 'package:test/test.dart';
 
+import 'support/path_matcher.dart';
+
 DovetailConfig configWith(String targets, {String extra = ''}) =>
     DovetailConfig.parse('''
 identifier: com.example.demo
@@ -110,16 +112,16 @@ void main() {
       // empacota — senao os dois passos apontariam para builds diferentes.
       expect(
         argumentsOf(plan, 'sign darwin-aarch64'),
-        contains('build/macos/Build/Products/Debug/demo_app.app'),
+        contains(pathEqualTo('build/macos/Build/Products/Debug/demo_app.app')),
       );
       expect(argumentsOf(plan, 'sign darwin-aarch64'), contains('--ad-hoc'));
       expect(
         argumentsOf(plan, 'thin darwin-aarch64'),
-        contains('build/macos/Build/Products/Debug/demo_app.app'),
+        contains(pathEqualTo('build/macos/Build/Products/Debug/demo_app.app')),
       );
       expect(
         argumentsOf(plan, 'bundle darwin-aarch64'),
-        contains('build/macos/Build/Products/Debug/demo_app.app'),
+        contains(pathEqualTo('build/macos/Build/Products/Debug/demo_app.app')),
       );
       expect(plan.artifacts, isEmpty);
       expect(plan.downloads['darwin-aarch64'], endsWith('.dmg'));

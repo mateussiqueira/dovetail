@@ -4,6 +4,8 @@ import 'package:dovetail_cli/dovetail_cli.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'support/path_matcher.dart';
+
 DovetailConfig configWith(String targets, {String extra = ''}) =>
     DovetailConfig.parse('''
 identifier: com.example.demo
@@ -180,7 +182,9 @@ void main() {
       expect(arguments, containsAllInOrder(<String>['--arch', 'arm64']));
       expect(
         arguments,
-        contains('build/macos/Build/Products/Release/demo_app.app'),
+        contains(
+          pathEqualTo('build/macos/Build/Products/Release/demo_app.app'),
+        ),
       );
     });
 
@@ -194,9 +198,9 @@ void main() {
       expect(arguments, containsAllInOrder(<String>['--macos-format', 'tar']));
       expect(
         arguments,
-        containsAllInOrder(<String>[
+        containsAllInOrder(<Object>[
           '--app-dir',
-          'build/macos/Build/Products/Release/demo_app.app',
+          pathEqualTo('build/macos/Build/Products/Release/demo_app.app'),
         ]),
         reason: 'o mesmo .app assinado que o dmg embrulhou',
       );
@@ -309,9 +313,9 @@ void main() {
     test('the macos app directory should be the bundle, not the folder', () {
       expect(
         argumentsOf(planFor('darwin-aarch64'), 'bundle darwin-aarch64'),
-        containsAllInOrder(<String>[
+        containsAllInOrder(<Object>[
           '--app-dir',
-          'build/macos/Build/Products/Release/demo_app.app',
+          pathEqualTo('build/macos/Build/Products/Release/demo_app.app'),
         ]),
         reason:
             'a dmg wraps the bundle, and the bundler refuses the directory '
@@ -335,9 +339,9 @@ void main() {
     test('macos should be signed as a bundle, linux as files', () {
       expect(
         argumentsOf(planFor('darwin-aarch64'), 'sign darwin-aarch64'),
-        containsAllInOrder(<String>[
+        containsAllInOrder(<Object>[
           '--bundle',
-          'build/macos/Build/Products/Release/demo_app.app',
+          pathEqualTo('build/macos/Build/Products/Release/demo_app.app'),
         ]),
         reason: 'the .app that was built, not one in the output directory',
       );
@@ -429,7 +433,10 @@ void main() {
 
       expect(
         arguments,
-        containsAllInOrder(<String>['--file', 'dist/demo_app_4.2.0_arm64.dmg']),
+        containsAllInOrder(<String>[
+          '--file',
+          p.normalize('dist/demo_app_4.2.0_arm64.dmg'),
+        ]),
       );
       expect(arguments, isNot(contains('--bundle')));
     });
@@ -569,16 +576,18 @@ void main() {
       );
 
       expect(plan.artifacts, <String, String>{
-        'darwin-universal': 'dist/demo_app_4.2.0_universal.app.tar.gz',
+        'darwin-universal': p.normalize(
+          'dist/demo_app_4.2.0_universal.app.tar.gz',
+        ),
       });
       expect(plan.downloads, <String, String>{
-        'darwin-universal': 'dist/demo_app_4.2.0_universal.dmg',
+        'darwin-universal': p.normalize('dist/demo_app_4.2.0_universal.dmg'),
       });
       expect(
         argumentsOf(plan, 'release 4.2.0'),
         containsAllInOrder(<String>[
           '--artifact',
-          'darwin-universal=dist/demo_app_4.2.0_universal.app.tar.gz',
+          'darwin-universal=${p.normalize('dist/demo_app_4.2.0_universal.app.tar.gz')}',
         ]),
       );
     });
@@ -586,18 +595,18 @@ void main() {
     test('the debian architecture spelling should be used for the deb', () {
       expect(
         planFor('linux-x86_64', host: 'linux').artifacts['linux-x86_64'],
-        'dist/demo_app_4.2.0_amd64.deb',
+        p.normalize('dist/demo_app_4.2.0_amd64.deb'),
       );
       expect(
         planFor('linux-aarch64', host: 'linux').artifacts['linux-aarch64'],
-        'dist/demo_app_4.2.0_arm64.deb',
+        p.normalize('dist/demo_app_4.2.0_arm64.deb'),
       );
     });
 
     test('the wix spelling should be used for the msi', () {
       expect(
         planFor('windows-x86_64', host: 'windows').artifacts['windows-x86_64'],
-        'dist/demo_app_4.2.0_x64.msi',
+        p.normalize('dist/demo_app_4.2.0_x64.msi'),
       );
     });
 
@@ -608,7 +617,7 @@ void main() {
           host: 'windows',
           windowsFormat: 'nsis',
         ).artifacts['windows-x86_64'],
-        'dist/demo_app_4.2.0_x64_setup.exe',
+        p.normalize('dist/demo_app_4.2.0_x64_setup.exe'),
       );
     });
 
@@ -670,18 +679,18 @@ void main() {
     test('the dmg suffix should follow the architecture count', () {
       expect(
         planFor('darwin-aarch64').downloads['darwin-aarch64'],
-        'dist/demo_app_4.2.0_arm64.dmg',
+        p.normalize('dist/demo_app_4.2.0_arm64.dmg'),
       );
       expect(
         planFor('darwin-aarch64, darwin-x86_64').downloads['darwin-universal'],
-        'dist/demo_app_4.2.0_universal.dmg',
+        p.normalize('dist/demo_app_4.2.0_universal.dmg'),
         reason:
             'the plan used to guess this name and the bundler wrote another, '
             'so the manifest pointed at a file that did not exist',
       );
       expect(
         planFor('darwin-aarch64').artifacts['darwin-aarch64'],
-        'dist/demo_app_4.2.0_arm64.app.tar.gz',
+        p.normalize('dist/demo_app_4.2.0_arm64.app.tar.gz'),
         reason: 'o manifesto aponta para o que o updater instala',
       );
     });
