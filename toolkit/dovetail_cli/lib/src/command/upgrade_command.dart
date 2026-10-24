@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:dovetail_cli/src/config/pubspec_version.dart';
+import 'package:dovetail_cli/src/doctor/tool_executable.dart';
 import 'package:dovetail_cli/src/sdk/sdk_locator.dart';
 import 'package:dovetail_cli/src/sdk/sdk_overrides.dart';
 import 'package:path/path.dart' as p;
@@ -78,7 +79,7 @@ final class UpgradeCommand extends Command<int> {
   void _checkResolves(String root) {
     final ProcessResult result;
     try {
-      result = Process.runSync('dart', <String>[
+      result = Process.runSync(findToolExecutable('dart') ?? 'dart', <String>[
         'pub',
         'get',
       ], workingDirectory: root);
