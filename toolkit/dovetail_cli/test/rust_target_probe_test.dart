@@ -2,8 +2,9 @@ import 'dart:ffi';
 import 'dart:io';
 import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_cli/dovetail_cli.dart';
-import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+
+import 'support/tool_fixture.dart';
 
 /// The host's own build target, or null when the host is one the bundler
 /// does not build for (32-bit or a phone platform). The probe reads the real
@@ -56,9 +57,11 @@ void main() {
         final Directory scratch = Directory.systemTemp.createTempSync('rustup');
         addTearDown(() => scratch.deleteSync(recursive: true));
 
-        final String fake = p.join(scratch.path, 'rustup');
-        File(fake).writeAsStringSync('#!/bin/sh\necho x86_64-apple-darwin\n');
-        Process.runSync('chmod', <String>['755', fake]);
+        final String fake = toolFixture(
+          scratch,
+          posix: 'echo x86_64-apple-darwin',
+          windows: 'echo x86_64-apple-darwin',
+        );
 
         final ToolReport report = await RustTargetProbe(
           os: TargetOs.windows,
@@ -83,9 +86,11 @@ void main() {
       final Directory scratch = Directory.systemTemp.createTempSync('rustup2');
       addTearDown(() => scratch.deleteSync(recursive: true));
 
-      final String fake = p.join(scratch.path, 'rustup');
-      File(fake).writeAsStringSync('#!/bin/sh\necho aarch64-pc-windows-msvc\n');
-      Process.runSync('chmod', <String>['755', fake]);
+      final String fake = toolFixture(
+        scratch,
+        posix: 'echo aarch64-pc-windows-msvc',
+        windows: 'echo aarch64-pc-windows-msvc',
+      );
 
       final ToolReport report = await RustTargetProbe(
         os: TargetOs.windows,
@@ -100,11 +105,11 @@ void main() {
       final Directory scratch = Directory.systemTemp.createTempSync('rustup3');
       addTearDown(() => scratch.deleteSync(recursive: true));
 
-      final String fake = p.join(scratch.path, 'rustup');
-      File(fake).writeAsStringSync(
-        '#!/bin/sh\necho "the toolchain is not installed" >&2\nexit 1\n',
+      final String fake = toolFixture(
+        scratch,
+        posix: 'echo "the toolchain is not installed" >&2\nexit 1',
+        windows: 'echo the toolchain is not installed >&2\nexit /b 1',
       );
-      Process.runSync('chmod', <String>['755', fake]);
 
       final ToolReport report = await RustTargetProbe(
         os: TargetOs.linux,
