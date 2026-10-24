@@ -238,18 +238,22 @@ final class NewCommand extends Command<int> {
   /// here would make `new` non-hermetic on hosts without flutter, and would
   /// discard a project that is still usable.
   void _fillPlatforms(String projectRoot) {
-    if (Process.runSync('which', <String>['flutter']).exitCode != 0) {
+    if (Process.runSync(Platform.isWindows ? 'where' : 'which', <String>[
+          'flutter',
+        ]).exitCode !=
+        0) {
       stdout.writeln(
         'flutter not found — run: flutter create '
         '--platforms=macos,windows,linux ${p.basename(projectRoot)}',
       );
       return;
     }
-    final ProcessResult created = Process.runSync('flutter', <String>[
-      'create',
-      '--platforms=macos,windows,linux',
-      '.',
-    ], workingDirectory: projectRoot);
+    final ProcessResult created = Process.runSync(
+      'flutter',
+      <String>['create', '--platforms=macos,windows,linux', '.'],
+      workingDirectory: projectRoot,
+      runInShell: Platform.isWindows,
+    );
     if (created.exitCode != 0) {
       final List<String> lines = '${created.stdout}${created.stderr}'
           .split('\n')
