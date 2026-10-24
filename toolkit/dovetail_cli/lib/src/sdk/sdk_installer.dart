@@ -58,7 +58,9 @@ final class SdkInstaller {
   /// binário instalado, e avisa quando o diretório está fora do PATH.
   Link linkBin() {
     Directory(binDir).createSync(recursive: true);
-    final Link link = Link(p.join(binDir, 'dovetail'));
+    final Link link = Link(
+      p.join(binDir, Platform.isWindows ? 'dovetail.exe' : 'dovetail'),
+    );
     if (link.existsSync()) {
       link.deleteSync();
     }
