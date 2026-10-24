@@ -14,7 +14,9 @@ final class AppReport {
 
   final List<ProjectNote> notes;
 
-  static final RegExp _versionPattern = RegExp(r'sdk/([^/]+)/packages');
+  static final RegExp _versionPattern = RegExp(
+    r'sdk[\\/]+([^\\/]+)[\\/]+packages',
+  );
 
   static AppReport of({required String root, required String home}) {
     final File overrides = File(p.join(root, SdkOverrides.fileName));
