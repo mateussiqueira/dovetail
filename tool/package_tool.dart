@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 Future<ProcessResult> runPackageTool(
@@ -11,6 +12,8 @@ Future<ProcessResult> runPackageTool(
   workingDirectory: workingDirectory,
   environment: environment,
   runInShell: Platform.isWindows && runner == 'flutter',
+  stdoutEncoding: utf8,
+  stderrEncoding: utf8,
 );
 
 ProcessResult runPackageToolSync(
@@ -24,6 +27,8 @@ ProcessResult runPackageToolSync(
   workingDirectory: workingDirectory,
   environment: environment,
   runInShell: Platform.isWindows && runner == 'flutter',
+  stdoutEncoding: utf8,
+  stderrEncoding: utf8,
 );
 
 String _executable(String runner, Map<String, String>? environment) {

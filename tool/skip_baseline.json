@@ -356,7 +356,7 @@
           "skips": {}
         },
         "test/verify_package_tool_test.dart": {
-          "declared": 7,
+          "declared": 9,
           "skips": {}
         },
         "test/verify_format_output_test.dart": {
