@@ -362,6 +362,10 @@
         "test/verify_format_output_test.dart": {
           "declared": 4,
           "skips": {}
+        },
+        "test/verify_readme_counts_test.dart": {
+          "declared": 5,
+          "skips": {}
         }
       }
     },

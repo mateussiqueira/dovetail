@@ -1285,8 +1285,13 @@ int _readme() {
 
   final String text = File('$repoRoot/README.md').readAsStringSync();
   final String claim = '**$declared testes Dart declarados, $skipped pulados**';
+  final RegExpMatch? english = RegExp(
+    r'\*\*Counted\.\*\*\s+(\d+) Dart tests are declared in [^\r\n]*?, (\d+) of them skipped\b',
+  ).firstMatch(text);
+  final bool englishMatches =
+      english?.group(1) == '$declared' && english?.group(2) == '$skipped';
 
-  if (text.contains(claim)) {
+  if (text.contains(claim) || englishMatches) {
     stdout.writeln('  ok  $declared declarados, $skipped pulados');
     return 0;
   }
