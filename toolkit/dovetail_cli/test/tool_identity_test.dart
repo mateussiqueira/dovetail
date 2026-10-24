@@ -3,10 +3,22 @@ import 'dart:io';
 import 'package:dovetail_cli/dovetail_cli.dart';
 import 'package:test/test.dart';
 
+import 'support/tool_fixture.dart';
+
 bool _onPath(String name) =>
     Process.runSync('which', <String>[name]).exitCode == 0;
 
 void main() {
+  late Directory scratch;
+  setUp(() => scratch = Directory.systemTemp.createTempSync('identity'));
+  tearDown(() => scratch.deleteSync(recursive: true));
+
+  String toolThatSays(String message, {int exitCode = 0}) => toolFixture(
+    scratch,
+    posix: 'echo "$message"\nexit $exitCode',
+    windows: 'echo $message\nexit /b $exitCode',
+  );
+
   group('a binary that only shares the name', () {
     test('should be called wrong, not broken', () async {
       if (!Platform.isMacOS || !_onPath('signtool')) {
@@ -34,8 +46,8 @@ void main() {
     });
 
     test('the detail should quote what the program says it is', () async {
-      final ToolReport report = await const CommandProbe(
-        name: 'echo',
+      final ToolReport report = await CommandProbe(
+        name: toolThatSays('I am a jar signer'),
         purpose: 'stands in for a tool with the wrong identity',
         trivialArguments: <String>['I am a jar signer'],
         identity: 'Authenticode',
@@ -48,8 +60,8 @@ void main() {
     test(
       'a matching identity should pass through to the usual check',
       () async {
-        final ToolReport report = await const CommandProbe(
-          name: 'echo',
+        final ToolReport report = await CommandProbe(
+          name: toolThatSays('Authenticode signing'),
           purpose: 'stands in for the right tool',
           trivialArguments: <String>['Authenticode signing'],
           identity: 'Authenticode',
@@ -61,8 +73,8 @@ void main() {
     );
 
     test('a probe with no identity should behave as it always did', () async {
-      final ToolReport report = await const CommandProbe(
-        name: 'echo',
+      final ToolReport report = await CommandProbe(
+        name: toolThatSays('anything at all'),
         purpose: 'no identity declared',
         trivialArguments: <String>['anything at all'],
       ).probe();
@@ -107,13 +119,8 @@ void main() {
     test(
       'a tool that reports its version on a non-zero exit still counts',
       () async {
-        if (!_onPath('osslsigncode')) {
-          markTestSkipped('osslsigncode is not installed');
-          return;
-        }
-
-        final ToolReport report = await const CommandProbe(
-          name: 'osslsigncode',
+        final ToolReport report = await CommandProbe(
+          name: toolThatSays('osslsigncode version', exitCode: 1),
           purpose: 'signs the Windows binaries without a Windows machine',
           trivialArguments: <String>['--version'],
           identity: 'osslsigncode',
