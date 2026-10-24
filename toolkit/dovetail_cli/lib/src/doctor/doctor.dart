@@ -126,6 +126,9 @@ final class CommandProbe implements ToolProbe {
   }
 
   static String? _which(String name) {
+    if (Platform.isWindows && p.dirname(name) != '.') {
+      return File(name).existsSync() ? name : null;
+    }
     final ProcessResult found = Process.runSync(
       Platform.isWindows ? 'where' : 'which',
       <String>[name],
@@ -133,8 +136,22 @@ final class CommandProbe implements ToolProbe {
     if (found.exitCode != 0) {
       return null;
     }
-    final String output = found.stdout.toString().trim();
-    return output.isEmpty ? null : output.split('\n').first.trim();
+    for (final String line in found.stdout.toString().split('\n')) {
+      final String candidate = line.trim();
+      if (candidate.isEmpty) {
+        continue;
+      }
+      if (!Platform.isWindows ||
+          const <String>{
+            '.exe',
+            '.com',
+            '.bat',
+            '.cmd',
+          }.contains(p.extension(candidate).toLowerCase())) {
+        return candidate;
+      }
+    }
+    return null;
   }
 }
 
@@ -236,17 +253,7 @@ final class NsisProbe implements ToolProbe {
     }
   }
 
-  static String? _which(String name) {
-    final ProcessResult found = Process.runSync(
-      Platform.isWindows ? 'where' : 'which',
-      <String>[name],
-    );
-    if (found.exitCode != 0) {
-      return null;
-    }
-    final String output = found.stdout.toString().trim();
-    return output.isEmpty ? null : output.split('\n').first.trim();
-  }
+  static String? _which(String name) => CommandProbe._which(name);
 
   static String _detail(ProcessResult result) {
     final String text = result.stderr.toString().trim().isEmpty
