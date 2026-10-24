@@ -1238,7 +1238,7 @@ int _coverage({String? only}) {
     if (line.trim().isEmpty || (only != null && !fields.first.contains(only))) {
       continue;
     }
-    final ProcessResult measured = Process.runSync('bash', <String>[
+    final ProcessResult measured = runPackageToolSync('bash', <String>[
       'scripts/checks/check_coverage.sh',
       ...fields,
     ], workingDirectory: repoRoot);
@@ -1703,7 +1703,7 @@ int _releaseProof({String? only}) {
     }
   }
 
-  final ProcessResult ran = Process.runSync(
+  final ProcessResult ran = runPackageToolSync(
     'bash',
     <String>[script, '--host', 'macos'],
     workingDirectory: repoRoot,
@@ -1824,7 +1824,7 @@ int _rustConventions(List<String> crates) {
     return 0;
   }
 
-  final ProcessResult ran = Process.runSync(
+  final ProcessResult ran = runPackageToolSync(
     'bash',
     <String>[runner],
     workingDirectory: repoRoot,
