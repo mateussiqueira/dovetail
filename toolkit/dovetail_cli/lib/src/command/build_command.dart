@@ -23,7 +23,10 @@ final class BuildCommand extends Command<int> {
         help: 'defaults to every declared target this host can build',
       )
       ..addFlag('release', defaultsTo: true)
-      ..addOption('flutter', defaultsTo: 'flutter')
+      ..addOption(
+        'flutter',
+        defaultsTo: Platform.isWindows ? 'flutter.bat' : 'flutter',
+      )
       ..addMultiOption('flutter-arg', help: 'passed through, repeatable');
   }
 
