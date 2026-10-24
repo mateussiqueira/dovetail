@@ -411,16 +411,6 @@ void main() {
         expect(await run(<String>['demo']), 0);
 
         final String demo = p.join(root.path, 'demo');
-        File(p.join(demo, 'pubspec_overrides.yaml')).writeAsStringSync(
-          <String>[
-            'dependency_overrides:',
-            for (final Directory package in Directory(
-              p.join(repoRoot(), 'toolkit'),
-            ).listSync().whereType<Directory>())
-              if (File(p.join(package.path, 'pubspec.yaml')).existsSync())
-                "  ${p.basename(package.path)}:\n    path: '${package.path}'",
-          ].join('\n'),
-        );
         final ProcessResult pubGet = Process.runSync(
           'flutter',
           <String>['pub', 'get'],
