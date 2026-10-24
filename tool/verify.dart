@@ -21,6 +21,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:math' as math;
 
+import 'package_tool.dart';
+
 const String _baselineFile = 'tool/skip_baseline.json';
 const String _runFile = 'dist/verify-run.json';
 
@@ -494,7 +496,7 @@ Future<int> _fast({String? only}) async {
       await Future.wait(<Future<ProcessResult>>[
         for (final (String package, String runner)
             in wanted.skip(from).take(width))
-          Process.run(runner, <String>[
+          runPackageTool(runner, <String>[
             'analyze',
           ], workingDirectory: '$repoRoot/$package'),
       ]),
@@ -554,7 +556,7 @@ int _resolveUnresolved({String? only}) {
   stdout.writeln('  resolving ${unresolved.length} package(s) first');
   int failed = 0;
   for (final (String package, String runner) in unresolved) {
-    final ProcessResult resolved = Process.runSync(runner, <String>[
+    final ProcessResult resolved = runPackageToolSync(runner, <String>[
       'pub',
       'get',
     ], workingDirectory: '$repoRoot/$package');
@@ -1129,7 +1131,7 @@ Future<_Outcome> _runPackage(String package, String runner) async {
     // No --enforce-lockfile. Every package here is a published library and
     // every one gitignores its lock, so enforcing one demands a file the tree
     // forbids. See _resolveUnresolved for the whole story.
-    final ProcessResult resolved = await Process.run(runner, <String>[
+    final ProcessResult resolved = await runPackageTool(runner, <String>[
       'pub',
       'get',
     ], workingDirectory: '$repoRoot/$package');
@@ -1143,7 +1145,7 @@ Future<_Outcome> _runPackage(String package, String runner) async {
     }
   }
 
-  final ProcessResult ran = await Process.run(
+  final ProcessResult ran = await runPackageTool(
     runner,
     // `--concurrency` explicito: o default dos dois runners e o numero de
     // nucleos, e com varios pacotes em paralelo isso multiplica em vez de

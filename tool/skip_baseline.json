@@ -354,6 +354,10 @@
         "test/upgrade_command_test.dart": {
           "declared": 6,
           "skips": {}
+        },
+        "test/verify_package_tool_test.dart": {
+          "declared": 3,
+          "skips": {}
         }
       }
     },
