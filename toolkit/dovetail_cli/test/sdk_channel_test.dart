@@ -10,6 +10,8 @@ import 'package:dovetail_cli/src/sdk/sdk_channel.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'support/repo_root.dart';
+
 final class _CannedFetcher implements ArtifactFetcher {
   _CannedFetcher(this.responses);
 
@@ -206,48 +208,33 @@ void main() {
   group('signature', () {
     late Directory dir;
     late MinisignPublicKey key;
+    late MinisignPublicKey otherKey;
     late String validSig;
     late String otherSig;
-    final List<int> payload = utf8.encode('the signed tarball');
-
-    String sign(String name, String keyFile) {
-      final File payloadFile = File(p.join(dir.path, '$name.bin'))
-        ..writeAsBytesSync(payload);
-      final ProcessResult signed = Process.runSync('minisign', <String>[
-        '-S',
-        '-s',
-        p.join(dir.path, keyFile),
-        '-m',
-        payloadFile.path,
-        '-x',
-        p.join(dir.path, '$name.minisig'),
-      ]);
-      if (signed.exitCode != 0) {
-        throw StateError('minisign -S: ${signed.stderr}');
-      }
-      return File(p.join(dir.path, '$name.minisig')).readAsStringSync();
-    }
+    late List<int> payload;
 
     setUpAll(() {
       dir = Directory.systemTemp.createTempSync('dt_sdk_sig');
-      for (final String name in <String>['key', 'other']) {
-        final ProcessResult gen = Process.runSync('minisign', <String>[
-          '-G',
-          '-W',
-          '-p',
-          p.join(dir.path, '$name.pub'),
-          '-s',
-          p.join(dir.path, '$name.key'),
-        ]);
-        if (gen.exitCode != 0) {
-          throw StateError('minisign -G: ${gen.stderr}');
-        }
-      }
-      key = MinisignPublicKey.parse(
-        File(p.join(dir.path, 'key.pub')).readAsStringSync(),
+      final Map<String, dynamic> fixture =
+          jsonDecode(
+                File(
+                  inRepo(<String>[
+                    'toolkit',
+                    'dovetail_cli',
+                    'test',
+                    'fixtures',
+                    'sdk-signatures.json',
+                  ]),
+                ).readAsStringSync(),
+              )
+              as Map<String, dynamic>;
+      payload = base64Decode(fixture['payload_base64'] as String);
+      key = MinisignPublicKey.parse(fixture['public_key'] as String);
+      otherKey = MinisignPublicKey.parse(
+        fixture['foreign_public_key'] as String,
       );
-      validSig = sign('payload', 'key.key');
-      otherSig = sign('other', 'other.key');
+      validSig = fixture['signature'] as String;
+      otherSig = fixture['foreign_signature'] as String;
     });
 
     tearDownAll(() => dir.deleteSync(recursive: true));
@@ -290,6 +277,68 @@ void main() {
       await signed(validChannel()).download('0.1.0', target);
       expect(target.readAsBytesSync(), payload);
     });
+
+    test('public fixture signatures verify with their respective keys', () {
+      for (final (String signature, MinisignPublicKey publicKey)
+          in <(String, MinisignPublicKey)>[
+            (validSig, key),
+            (otherSig, otherKey),
+          ]) {
+        MinisignVerifier.verify(
+          payload: Uint8List.fromList(payload),
+          signature: MinisignSignature.parse(signature),
+          publicKey: publicKey,
+        );
+      }
+    });
+
+    test(
+      'a changed payload with a matching new hash still refuses its old signature',
+      () async {
+        final List<int> changed = utf8.encode('mirror replaced the payload');
+        final Map<String, FetchedBody> responses = validChannel()
+          ..[tarballPath()] = FetchedBody(
+            statusCode: 200,
+            bytes: Uint8List.fromList(changed),
+          )
+          ..['${tarballPath()}.sha256'] = FetchedBody(
+            statusCode: 200,
+            bytes: Uint8List.fromList(
+              utf8.encode(sha256.convert(changed).toString()),
+            ),
+          );
+        await expectLater(
+          downloadWith(responses),
+          throwsA(
+            isA<UpdateFailure>().having(
+              (UpdateFailure error) => error.message,
+              'message',
+              contains('does not match its signature'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'a changed trusted comment refuses an otherwise valid signature',
+      () async {
+        final String changed = validSig.replaceFirst(
+          'file:sdk-fixture.bin',
+          'file:changed.bin',
+        );
+        await expectLater(
+          downloadWith(validChannel(sig: changed)),
+          throwsA(
+            isA<UpdateFailure>().having(
+              (UpdateFailure error) => error.message,
+              'message',
+              contains('trusted comment'),
+            ),
+          ),
+        );
+      },
+    );
 
     test('a channel without the minisig should refuse', () async {
       final Map<String, FetchedBody> responses = validChannel()

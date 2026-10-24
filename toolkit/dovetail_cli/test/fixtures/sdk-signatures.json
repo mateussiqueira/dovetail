@@ -1,0 +1,8 @@
+{
+  "generator": "Node.js crypto Ed25519 + BLAKE2b-512; disposable test keys held in memory only",
+  "payload_base64": "ZG92ZXRhaWwgU0RLIHNpZ25hdHVyZSBmaXh0dXJl",
+  "public_key": "untrusted comment: public test fixture\nRWQBAgMEBQYHCGOveRn+04FM6skwuH/C9Yt77RvGaegWXsiq5yZQ+85C\n",
+  "signature": "untrusted comment: public test fixture\nRUQBAgMEBQYHCCNoPqajrQ5CB0rzCtuwiU/2tFeGDsZ57oWQ4yO+cvWMLuLUIIZ9vQsIy0kF40Actj3XNWd1jV82BWMFfn0W7gc=\ntrusted comment: timestamp:0\tfile:sdk-fixture.bin\thashed\nIHZ8j+PTIgtG8EDf7AAM9QlLuHPGGUxofmOsPWcQZr2QxZuK+e6OqxJ/p9Ap3e/w4cZsGoDJCuHIVxmvLfSMDw==\n",
+  "foreign_public_key": "untrusted comment: public test fixture\nRWQREhMUFRYXGDzAPY/QkEgYbOin3B2CZMX69GAU5V/ZEuyd4Iz22Iai\n",
+  "foreign_signature": "untrusted comment: public test fixture\nRUQREhMUFRYXGGlbZswVzTRLYpBpoKTK2xv8c2vtKksAhTdIths8d83Bx7JnoKHXJbr4NerDOAKdipYjpD+UdCevwrcQ6g7qcQY=\ntrusted comment: timestamp:0\tfile:sdk-fixture.bin\thashed\nsBWQNRzmbfKyaAx8gouLRk37F/1+wkqAek6Z5n4ouHnISLo+Wo0X+aIR7W1pXiSE1GKPig1qc05U52snLtLSBw==\n"
+}
