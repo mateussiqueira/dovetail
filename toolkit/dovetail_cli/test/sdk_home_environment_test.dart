@@ -46,6 +46,7 @@ void main() {
     );
     for (final String name in <String>[
       'HOME',
+      'LOCALAPPDATA',
       'USERPROFILE',
       'DOVETAIL_HOME',
       'DOVETAIL_BIN_DIR',
@@ -83,6 +84,21 @@ void main() {
   test('without HOME the CLI bin directory stays under USERPROFILE', () {
     expect(probe()['bin'], p.join(profile, '.local', 'bin'));
   });
+
+  test(
+    'Windows SDK home follows LOCALAPPDATA instead of the shell HOME',
+    () {
+      final String local = p.join(root.path, 'Local App Data');
+      final Map<String, dynamic> result = probe(
+        extra: <String, String>{
+          'HOME': p.join(root.path, 'Shell Home'),
+          'LOCALAPPDATA': local,
+        },
+      );
+      expect(result['home'], p.join(local, 'dovetail'));
+    },
+    skip: !Platform.isWindows,
+  );
 
   test('HOME keeps precedence over USERPROFILE', () {
     final String home = p.join(root.path, 'Unix Home');
