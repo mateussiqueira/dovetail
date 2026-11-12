@@ -28,3 +28,10 @@ windows-sys = { version = "0.59", features = ["Win32_System_Pipes"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "unwind"
+strip = true

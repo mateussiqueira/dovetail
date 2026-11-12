@@ -28,3 +28,10 @@ keyring = { version = "3", features = [
 
 [dev-dependencies]
 tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "unwind"
+strip = true
