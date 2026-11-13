@@ -68,7 +68,10 @@ final class FrbBridge {
   String get _codegen => 'flutter_rust_bridge_codegen';
 
   bool get codegenAvailable =>
-      Process.runSync('which', <String>[_codegen]).exitCode == 0;
+      Process.runSync(Platform.isWindows ? 'where' : 'which', <String>[
+        _codegen,
+      ]).exitCode ==
+      0;
 
   /// Method names the CURRENT generated Dart exposes, from the `debugName`
   /// markers the codegen writes. Parsing those beats parsing Dart by hand:
