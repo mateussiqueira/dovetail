@@ -53,6 +53,12 @@ void main() {
   String read(String relative) =>
       File(p.join(root.path, relative)).readAsStringSync();
 
+  String dependencyPath(String source, String section) {
+    final YamlMap document = loadYaml(source) as YamlMap;
+    final YamlMap packages = document[section] as YamlMap;
+    return (packages['dovetail'] as YamlMap)['path'] as String;
+  }
+
   bool exists(String relative) =>
       File(p.join(root.path, relative)).existsSync();
 
@@ -302,7 +308,7 @@ void main() {
       final String pubspec = read(p.join('demo', 'pubspec.yaml'));
       expect(pubspec, contains('name: demo'));
       expect(pubspec, contains('dovetail:'));
-      expect(pubspec, contains('path: "$dovetailPath"'));
+      expect(dependencyPath(pubspec, 'dependencies'), dovetailPath);
     });
 
     test('the config should parse as the commands read it', () async {
@@ -372,7 +378,10 @@ void main() {
     test(
       'without --no-create, flutter create fills in the platform directory',
       () async {
-        if (Process.runSync('which', <String>['flutter']).exitCode != 0) {
+        if (Process.runSync(Platform.isWindows ? 'where' : 'which', <String>[
+              'flutter',
+            ]).exitCode !=
+            0) {
           markTestSkipped('flutter is not installed');
           return;
         }
@@ -392,7 +401,10 @@ void main() {
     test(
       'the scaffold should be a real project: flutter test and doctor pass',
       () async {
-        if (Process.runSync('which', <String>['flutter']).exitCode != 0) {
+        if (Process.runSync(Platform.isWindows ? 'where' : 'which', <String>[
+              'flutter',
+            ]).exitCode !=
+            0) {
           markTestSkipped('flutter is not installed');
           return;
         }
@@ -409,14 +421,19 @@ void main() {
                 "  ${p.basename(package.path)}:\n    path: '${package.path}'",
           ].join('\n'),
         );
-        final ProcessResult pubGet = Process.runSync('flutter', <String>[
-          'pub',
-          'get',
-        ], workingDirectory: demo);
+        final ProcessResult pubGet = Process.runSync(
+          'flutter',
+          <String>['pub', 'get'],
+          workingDirectory: demo,
+          runInShell: Platform.isWindows,
+        );
         expect(pubGet.exitCode, 0, reason: pubGet.stdout.toString());
-        final ProcessResult tested = Process.runSync('flutter', <String>[
-          'test',
-        ], workingDirectory: demo);
+        final ProcessResult tested = Process.runSync(
+          'flutter',
+          <String>['test'],
+          workingDirectory: demo,
+          runInShell: Platform.isWindows,
+        );
         expect(tested.exitCode, 0, reason: tested.stdout.toString());
 
         // doctor reads the project from the cwd, so it runs through the real
@@ -424,11 +441,15 @@ void main() {
         // A fresh scaffold has no update base-url, so doctor reports the
         // project honestly and exits 2 (cannot ship yet) — that is not an
         // error; what the test holds onto is that the project was read.
-        final ProcessResult doctor = Process.runSync('dart', <String>[
-          'run',
-          p.join(Directory.current.path, 'bin', 'dovetail.dart'),
-          'doctor',
-        ], workingDirectory: demo);
+        final ProcessResult doctor = Process.runSync(
+          Platform.resolvedExecutable,
+          <String>[
+            'run',
+            p.join(Directory.current.path, 'bin', 'dovetail.dart'),
+            'doctor',
+          ],
+          workingDirectory: demo,
+        );
         expect(doctor.exitCode, isNot(1), reason: doctor.stdout.toString());
         expect(
           '${doctor.stdout}${doctor.stderr}',
@@ -550,9 +571,11 @@ void main() {
 
       final String pubspec = read(p.join('demo', 'pubspec.yaml'));
       expect(
-        pubspec,
-        contains(
-          'path: "${p.normalize(p.absolute(p.join(sdkHome.path, 'sdk', '0.1.0', 'packages', 'dovetail')))}"',
+        dependencyPath(pubspec, 'dependencies'),
+        p.normalize(
+          p.absolute(
+            p.join(sdkHome.path, 'sdk', '0.1.0', 'packages', 'dovetail'),
+          ),
         ),
       );
     });
@@ -577,8 +600,8 @@ void main() {
       );
 
       expect(
-        read(p.join('demo', 'pubspec.yaml')),
-        contains('path: "toolkit/dovetail"'),
+        dependencyPath(read(p.join('demo', 'pubspec.yaml')), 'dependencies'),
+        'toolkit/dovetail',
         reason:
             'com --sdk o pubspec leva um placeholder e quem resolve é o '
             'override — nada de path absoluto de máquina no pubspec',
@@ -587,8 +610,8 @@ void main() {
       expect(overrides, contains('dependency_overrides:'));
       expect(overrides, contains('  dovetail:'));
       expect(
-        overrides,
-        contains(p.join(sdkHome.path, 'sdk', '0.1.0', 'packages', 'dovetail')),
+        dependencyPath(overrides, 'dependency_overrides'),
+        p.join(sdkHome.path, 'sdk', '0.1.0', 'packages', 'dovetail'),
       );
     });
 
