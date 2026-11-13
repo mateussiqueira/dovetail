@@ -16,10 +16,23 @@ const String _config = '''
 identifier: com.example.demo
 name: Demo Client
 manufacturer: Example Ltda
-targets: [darwin-aarch64]
+targets: [darwin-aarch64, windows-x86_64, linux-x86_64]
 ''';
 
 void main() {
+  final (
+    String host,
+    String target,
+    String binaryArtifact,
+  ) = switch (Platform.operatingSystem) {
+    'macos' => ('macos', 'darwin-aarch64', 'client_app.app'),
+    'windows' => ('windows', 'windows-x86_64', 'client_app_4.2.0_x64.msi'),
+    'linux' => ('linux', 'linux-x86_64', 'client_app_4.2.0_amd64.deb'),
+    _ => throw UnsupportedError(
+      'ship fixture host: ${Platform.operatingSystem}',
+    ),
+  };
+
   late Directory root;
 
   setUp(() => root = Directory.systemTemp.createTempSync('dovetail_ship_cmd'));
@@ -71,13 +84,16 @@ void main() {
 
     final String text = out.text.toString();
     expect(code, 0);
-    expect(text, contains('→ build macos'));
-    expect(text, contains('→ sign darwin-aarch64'));
-    expect(text, contains('→ bundle darwin-aarch64'));
-    expect(text, contains('dovetail build --target macos'));
+    expect(text, contains('→ build $host'));
+    expect(text, contains('→ sign $target'));
+    expect(text, contains('→ bundle $target'));
+    expect(text, contains('dovetail build --target $host'));
     expect(
       text,
-      contains('dovetail sign --target macos --bundle'),
+      contains(
+        'dovetail sign --target $host '
+        '${Platform.isMacOS ? '--bundle' : '--file'}',
+      ),
       reason: 'the plan is data, printed before any tool runs',
     );
   });
@@ -95,9 +111,9 @@ void main() {
 
     final String text = out.text.toString();
     expect(code, 0);
-    expect(text, isNot(contains('build macos')));
-    expect(text, contains('→ sign darwin-aarch64'));
-    expect(text, contains('→ bundle darwin-aarch64'));
+    expect(text, isNot(contains('build $host')));
+    expect(text, contains('→ sign $target'));
+    expect(text, contains('→ bundle $target'));
     expect(
       text,
       isNot(contains('dovetail build')),
@@ -121,7 +137,7 @@ void main() {
       expect(out.text.toString(), contains('--main-binary client_app'));
       expect(
         out.text.toString(),
-        contains('client_app.app'),
+        contains(binaryArtifact),
         reason: 'the binary name is what the sign step points the bundler at',
       );
     },
