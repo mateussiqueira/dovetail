@@ -76,4 +76,62 @@ void main() {
     expect(result.exitCode, 0);
     expect(result.stdout.toString(), contains('Dart SDK version'));
   });
+
+  List<String> installBash() {
+    if (Platform.isWindows) {
+      File(
+        '${Platform.environment['SystemRoot']}/System32/cmd.exe',
+      ).copySync('${directory.path}/bash.exe');
+      return <String>['/d', '/c', 'exit /b 7'];
+    }
+    final File script = File('${directory.path}/bash')
+      ..writeAsStringSync('#!/bin/sh\nexit 7\n');
+    expect(Process.runSync('chmod', <String>['+x', script.path]).exitCode, 0);
+    return <String>[];
+  }
+
+  test('sync gate selects Bash from its PATH instead of the WSL launcher', () {
+    expect(
+      runPackageToolSync(
+        'bash',
+        installBash(),
+        environment: environment,
+      ).exitCode,
+      7,
+    );
+  });
+
+  test('async gate preserves the native Bash exit code', () async {
+    expect(
+      (await runPackageTool(
+        'bash',
+        installBash(),
+        environment: environment,
+      )).exitCode,
+      7,
+    );
+  });
+
+  test(
+    'a WSL-only PATH is refused instead of running checks on another host',
+    () {
+      expect(
+        () => selectNativeBashExecutable(<String>[
+          r'C:\WINDOWS\System32\bash.exe',
+        ], r'C:\Windows'),
+        throwsA(isA<ProcessException>()),
+      );
+    },
+  );
+
+  test('native Bash selection preserves PATH order and ignores WSL', () {
+    expect(
+      selectNativeBashExecutable(<String>[
+        r'C:\Windows\System32\bash.exe',
+        r'D:\Portable Git\bin\bash.exe',
+        r'C:\Program Files\Git\bin\bash.exe',
+      ], r'C:\Windows'),
+      r'D:\Portable Git\bin\bash.exe',
+    );
+  });
 }

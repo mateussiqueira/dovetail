@@ -96,7 +96,7 @@ void main() {
 
       expect(
         installer.bundlePath,
-        p.join('/Applications/Outer.app/Contents/Helpers', 'Inner.app'),
+        p.posix.join('/Applications/Outer.app/Contents/Helpers', 'Inner.app'),
       );
     });
   });
