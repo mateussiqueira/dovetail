@@ -152,7 +152,9 @@ void main() {
       expect(code, 0);
       expect(
         captured.text.toString(),
-        contains('src/handle.rs not found'),
+        contains(
+          '${p.join(core.resolveSymbolicLinksSync(), 'src', 'handle.rs')} not found',
+        ),
         reason: 'the discovery should not be deferred to core_coverage_test',
       );
       expect(
