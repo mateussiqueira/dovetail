@@ -6,6 +6,8 @@ import 'package:dovetail_cli/src/sdk/sdk_locator.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'support/sdk_override_paths.dart';
+
 void main() {
   late Directory root;
   late Directory sdkHome;
@@ -272,13 +274,14 @@ void main() {
       expect(overrides.existsSync(), true);
       final String text = overrides.readAsStringSync();
       expect(text, contains('dependency_overrides:'));
-      expect(
-        text,
-        contains(
-          '  dovetail:\n'
-          '    path: "${p.join(sdkHome.path, 'sdk', '0.1.0', 'packages', 'dovetail')}"',
-        ),
-      );
+      expect(sdkOverridePaths(text), <String, String>{
+        for (final String package in <String>[
+          'dovetail',
+          'dovetail_updater',
+          'dovetail_rust_core',
+        ])
+          package: p.join(sdkHome.path, 'sdk', '0.1.0', 'packages', package),
+      });
       expect(text, contains('  dovetail_rust_core:'));
     });
 

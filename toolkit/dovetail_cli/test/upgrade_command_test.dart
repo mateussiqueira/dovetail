@@ -6,6 +6,8 @@ import 'package:dovetail_cli/src/sdk/sdk_locator.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'support/sdk_override_paths.dart';
+
 void main() {
   late Directory root;
   late Directory sdkHome;
@@ -62,12 +64,13 @@ void main() {
         final String overrides = overridesText();
         expect(overrides, contains('dependency_overrides:'));
         expect(overrides, contains('  dovetail:'));
-        expect(
-          overrides,
-          contains(
-            p.join(sdkHome.path, 'sdk', '0.2.0', 'packages', 'dovetail'),
-          ),
-        );
+        expect(sdkOverridePaths(overrides), <String, String>{
+          for (final String package in <String>[
+            'dovetail',
+            'dovetail_rust_core',
+          ])
+            package: p.join(sdkHome.path, 'sdk', '0.2.0', 'packages', package),
+        });
       },
     );
 
@@ -85,10 +88,15 @@ void main() {
       expect(await upgrade(<String>[]), 0);
 
       final String overrides = overridesText();
-      expect(
-        overrides,
-        contains(p.join(sdkHome.path, 'sdk', '0.2.0', 'packages', 'dovetail')),
-      );
+      expect(sdkOverridePaths(overrides), <String, String>{
+        'dovetail': p.join(
+          sdkHome.path,
+          'sdk',
+          '0.2.0',
+          'packages',
+          'dovetail',
+        ),
+      });
       expect(
         overrides,
         isNot(contains('0.0.9')),

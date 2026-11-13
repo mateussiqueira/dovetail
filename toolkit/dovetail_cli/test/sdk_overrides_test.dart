@@ -6,6 +6,8 @@ import 'package:dovetail_cli/src/sdk/sdk_overrides.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'support/sdk_override_paths.dart';
+
 void main() {
   late Directory home;
   late Directory sdkRoot;
@@ -61,10 +63,10 @@ void main() {
       expect(out, contains('dependency_overrides:'));
       expect(out, contains('  dovetail:'));
       expect(out, contains('  dovetail_rust_core:'));
-      expect(
-        out,
-        contains(p.join(sdkRoot.path, '0.1.0', 'packages', 'dovetail')),
-      );
+      expect(sdkOverridePaths(out), <String, String>{
+        for (final String package in <String>['dovetail', 'dovetail_rust_core'])
+          package: p.join(sdkRoot.path, '0.1.0', 'packages', package),
+      });
       expect(
         out.indexOf('dovetail:'),
         lessThan(out.indexOf('dovetail_rust_core:')),

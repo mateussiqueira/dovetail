@@ -67,8 +67,11 @@ void main() {
       expect(
         installer.binDir,
         p.join(
-          Platform.environment['HOME'] ??
-              Platform.environment['USERPROFILE'] ??
+          (Platform.isWindows
+                  ? Platform.environment['USERPROFILE'] ??
+                        Platform.environment['HOME']
+                  : Platform.environment['HOME'] ??
+                        Platform.environment['USERPROFILE']) ??
               home.path,
           '.local',
           'bin',
@@ -90,7 +93,11 @@ void main() {
 
       expect(
         link.targetSync(),
-        p.join(home.path, 'bin', 'dovetail'),
+        p.join(
+          home.path,
+          'bin',
+          Platform.isWindows ? 'dovetail.exe' : 'dovetail',
+        ),
         reason:
             'o symlink aponta para o binário instalado, para o PATH ver '
             'a troca de versão sem re-symlink',

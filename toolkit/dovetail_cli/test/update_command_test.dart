@@ -8,6 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'support/channel_server.dart';
+import 'support/sdk_override_paths.dart';
 
 void main() {
   late Directory home;
@@ -94,10 +95,10 @@ void main() {
         ).existsSync(),
         true,
       );
-      expect(
-        overridesText(),
-        contains(p.join(home.path, 'sdk', '0.2.0', 'packages', 'dovetail')),
-      );
+      expect(sdkOverridePaths(overridesText()), <String, String>{
+        for (final String package in <String>['dovetail', 'dovetail_rust_core'])
+          package: p.join(home.path, 'sdk', '0.2.0', 'packages', package),
+      });
       expect(
         overridesText(),
         isNot(contains(DovetailVersion.number)),

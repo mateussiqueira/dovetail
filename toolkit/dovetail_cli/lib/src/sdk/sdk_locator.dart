@@ -43,18 +43,39 @@ final class SdkInstall {
 /// um pouco mais velho ainda resolve o runtime); quando nada está
 /// instalado, devolve null e quem chama nomeia o comando que instala.
 final class SdkLocator {
-  SdkLocator({String? home})
-    : home = home ?? Platform.environment['DOVETAIL_HOME'] ?? _defaultHome();
+  SdkLocator({
+    String? home,
+    p.Context? context,
+    Map<String, String>? environment,
+  }) : _context = context ?? p.context,
+       home =
+           home ??
+           _defaultHome(
+             context ?? p.context,
+             environment ?? Platform.environment,
+           );
 
   final String home;
+  final p.Context _context;
 
-  static String _defaultHome() => p.join(
-    Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '.',
-    '.dovetail',
-  );
+  static String _defaultHome(
+    p.Context context,
+    Map<String, String> environment,
+  ) {
+    final String? override = environment['DOVETAIL_HOME'];
+    if (override != null) return override;
+    final String? local = environment['LOCALAPPDATA'];
+    if (context.style == p.Style.windows && local != null && local.isNotEmpty) {
+      return context.join(local, 'dovetail');
+    }
+    return context.join(
+      environment['HOME'] ?? environment['USERPROFILE'] ?? '.',
+      '.dovetail',
+    );
+  }
 
   SdkInstall? locate() {
-    final Directory sdkRoot = Directory(p.join(home, 'sdk'));
+    final Directory sdkRoot = Directory(_context.join(home, 'sdk'));
     if (!sdkRoot.existsSync()) {
       return null;
     }
@@ -63,10 +84,10 @@ final class SdkLocator {
         sdkRoot
             .listSync()
             .whereType<Directory>()
-            .map((Directory d) => p.basename(d.path))
+            .map((Directory d) => _context.basename(d.path))
             .where(
               (String name) => Directory(
-                p.join(sdkRoot.path, name, 'packages'),
+                _context.join(sdkRoot.path, name, 'packages'),
               ).existsSync(),
             )
             .toList()
@@ -82,7 +103,7 @@ final class SdkLocator {
 
     return SdkInstall(
       version: version,
-      packagesDir: p.join(sdkRoot.path, version, 'packages'),
+      packagesDir: _context.join(sdkRoot.path, version, 'packages'),
     );
   }
 }

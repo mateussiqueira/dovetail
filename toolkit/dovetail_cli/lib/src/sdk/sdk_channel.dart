@@ -68,7 +68,8 @@ final class SdkChannel {
 
   static String tarballName(String version) =>
       'dovetail-sdk-$version-${DovetailVersion.targetOs}-'
-      '${DovetailVersion.targetArch}.tar.gz';
+      '${DovetailVersion.targetArch}.'
+      '${DovetailVersion.targetOs == 'windows' ? 'zip' : 'tar.gz'}';
 
   Uri tarballUrl(String version) =>
       Uri.parse('$_root/$version/${tarballName(version)}');

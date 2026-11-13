@@ -22,11 +22,15 @@ final class MacosSigningRequest {
     if (!target.isExecutable) {
       return null;
     }
-    if (target.path == bundlePath) {
+    if (p.equals(target.path, bundlePath)) {
       return appEntitlements;
     }
     final String relative = p.relative(target.path, from: bundlePath);
-    return entitlementsByRelativePath[relative];
+    for (final MapEntry<String, String> entry
+        in entitlementsByRelativePath.entries) {
+      if (p.equals(entry.key, relative)) return entry.value;
+    }
+    return null;
   }
 }
 
