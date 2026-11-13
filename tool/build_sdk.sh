@@ -23,9 +23,6 @@ set -euo pipefail
 # Usage:
 #   tool/build_sdk.sh [--out dist] [--target linux-arm64]
 #
-# Cross-compilation follows build_release.sh: macOS binaries build on macOS,
-# Linux binaries build on macOS or Linux, Windows is not there yet (see
-# docs/instalador.md, Fase 1).
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cli_dir="$repo_root/toolkit/dovetail_cli"
@@ -40,38 +37,13 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-version="$(grep -m1 '^version:' "$cli_dir/pubspec.yaml" | awk '{print $2}')"
-
-host_os="$(uname -s | tr '[:upper:]' '[:lower:]')"
-host_arch="$(uname -m)"
-case "$host_os" in
-  darwin) host_os=macos ;;
-  linux) host_os=linux ;;
-  *) echo "dovetail builds on macOS or Linux; this is $host_os" >&2; exit 1 ;;
-esac
-case "$host_arch" in
-  arm64|aarch64) host_arch=arm64 ;;
-  x86_64) host_arch=x64 ;;
-  *) echo "no dovetail build for $host_arch" >&2; exit 1 ;;
-esac
-
-if [ -z "$target" ]; then
-  os="$host_os"
-  arch="$host_arch"
-  cross=""
-elif [ "${target%-*}" = "linux" ] && [ "$host_os" = "macos" ]; then
-  os="linux"
-  arch="${target##*-}"
-  cross="yes"
-elif [ "${target%-*}" = "$host_os" ] && [ "${target##*-}" = "$host_arch" ]; then
-  os="$host_os"
-  arch="$host_arch"
-  cross=""
-else
-  echo "cross-compilation follows build_release.sh: linux from macOS" >&2
-  echo "  (macOS and Windows binaries are built on their own system)" >&2
+version="$(awk '/^version:/ {gsub(/\r/, ""); print $2; exit}' "$cli_dir/pubspec.yaml")"
+source "$cli_dir/tool/release_platform.sh"
+if ! release_platform "$target"; then
+  echo 'SDK targets follow toolkit/dovetail_cli/tool/build_release.sh' >&2
   exit 1
 fi
+os="$target_os" arch="$target_arch"
 
 name="dovetail-sdk-$version-$os-$arch"
 stage="$out/$name"
@@ -86,8 +58,9 @@ if [ -n "$cross" ]; then
 else
   bash "$cli_dir/tool/build_release.sh" "$binary_dir" | sed 's/^/    /'
 fi
-mv "$binary_dir/dovetail" "$stage/bin/dovetail"
-rm -f "$binary_dir"/*.tar.gz "$binary_dir"/*.sha256
+mv "$binary_dir/$binary" "$stage/bin/$binary"
+rm -f "$binary_dir"/*.tar.gz "$binary_dir"/*.zip "$binary_dir"/*.sha256
+rmdir "$binary_dir"
 
 # O macOS resolve os plugins Rust via SPM (default desde o Flutter 3.44), e o
 # Package.swift do dovetail_shortcut_channel aponta para um .xcframework que o
@@ -140,9 +113,14 @@ done
 echo "==> the bridge template"
 cp -R "$repo_root/tool/sdk/templates" "$stage/sdk/$version/templates"
 
-echo "==> the tarball"
-tar -czf "$out/$name.tar.gz" -C "$stage" bin sdk
-shasum -a 256 "$out/$name.tar.gz" | awk '{print $1}' > "$out/$name.tar.gz.sha256"
+echo "==> the archive"
+archive="$out/$name.$extension"
+if [ "$extension" = zip ]; then
+  "$release_tar" -a -cf "$archive" -C "$stage" bin sdk
+else
+  "$release_tar" -czf "$archive" -C "$stage" bin sdk
+fi
+release_checksum "$archive"
 
 # A assinatura do tarball, para o self-install/self-update verificarem contra
 # a chave que o binário embute. Um release não assinado não existe: recusa
@@ -153,13 +131,13 @@ if [ ! -f "$repo_root/keys/sdk.key" ]; then
   echo "  Generate it once: minisign -G -W -p tool/sdk/sdk_release.pub -s keys/sdk.key" >&2
   exit 1
 fi
-minisign -S -x "$out/$name.tar.gz.minisig" -s "$repo_root/keys/sdk.key" \
-  -m "$out/$name.tar.gz" -t "dovetail-sdk $version $os-$arch" >/dev/null
+minisign -S -x "$archive.minisig" -s "$repo_root/keys/sdk.key" \
+  -m "$archive" -t "dovetail-sdk $version $os-$arch" >/dev/null
 
 echo
-echo "sdk      $out/$name.tar.gz"
-echo "minisig  $out/$name.tar.gz.minisig"
-echo "sha256   $(cat "$out/$name.tar.gz.sha256")"
+echo "sdk      $archive"
+echo "minisig  $archive.minisig"
+echo "sha256   $(cat "$archive.sha256")"
 if [ -z "$cross" ]; then
-  echo "reports  $("$stage/bin/dovetail" --version)"
+  echo "reports  $("$stage/bin/$binary" --version)"
 fi
