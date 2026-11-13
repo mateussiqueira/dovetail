@@ -56,7 +56,9 @@ Iterable<String> _documents() sync* {
     if (p.basename(entity.path) == 'CHANGELOG.md') {
       continue;
     }
-    final String relative = p.relative(entity.path, from: repoRoot());
+    final String relative = p.posix.joinAll(
+      p.split(p.relative(entity.path, from: repoRoot())),
+    );
     if (_ignoredPaths.any((String each) => '/$relative'.contains(each))) {
       continue;
     }

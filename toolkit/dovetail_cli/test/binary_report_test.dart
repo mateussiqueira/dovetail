@@ -72,6 +72,22 @@ void main() {
   });
 
   group('finding it on PATH', () {
+    test(
+      'an injected Windows PATH keeps drive letters and spaces on any host',
+      () {
+        expect(
+          BinaryReport.findOnPath(
+            r'C:\Program Files\Dovetail;D:\Apps',
+            separator: ';',
+            names: const <String>['dovetail.exe'],
+            exists: (String path) =>
+                path == r'C:\Program Files\Dovetail\dovetail.exe',
+          ),
+          r'C:\Program Files\Dovetail\dovetail.exe',
+        );
+      },
+    );
+
     test('the first directory that has it wins, in PATH order', () {
       final String? found = BinaryReport.findOnPath(
         '/usr/local/bin:/Users/me/.local/bin:/opt/dovetail/bin',

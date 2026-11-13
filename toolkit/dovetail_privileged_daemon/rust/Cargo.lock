@@ -68,6 +68,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "dovetail_privileged_channel",
+ "dovetail_windows_service",
  "futures",
  "libc",
  "serde",
@@ -78,6 +79,13 @@ dependencies = [
  "tracing-subscriber",
  "windows-service",
  "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "dovetail_windows_service"
+version = "0.1.0"
+dependencies = [
+ "windows-service",
 ]
 
 [[package]]

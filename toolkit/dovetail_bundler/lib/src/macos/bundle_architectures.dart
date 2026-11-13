@@ -100,7 +100,9 @@ abstract final class BundleArchitectures {
       }
       binaries.add(
         BundleBinary(
-          relativePath: p.relative(entity.path, from: bundle.path),
+          relativePath: p.posix.joinAll(
+            p.split(p.relative(entity.path, from: bundle.path)),
+          ),
           info: info,
         ),
       );

@@ -139,7 +139,7 @@
           "skips": {}
         },
         "test/binary_report_test.dart": {
-          "declared": 14,
+          "declared": 15,
           "skips": {}
         },
         "test/bridge_command_test.dart": {
@@ -354,6 +354,18 @@
         "test/upgrade_command_test.dart": {
           "declared": 6,
           "skips": {}
+        },
+        "test/verify_package_tool_test.dart": {
+          "declared": 3,
+          "skips": {}
+        },
+        "test/verify_format_output_test.dart": {
+          "declared": 4,
+          "skips": {}
+        },
+        "test/verify_readme_counts_test.dart": {
+          "declared": 5,
+          "skips": {}
         }
       }
     },
@@ -461,6 +473,10 @@
         },
         "test/registration_guard_test.dart": {
           "declared": 7,
+          "skips": {}
+        },
+        "test/windows_service_owner_test.dart": {
+          "declared": 1,
           "skips": {}
         }
       }

@@ -34,7 +34,10 @@ final class BundleThinner {
       if (binary.info.kind != MachOKind.fat) {
         continue;
       }
-      final String path = p.join(bundlePath, binary.relativePath);
+      final String path = p.joinAll(<String>[
+        bundlePath,
+        ...p.posix.split(binary.relativePath),
+      ]);
       final ProcessOutcome outcome = await runner.run(lipo, <String>[
         path,
         '-thin',

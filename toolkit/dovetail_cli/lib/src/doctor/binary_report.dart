@@ -161,6 +161,9 @@ final class BinaryReport {
       return null;
     }
     final String sep = separator ?? (Platform.isWindows ? ';' : ':');
+    final p.Context paths = p.Context(
+      style: sep == ';' ? p.Style.windows : p.Style.posix,
+    );
     final List<String> candidates =
         names ??
         (Platform.isWindows
@@ -171,7 +174,7 @@ final class BinaryReport {
         continue;
       }
       for (final String name in candidates) {
-        final String candidate = p.join(dir, name);
+        final String candidate = paths.join(dir, name);
         if (exists(candidate)) {
           return candidate;
         }

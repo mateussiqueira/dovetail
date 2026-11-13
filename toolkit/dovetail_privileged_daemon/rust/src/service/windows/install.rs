@@ -1,5 +1,6 @@
 use crate::exit_codes;
 use crate::DaemonApp;
+use dovetail_windows_service::{register, ExistingService, ScmRegistrar};
 use std::ffi::OsStr;
 use std::time::{Duration, Instant};
 use windows_service::service::{
@@ -12,7 +13,7 @@ use windows_service::service_manager::{ServiceManager, ServiceManagerAccess};
 use super::{
     codigo_do_erro, falha, FalhaSetup, CREATE_NO_WINDOW, ERROR_ACCESS_DENIED,
     ERROR_SERVICE_ALREADY_RUNNING, ERROR_SERVICE_DEPENDENCY_DELETED, ERROR_SERVICE_DEPENDENCY_FAIL,
-    ERROR_SERVICE_EXISTS, ERROR_SERVICE_MARKED_FOR_DELETE, SVC_SDDL,
+    SVC_SDDL,
 };
 
 pub fn register_service<A: DaemonApp>() -> i32 {
@@ -71,46 +72,9 @@ fn registrar<A: DaemonApp>() -> Result<(), FalhaSetup> {
         | ServiceAccess::STOP
         | ServiceAccess::QUERY_STATUS;
 
-    let service = match manager.create_service(&info, acesso) {
-        Ok(s) => {
-            tracing::info!("CreateService: servico criado");
-            s
-        }
-        Err(e) if codigo_do_erro(&e) == Some(ERROR_SERVICE_EXISTS) => {
-            tracing::info!("servico ja existe; reconfigurando via ChangeServiceConfig");
-            let s = manager
-                .open_service(A::IDENTITY.windows_name, acesso)
-                .map_err(|e| {
-                    let codigo = if codigo_do_erro(&e) == Some(ERROR_ACCESS_DENIED) {
-                        exit_codes::SCM_ACCESS_DENIED
-                    } else {
-                        exit_codes::REGISTER_FAILED
-                    };
-                    falha(codigo, format!("OpenService falhou: {e:?}"))
-                })?;
-            s.change_config(&info).map_err(|e| {
-                falha(
-                    exit_codes::REGISTER_FAILED,
-                    format!("ChangeServiceConfig falhou: {e:?}"),
-                )
-            })?;
-            s
-        }
-        Err(e) if codigo_do_erro(&e) == Some(ERROR_SERVICE_MARKED_FOR_DELETE) => {
-            return Err(falha(
-                exit_codes::REGISTER_FAILED,
-                "o servico esta marcado para exclusao (1072); reinicie o Windows e repita",
-            ));
-        }
-        Err(e) => {
-            let codigo = if codigo_do_erro(&e) == Some(ERROR_ACCESS_DENIED) {
-                exit_codes::SCM_ACCESS_DENIED
-            } else {
-                exit_codes::REGISTER_FAILED
-            };
-            return Err(falha(codigo, format!("CreateService falhou: {e:?}")));
-        }
-    };
+    let backend = ScmRegistrar::new(&manager, acesso);
+    let service = register(&backend, &info, ExistingService::Reconfigure)
+        .map_err(super::registration_failure::map_failure)?;
 
     if let Err(e) = service.set_description(A::IDENTITY.windows_description) {
         tracing::warn!(?e, "ChangeServiceConfig2(DESCRIPTION) falhou");
