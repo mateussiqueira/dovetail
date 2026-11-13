@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_cli/src/doctor/rust_target_probe.dart';
+import 'package:dovetail_cli/src/doctor/tool_executable.dart';
 import 'package:dovetail_cli/src/doctor/tool_probe.dart';
 import 'package:path/path.dart' as p;
 
@@ -30,7 +31,7 @@ final class CommandProbe implements ToolProbe {
 
   @override
   Future<ToolReport> probe() async {
-    final String? resolved = _which(name);
+    final String? resolved = findToolExecutable(name);
     if (resolved == null) {
       return ToolReport(
         name: name,
@@ -124,18 +125,6 @@ final class CommandProbe implements ToolProbe {
         .toList();
     return lines.isEmpty ? 'exit code ${result.exitCode}' : lines.first.trim();
   }
-
-  static String? _which(String name) {
-    final ProcessResult found = Process.runSync(
-      Platform.isWindows ? 'where' : 'which',
-      <String>[name],
-    );
-    if (found.exitCode != 0) {
-      return null;
-    }
-    final String output = found.stdout.toString().trim();
-    return output.isEmpty ? null : output.split('\n').first.trim();
-  }
 }
 
 /// The probe that answers the question the NSIS step really asks: can this
@@ -155,7 +144,7 @@ final class NsisProbe implements ToolProbe {
 
   @override
   Future<ToolReport> probe() async {
-    final String? resolved = _which(name);
+    final String? resolved = findToolExecutable(name);
     if (resolved == null) {
       return ToolReport(
         name: name,
@@ -234,18 +223,6 @@ final class NsisProbe implements ToolProbe {
     } finally {
       scratch.deleteSync(recursive: true);
     }
-  }
-
-  static String? _which(String name) {
-    final ProcessResult found = Process.runSync(
-      Platform.isWindows ? 'where' : 'which',
-      <String>[name],
-    );
-    if (found.exitCode != 0) {
-      return null;
-    }
-    final String output = found.stdout.toString().trim();
-    return output.isEmpty ? null : output.split('\n').first.trim();
   }
 
   static String _detail(ProcessResult result) {

@@ -1,28 +1,27 @@
 import 'dart:io';
 import 'package:dovetail_bundler/dovetail_bundler.dart';
 import 'package:dovetail_cli/dovetail_cli.dart';
-import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
+import 'support/tool_fixture.dart';
+
 void main() {
+  late Directory scratch;
+  setUp(() => scratch = Directory.systemTemp.createTempSync('probe'));
+  tearDown(() => scratch.deleteSync(recursive: true));
+
+  String toolThat(String posix, String windows) =>
+      toolFixture(scratch, posix: posix, windows: windows);
+
   group('present but broken, proven without depending on this machine', () {
-    late Directory scratch;
-
-    setUp(() => scratch = Directory.systemTemp.createTempSync('probe'));
-    tearDown(() => scratch.deleteSync(recursive: true));
-
-    String toolThat(String body) {
-      final String path = p.join(scratch.path, 'faketool');
-      File(path).writeAsStringSync('#!/bin/sh\n$body\n');
-      Process.runSync('chmod', <String>['755', path]);
-      return path;
-    }
-
     test(
       'a tool that exits non-zero should be unusable, with its own words',
       () async {
         final ToolReport report = await CommandProbe(
-          name: toolThat('echo "it aborted" >&2; exit 3'),
+          name: toolThat(
+            'echo "it aborted" >&2; exit 3',
+            'echo it aborted >&2\nexit /b 3',
+          ),
           purpose: 'a tool that is installed and does not work',
           trivialArguments: const <String>['--probe'],
         ).probe();
@@ -37,7 +36,7 @@ void main() {
       'a tool that exits zero and produces nothing should be unusable',
       () async {
         final ToolReport report = await CommandProbe(
-          name: toolThat('exit 0'),
+          name: toolThat('exit 0', 'exit /b 0'),
           purpose: 'a tool that reports success it did not earn',
           trivialArguments: const <String>['--probe'],
           expectsFile: 'expected.out',
@@ -55,7 +54,7 @@ void main() {
 
     test('a tool that produces what it promised should be usable', () async {
       final ToolReport report = await CommandProbe(
-        name: toolThat('printf x > expected.out'),
+        name: toolThat('printf x > expected.out', 'echo x > expected.out'),
         purpose: 'a tool that works',
         trivialArguments: const <String>['--probe'],
         expectsFile: 'expected.out',
@@ -124,8 +123,8 @@ void main() {
   test(
     'a tool that answers should be reported as usable, with its path',
     () async {
-      const CommandProbe sut = CommandProbe(
-        name: 'echo',
+      final CommandProbe sut = CommandProbe(
+        name: toolThat('echo probe', 'echo probe'),
         purpose: 'prints',
         trivialArguments: <String>['probe'],
       );
@@ -141,8 +140,8 @@ void main() {
   test(
     'a tool that fails a trivial input should be reported as broken',
     () async {
-      const CommandProbe sut = CommandProbe(
-        name: 'false',
+      final CommandProbe sut = CommandProbe(
+        name: toolThat('exit 3', 'exit /b 3'),
         purpose: 'always refuses',
         trivialArguments: <String>[],
       );
@@ -155,8 +154,8 @@ void main() {
   );
 
   test('a tool that exits zero without producing the file is broken', () async {
-    const CommandProbe sut = CommandProbe(
-      name: 'true',
+    final CommandProbe sut = CommandProbe(
+      name: toolThat('exit 0', 'exit /b 0'),
       purpose: 'exits zero and does nothing',
       trivialArguments: <String>[],
       expectsFile: 'never_written.out',
@@ -174,8 +173,8 @@ void main() {
   });
 
   test('an input file should be written before the tool runs', () async {
-    const CommandProbe sut = CommandProbe(
-      name: 'cat',
+    final CommandProbe sut = CommandProbe(
+      name: toolThat('cat "\$1"', 'type "%~1"'),
       purpose: 'reads what the probe wrote',
       trivialArguments: <String>['input.txt'],
       inputFiles: <String, String>{'input.txt': 'hello'},

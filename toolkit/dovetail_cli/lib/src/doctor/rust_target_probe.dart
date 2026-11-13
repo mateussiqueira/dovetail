@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:dovetail_bundler/dovetail_bundler.dart';
+import 'package:dovetail_cli/src/doctor/tool_executable.dart';
 import 'package:dovetail_cli/src/doctor/tool_probe.dart';
 
 final class RustTargetProbe implements ToolProbe {
@@ -24,18 +25,27 @@ final class RustTargetProbe implements ToolProbe {
 
   @override
   Future<ToolReport> probe() async {
-    final ProcessResult installed;
-    try {
-      installed = Process.runSync(rustup, <String>[
-        'target',
-        'list',
-        '--installed',
-      ]);
-    } on ProcessException {
+    final String? resolved = findToolExecutable(rustup);
+    if (resolved == null) {
       return ToolReport(
         name: name,
         purpose: purpose,
         status: ToolStatus.absent,
+      );
+    }
+    final ProcessResult installed;
+    try {
+      installed = Process.runSync(resolved, <String>[
+        'target',
+        'list',
+        '--installed',
+      ]);
+    } on ProcessException catch (error) {
+      return ToolReport(
+        name: name,
+        purpose: purpose,
+        status: ToolStatus.unusable,
+        detail: error.message,
       );
     }
 

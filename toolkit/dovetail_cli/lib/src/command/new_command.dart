@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:args/command_runner.dart';
@@ -196,6 +197,8 @@ final class NewCommand extends Command<int> {
     _writeDovetailYaml(projectRoot, id, projectName);
     if (sdk != null) {
       _writeSdkOverrides(projectRoot, sdk);
+    } else {
+      _writeBridgeOverrides(projectRoot, bridge.rustCoreDart);
     }
 
     if (!(argResults?.flag('no-create') ?? false)) {
@@ -219,6 +222,14 @@ final class NewCommand extends Command<int> {
       ..writeln('  flutter test')
       ..writeln('  dovetail doctor');
     return 0;
+  }
+
+  void _writeBridgeOverrides(String projectRoot, String runtime) {
+    File(p.join(projectRoot, SdkOverrides.fileName)).writeAsStringSync(
+      'dependency_overrides:\n'
+      '  dovetail_rust_core:\n'
+      '    path: ${jsonEncode(runtime)}\n',
+    );
   }
 
   void _writeSdkOverrides(String projectRoot, SdkInstall sdk) {

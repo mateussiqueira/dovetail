@@ -26,7 +26,13 @@ final class SdkInstaller {
   String get binDir =>
       _binDir ??
       Platform.environment['DOVETAIL_BIN_DIR'] ??
-      p.join(Platform.environment['HOME'] ?? home, '.local', 'bin');
+      p.join(
+        Platform.environment['HOME'] ??
+            Platform.environment['USERPROFILE'] ??
+            home,
+        '.local',
+        'bin',
+      );
 
   /// Desempacota [tarball] no home e devolve o caminho do binário instalado.
   Future<String> extract(File tarball) async {
@@ -52,7 +58,9 @@ final class SdkInstaller {
   /// binário instalado, e avisa quando o diretório está fora do PATH.
   Link linkBin() {
     Directory(binDir).createSync(recursive: true);
-    final Link link = Link(p.join(binDir, 'dovetail'));
+    final Link link = Link(
+      p.join(binDir, Platform.isWindows ? 'dovetail.exe' : 'dovetail'),
+    );
     if (link.existsSync()) {
       link.deleteSync();
     }

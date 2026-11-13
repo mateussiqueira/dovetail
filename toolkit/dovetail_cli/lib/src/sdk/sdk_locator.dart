@@ -48,8 +48,10 @@ final class SdkLocator {
 
   final String home;
 
-  static String _defaultHome() =>
-      p.join(Platform.environment['HOME'] ?? '.', '.dovetail');
+  static String _defaultHome() => p.join(
+    Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'] ?? '.',
+    '.dovetail',
+  );
 
   SdkInstall? locate() {
     final Directory sdkRoot = Directory(p.join(home, 'sdk'));

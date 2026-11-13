@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:args/command_runner.dart';
 import 'package:dovetail_cli/src/config/pubspec_version.dart';
+import 'package:dovetail_cli/src/doctor/tool_executable.dart';
 import 'package:dovetail_cli/src/sdk/sdk_locator.dart';
 import 'package:dovetail_cli/src/sdk/sdk_overrides.dart';
 import 'package:path/path.dart' as p;
@@ -78,7 +79,7 @@ final class UpgradeCommand extends Command<int> {
   void _checkResolves(String root) {
     final ProcessResult result;
     try {
-      result = Process.runSync('dart', <String>[
+      result = Process.runSync(findToolExecutable('dart') ?? 'dart', <String>[
         'pub',
         'get',
       ], workingDirectory: root);
@@ -114,8 +115,6 @@ final class UpgradeCommand extends Command<int> {
     return lines.sublist(from).join('\n');
   }
 
-  static final RegExp _versionPattern = RegExp(r'sdk/([^/]+)/packages');
-
   /// A versão a que o override atual aponta, lida do primeiro
   /// `sdk/<versão>/packages` no arquivo — 'none' quando o arquivo não existe
   /// ou não aponta para SDK nenhum.
@@ -123,7 +122,6 @@ final class UpgradeCommand extends Command<int> {
     if (!target.existsSync()) {
       return 'none';
     }
-    final Match? match = _versionPattern.firstMatch(target.readAsStringSync());
-    return match?.group(1) ?? 'none';
+    return SdkOverrides.versionIn(target.readAsStringSync()) ?? 'none';
   }
 }
