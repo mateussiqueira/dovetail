@@ -134,4 +134,33 @@ void main() {
       r'D:\Portable Git\bin\bash.exe',
     );
   });
+
+  File unicodeTool() =>
+      File('${directory.path}/unicode.dart')..writeAsStringSync(
+        "import 'dart:io'; import 'dart:convert'; "
+        "void main() { stdout.add(utf8.encode('núcleo 核')); "
+        "stderr.add(utf8.encode('verificação ✅')); }",
+      );
+
+  void verifyUnicode(ProcessResult result) {
+    expect(result.exitCode, 0);
+    expect(result.stdout, 'núcleo 核');
+    expect(result.stderr, 'verificação ✅');
+  }
+
+  test('sync gate decodes tool output as UTF-8 on every host', () {
+    verifyUnicode(
+      runPackageToolSync(Platform.resolvedExecutable, <String>[
+        unicodeTool().path,
+      ]),
+    );
+  });
+
+  test('async gate decodes tool output as UTF-8 on every host', () async {
+    verifyUnicode(
+      await runPackageTool(Platform.resolvedExecutable, <String>[
+        unicodeTool().path,
+      ]),
+    );
+  });
 }
